@@ -1,0 +1,23 @@
+inheritedBy:
+  file: 'tsconfig.json'
+
+tasks:
+  build:
+    script: >-
+      node -e "require('node:fs').rmSync('dist', { recursive: true, force: true })"
+      && pnpm exec tsc --project tsconfig.json
+    outputs:
+      - 'dist'
+    options:
+      # Moon 2.6.5 can leave files from another build when restoring into dist.
+      cache: false
+  typecheck:
+    command: 'pnpm exec tsc --project tsconfig.json --noEmit'
+  lint:
+    command: 'pnpm exec oxlint --deny correctness --deny suspicious .'
+  test:
+    command: 'node --test'
+    deps:
+      - '~:build'
+    options:
+      cache: false

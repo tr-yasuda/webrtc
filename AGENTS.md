@@ -2,7 +2,7 @@
 
 ## リポジトリ構成
 
-[仕様一覧](docs/README.md)から担当コンポーネントの文書を探し、[全体構成](docs/platform/overview.md)で用語と責務を確認します。共通要件は `docs/platform/`、個別仕様は `docs/signaling/`、`docs/sfu/`、`docs/client-sdk/` などにあります。現在は仕様策定段階で、実装コード、テスト、アプリケーション用の素材は未追加です。
+[仕様一覧](docs/README.md)から担当コンポーネントの文書を探し、[全体構成](docs/platform/overview.md)で用語と責務を確認します。共通要件は `docs/platform/`、個別仕様は `docs/signaling/`、`docs/sfu/`、`docs/client-sdk/` などにあります。TypeScript パッケージは `packages/`、Rust クレートは `crates/` に置きます。
 
 ## 仕様の書き方
 
@@ -12,7 +12,11 @@
 
 ## 開発と検証
 
-ビルド、ローカル起動、テストのコマンドは未設定です。文書を変更したら `git diff --check` で追跡済みファイルの空白エラーを確認し、`git status --short` で新規ファイルも確認します。Markdown をプレビューし、相対リンクと見出しへのリンクをたどります。
+[開発環境](README.md#開発環境)の手順でセットアップし、`mise run verify` でビルド、型検査、静的解析、テストを実行します。
+
+他の GitHub リポジトリにある Action や再利用ワークフローを参照する場合は、GitHub 公式のものも含め、配布元で確認した 40 桁のコミット SHA で `uses:` を固定します。新規追加と更新の際は `mise run check:actions` で確認します。
+
+文書を変更したら `git diff --check` で追跡済みファイルの空白エラーを確認し、`git status --short` で新規ファイルも確認します。Markdown をプレビューし、相対リンクと見出しへのリンクをたどります。
 
 振る舞いを変更するときは、該当仕様の受け入れ条件と、共通のセキュリティ・資源管理要件を照合します。実装時は対象に応じてモデル検査、ファジング、プロパティベーステストを選び、検証条件・範囲・結果を記録します。
 

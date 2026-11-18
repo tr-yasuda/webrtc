@@ -1,0 +1,9 @@
+{
+  "name": "webrtc",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "devDependencies": {
+    "oxlint": "1.94.0",
+    "typescript": "7.0.2"
+  }
+}

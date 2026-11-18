@@ -1,0 +1,15 @@
+inheritedBy:
+  file: 'Cargo.toml'
+
+taskOptions:
+  cache: false
+
+tasks:
+  build:
+    command: 'cargo build --locked'
+  typecheck:
+    command: 'cargo check --locked --all-targets'
+  lint:
+    command: 'cargo clippy --locked --all-targets -- -D warnings'
+  test:
+    command: 'cargo test --locked'

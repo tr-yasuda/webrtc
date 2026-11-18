@@ -1,0 +1,5 @@
+implicitInputs:
+  - '/mise.toml'
+  - '/package.json'
+  - '/pnpm-lock.yaml'
+  - '/pnpm-workspace.yaml'
