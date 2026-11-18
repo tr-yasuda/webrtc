@@ -9,16 +9,14 @@ Browser SDK の操作と状態を React 向けに提供する。通信・暗号�
 
 React SDK は Browser SDK を基盤とし、Hooks、Context、コンポーネントなど、React アプリケーションから利用するインターフェースを提供する。
 WebRTC、Signaling、E2EE、配送・復旧の中核ロジックは Browser SDK を利用し、React SDK に重複実装しない。
-[公開機能・状態・結果の意味は Browser SDK](browser.md#公開インターフェース)で定め、React SDK でも同じ意味で提供する。
+公開する機能・状態・結果の意味は [Browser SDK](browser.md#公開インターフェース)の定義に従い、React SDK でも同じ意味で提供する。
 
 ## 自作範囲・既存実装の利用
 
 Browser SDK と React SDK は TypeScript で実装する。
 Browser SDK は通信と状態管理の中核を担い、React SDK はその機能を React アプリケーションへ提供する。
 
-| 実装する部分 | 責務 |
-|---|---|
-| React SDK | Hooks・Context・コンポーネント、状態変更の通知購読、操作と結果の React 向けの提供 |
+React SDK は Hooks・Context・コンポーネントを実装し、状態変更の通知購読と、操作・結果の React 向けインターフェースを提供する。
 
 接続・鍵・配送状態は Browser SDK が管理し、React SDK はその状態を利用する。
 同じ状態遷移や認可・暗号化・再接続の判断を、独立した中核ロジックとして持たない。

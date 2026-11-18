@@ -25,13 +25,11 @@ TURN サーバーと通信相手の間は UDP とする。
 通信相手との間で TCP 接続を確立する TCP Allocation（RFC 6062）は、今回の対象外とする。
 [RFC 8656 §3.1](https://www.rfc-editor.org/rfc/rfc8656.html#section-3.1)に従う。
 
-| 処理 | 内容 |
-|---|---|
-| CreatePermission | 通信相手の IP アドレスに対する Permission を作成・更新する |
-| ChannelBind | TURN チャネル番号と通信相手の IP アドレス・ポートを対応付ける |
-| Send Indication | クライアントから TURN サーバーへ渡したデータを、通信相手へ送信する |
-| Data Indication | 通信相手から TURN サーバーが受信したデータを、クライアントへ渡す |
-| ChannelData | Channel Binding を使用して、クライアントと通信相手の間で双方向にデータを転送する |
+クライアントは CreatePermission で、通信相手の IP アドレスに対する Permission を作成・更新する。
+Channel Binding を使う場合は、ChannelBind で TURN チャネル番号と通信相手の IP アドレス・ポートを対応付ける。
+
+クライアントから通信相手へ送信する場合は Send Indication を使い、通信相手からクライアントへ受信データを渡す場合は Data Indication を使う。
+ChannelData は、Channel Binding を使う双方向の転送に使用する。
 
 Permission は通信相手の IP アドレス単位、Channel Binding は通信相手の IP アドレス・ポートとの対応として管理する。
 両者を同じ状態として扱わない。
@@ -81,9 +79,7 @@ Permission や Channel Binding の更新では、新規作成と既存状態の�
 
 認証済み Request が資源上限によって実行できない場合は、メソッドと原因に応じたエラーを返す。
 
-| 条件 | 応答 |
-|---|---|
-| CreatePermission / ChannelBind を容量不足で実行できない場合 | 508（Insufficient Capacity） |
+CreatePermission / ChannelBind を容量不足で実行できない場合は、508（Insufficient Capacity）を返す。
 
 エラー処理は [RFC 8656 §7.2、§10.2、§12.2](https://www.rfc-editor.org/rfc/rfc8656.html#section-7.2)に従う。
 応答自体にも、処理量と送信量の制限を適用する。
@@ -125,12 +121,9 @@ Permission と Channel Binding の期限切れは、それぞれに判定する�
 
 TURN のプロトコル処理と中継処理は Rust で実装する。
 Rust の実行方式は、Wasm、Native Addon、独立 Worker を選択肢として残し、この節では固定しない。
-Rust で実装しても、独立プロセスでの実行は必須としない。
-C-Plane / D-Plane の論理的な責務の分離と、Rust の実行方式は区別し、実行プロセスの分離を必須としない。
+C-Plane / D-Plane の論理的な責務の分離と、Rust の実行方式は区別し、独立プロセスでの実行は必須としない。
 
-| 自作する部分 | 内容 |
-|---|---|
-| データの中継 | クライアント側トランスポートと通信相手側の UDP 間の転送、接続上のメッセージ境界の処理 |
+クライアント側トランスポートと通信相手側の UDP 間の転送、および接続上のメッセージ境界の処理を自作する。
 
 これらの処理は自作し、完成済みの TURN サーバーや TURN プロトコル実装には委ねない。
 
@@ -201,9 +194,7 @@ IPv4・IPv6 と、クライアント接続の UDP・TCP・TLS-over-TCP・DTLS-ov
 | TLS / DTLS | 制御応答・Data Indication・ChannelData を、対応する保護された接続または DTLS Association で返す。平文への切り替えや別クライアントへの混入を起こさず、共通 DTLS の受け入れ条件を満たす |
 | 機密情報と通知 | Allocation にパスワードを平文保存しない。資格情報・認証鍵・本文をログへ出力しない。更新・経路準備の必要性、失敗・転送停止の理由を Browser SDK から通知する |
 
-| 検証方法 | 重点対象 |
-|---|---|
-| Fuzzing | STUN / ChannelData の解析、長さ・境界・パディング、不正な認証属性、接続上の分割・連続入力 |
+Fuzzing では、STUN / ChannelData の解析、長さ・境界・パディング、不正な認証属性、接続上の分割・連続入力を重点的に検証する。
 
 対象ブラウザーの対応状況に応じて相互接続を確認する。
 ブラウザーが利用しないトランスポートや条件は、検証用クライアントで確認し、その範囲を区別する。

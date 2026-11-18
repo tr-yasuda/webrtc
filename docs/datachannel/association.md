@@ -15,14 +15,12 @@ SCTP は DTLS 上で使用する。
 接続・相手認証・Consent Freshness の条件は WebRTC Transport 仕様に従う。
 SCTP の利用方法は [RFC 8831](https://www.rfc-editor.org/rfc/rfc8831.html)、SDP による交渉は [RFC 8841](https://www.rfc-editor.org/rfc/rfc8841.html)に従う。
 
-次の状態を区別する。
+送受信を開始するまでに、次の条件をそれぞれ確認する。
 
-| 状態 | 意味 |
-|---|---|
-| WebRTC Transport の利用可能 | 必要な経路・認証・暗号・送信同意の条件を満たしている |
-| SCTP Association の確立 | 対象接続で SCTP の通信が成立している |
-| DataChannel の利用可能 | 対象の DataChannel について、DCEP の進行段階に応じた送受信条件と必要な設定を満たしている |
-| アプリケーション送受信の許可 | 現在の通信権限と E2EE の鍵状態を確認している |
+1. WebRTC Transport が、必要な経路・認証・暗号・送信同意の条件を満たしている。
+2. 対象接続で SCTP Association が確立し、SCTP の通信が成立している。
+3. 対象の DataChannel が、DCEP の進行段階に応じた送受信条件と必要な設定を満たしている。
+4. アプリケーションの送受信について、現在の通信権限と E2EE の鍵状態を確認している。
 
 下位の接続が成立しただけで、アプリケーション送受信を許可しない。
 

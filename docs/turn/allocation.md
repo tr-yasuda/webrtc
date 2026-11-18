@@ -15,15 +15,9 @@ DTLS の条件は [共通 DTLS 仕様](../dtls/association.md)に従う。
 待受ポートと、中継に使用するアドレス・ポート範囲は設定可能とする。
 接続先を Client SDK に設定できるようにする。
 
-中継資源は、認証と利用許可を確認した Allocate 要求によって確保する。
-ルームの作成だけでは確保しない。
-
-次の処理に対応する。
-
-| 処理 | 内容 |
-|---|---|
-| Allocate | 中継アドレスと Allocation を確保する |
-| Refresh | Allocation の有効期限を更新し、または削除する |
+クライアントは Allocate を要求し、TURN サーバーは認証と利用許可を確認したうえで、中継アドレスと Allocation を確保する。
+ルームの作成だけでは中継資源を確保しない。
+クライアントが Allocation を継続する場合は Refresh で有効期限を更新し、削除する場合も Refresh を使用する。
 
 Allocation は、クライアントとサーバーの IP アドレス・ポート、および接続トランスポートの組に対応付ける。
 別の接続から、既存の Allocation を無条件に引き継がせない。
@@ -124,11 +118,8 @@ Worker をまたいで予約・確保・解放が並行する場合も、全体�
 TURN 資格情報の有効期限、Allocation の有効期限、Permission の有効期限、Channel Binding の有効期限を別に管理する。
 一つの更新を、ほかのすべての期限の更新として扱わない。
 
-TURN の状態の寿命と更新は、次に従う。
-
-| 状態 | 寿命と更新 |
-|---|---|
-| Allocation | 既定の寿命は600秒とし、Allocate / Refresh の処理で RFC に従って決定する。応答の LIFETIME に実際の寿命を返す |
+Allocation の既定の寿命は600秒とする。
+Allocate / Refresh の処理で RFC に従って寿命を決定し、応答の LIFETIME に実際の寿命を返す。
 
 Allocation・Permission・Channel Binding の寿命と更新は [RFC 8656 §6–9、§12](https://www.rfc-editor.org/rfc/rfc8656.html#section-6)に従う。
 Allocation の最大寿命を含む設定は、RFC の条件を満たす範囲で定める。
@@ -186,8 +177,7 @@ Browser SDK は、資格情報の更新や新しい経路の準備が必要な�
 
 TURN のプロトコル処理と中継処理は Rust で実装する。
 Rust の実行方式は、Wasm、Native Addon、独立 Worker を選択肢として残し、この節では固定しない。
-Rust で実装しても、独立プロセスでの実行は必須としない。
-C-Plane / D-Plane の論理的な責務の分離と、Rust の実行方式は区別し、実行プロセスの分離を必須としない。
+C-Plane / D-Plane の論理的な責務の分離と、Rust の実行方式は区別し、独立プロセスでの実行は必須としない。
 
 | 自作する部分 | 内容 |
 |---|---|
