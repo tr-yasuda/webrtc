@@ -1,8 +1,8 @@
-# 共通 DTLS
+# DTLS Association の確立・維持
 
-共通の前提・用語・利用場面は [共通仕様](spec.md) に従う。
+共通の前提・用語・利用場面は [共通仕様](../platform/overview.md) に従う。
 STUN、TURN、ICE / WebRTC Transport で利用する DTLS の条件を定める。
-管理状態の件数・総量・寿命は、[共通の資源管理](spec.md#資源管理)に従う。
+管理状態の件数・総量・寿命は、[共通の資源管理](../platform/resources.md#資源管理)に従う。
 
 ## 対応バージョン
 
@@ -56,7 +56,7 @@ DTLS 1.2 で利用する再鍵交換または接続再確立の方式は、用�
 採用時に、上限の根拠、計数方法、更新・停止の動作を確認する。
 
 ここで定める使用上限は、DTLS レコードを保護する鍵を対象とする。
-SRTP/SRTCP の鍵・暗号方式・使用上限は、[ICE / WebRTC Transport](transport.md#暗号化通信の確立維持)で定める。
+SRTP/SRTCP の鍵・暗号方式・使用上限は、[ICE / WebRTC Transport](../transport/secure-transport.md#暗号化通信の確立維持)で定める。
 
 ## 接続確立と到達性確認
 
