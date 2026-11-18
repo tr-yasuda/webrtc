@@ -7,9 +7,13 @@ taskOptions:
 tasks:
   build:
     command: 'cargo build --locked'
+  format:
+    command: 'cargo fmt --check'
   typecheck:
     command: 'cargo check --locked --all-targets'
   lint:
-    command: 'cargo clippy --locked --all-targets -- -D warnings'
+    command: 'cargo clippy --locked --all-targets'
+    env:
+      CARGO_BUILD_WARNINGS: 'deny'
   test:
     command: 'cargo test --locked'

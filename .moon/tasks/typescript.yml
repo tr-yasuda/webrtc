@@ -11,6 +11,8 @@ tasks:
     options:
       # Moon 2.6.5 can leave files from another build when restoring into dist.
       cache: false
+  format:
+    command: 'pnpm exec oxfmt --check .'
   typecheck:
     command: 'pnpm exec tsc --project tsconfig.json --noEmit'
   lint:

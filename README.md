@@ -20,7 +20,13 @@ mise がツールのバージョンを固定し、pnpm と Cargo が各ワーク
 - TypeScript は [Browser SDK](packages/browser-sdk) の最小構成です。ビルド後にパッケージとして読み込めることをテストします。
 - Rust は [STUN](crates/stun) の最小構成です。STUN ヘッダーの Magic Cookie をテストします。
 
-`mise run verify` は GitHub Actions の SHA 固定を検査し、Moon で両言語のビルド・型検査・静的解析・テストを実行します。GitHub Actions も同じコマンドを実行します。個別に実行する場合は `mise exec -- moon run browser-sdk:test` や `mise exec -- moon run stun:lint` を使用できます。
+`mise run verify` は Moon で両言語のビルド・整形チェック・型検査・静的解析・テストを実行します。GitHub Actions も同じコマンドを実行します。個別に実行する場合は `mise exec -- moon run :format` や `mise exec -- moon run stun:lint` を使用できます。
+
+| 検証 | TypeScript | Rust |
+| --- | --- | --- |
+| 整形チェック | Oxfmt | Rustfmt |
+| 型検査 | TypeScript 7 の `tsc --noEmit` | `cargo check` |
+| 静的解析 | Oxlint | Clippy |
 
 Moon は `packages/*/package.json` と `crates/*/Cargo.toml` からプロジェクトを検出します。TypeScript の共通タスクは `tsconfig.json` があるパッケージに適用されます。`outDir` を `dist` に設定してください。ビルドのたびに `dist/` を作り直します。Rust クレートにも共通タスクが適用されます。
 
