@@ -1,6 +1,6 @@
 # WebRTC プラットフォーム仕様
 
-全体像は [目的・提供範囲・全体構成](platform/overview.md)から確認する。各仕様は、担当する一連の振る舞いと、その安全性・失敗時の扱い・受け入れ条件をまとめている。
+参加から退出までの流れは[利用場面](platform/overview.md#利用場面)、制御と通信を担当するコンポーネントは[全体構成](platform/overview.md#全体構成)から確認できる。個々の処理の振る舞い、安全性、失敗時の扱い、受け入れ条件は、下の一覧から担当する仕様を参照する。
 
 共通の [用語](platform/overview.md#用語)、[資源管理](platform/resources.md)、[セキュリティ条件](platform/security.md)、[実装・検証方針と性能評価](platform/verification.md)を各仕様に適用する。
 

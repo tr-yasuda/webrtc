@@ -25,14 +25,9 @@ TURN サーバーと通信相手の間は UDP とする。
 通信相手との間で TCP 接続を確立する TCP Allocation（RFC 6062）は、今回の対象外とする。
 [RFC 8656 §3.1](https://www.rfc-editor.org/rfc/rfc8656.html#section-3.1)に従う。
 
-クライアントは CreatePermission で、通信相手の IP アドレスに対する Permission を作成・更新する。
-Channel Binding を使う場合は、ChannelBind で TURN チャネル番号と通信相手の IP アドレス・ポートを対応付ける。
+クライアントは CreatePermission で通信相手の IP アドレスを指定し、Permission を作成・更新する。ChannelData を使う場合は、ChannelBind で TURN チャネル番号と通信相手の IP アドレス・ポートを対応付ける。TURN サーバーは、IP アドレス単位の Permission と、IP アドレス・ポートに対応する Channel Binding を別々の状態として管理する。
 
-クライアントから通信相手へ送信する場合は Send Indication を使い、通信相手からクライアントへ受信データを渡す場合は Data Indication を使う。
-ChannelData は、Channel Binding を使う双方向の転送に使用する。
-
-Permission は通信相手の IP アドレス単位、Channel Binding は通信相手の IP アドレス・ポートとの対応として管理する。
-両者を同じ状態として扱わない。
+ChannelData は Channel Binding を使う双方向の転送に用いる。Indication を使う場合は、クライアントから通信相手へ送るデータに Send Indication を、通信相手からクライアントへ渡すデータに Data Indication を用いる。
 
 ## 利用認証
 
@@ -40,9 +35,7 @@ Permission は通信相手の IP アドレス単位、Channel Binding は通信�
 Allocate、Refresh、CreatePermission、ChannelBind の各 Request に、この方式の認証を適用する。
 [RFC 8656 §5](https://www.rfc-editor.org/rfc/rfc8656.html#section-5)に従う。
 
-Send Indication / Data Indication と ChannelData に、Request と同じ長期資格情報方式の認証を要求しない。
-データ転送では、対応する Allocation、Permission、必要な Channel Binding、および中継先の利用許可を確認する。
-これらのデータ転送だけで、新しい Permission の作成や更新を行わない。
+Send Indication / Data Indication と ChannelData には、Request と同じ長期資格情報方式の認証は要求しない。TURN サーバーは転送の際に、対応する Allocation、Permission、必要な Channel Binding、および中継先の利用許可を確認する。データを転送しても、Permission は新規作成・更新しない。
 [RFC 8656 §3.3–3.4、§5](https://www.rfc-editor.org/rfc/rfc8656.html#section-3.3)に従う。
 
 ## 認証後の資源上限
@@ -84,17 +77,10 @@ CreatePermission / ChannelBind を容量不足で実行できない場合は、5
 エラー処理は [RFC 8656 §7.2、§10.2、§12.2](https://www.rfc-editor.org/rfc/rfc8656.html#section-7.2)に従う。
 応答自体にも、処理量と送信量の制限を適用する。
 
-中継帯域には、方向ごとの上限を適用する。
-計測点、計上するバイトの範囲、計測期間、許容する一時的な超過量を明示する。
-Send Indication / Data Indication と ChannelData のどちらを使っても、帯域制限を回避できないようにする。
-
-帯域上限を超える転送データは破棄する。
-制限を守るためにデータを無制限にキューへ蓄積しない。
-キューを使用する場合は、件数・総バイト数・保持時間を制限する。
+TURN サーバーは、Send Indication / Data Indication と ChannelData を含む中継帯域に、転送方向ごとの上限を適用する。計測点、計上するバイトの範囲、計測期間、許容する一時的な超過量を明示し、転送方式の切り替えで上限を回避できないようにする。帯域上限を超える転送データは破棄し、キューを使用する場合は件数・総バイト数・保持時間を制限する。
 [RFC 8656 §5](https://www.rfc-editor.org/rfc/rfc8656.html#section-5)に従う。
 
-中継データの帯域制限と、制御応答・TLS / DTLS 処理を含むサーバー全体の資源制限を分けて管理する。
-中継帯域の上限だけで、ネットワーク使用量や暗号処理量の総量を保証したとは扱わない。
+中継帯域とは別に、制御応答や TLS / DTLS 処理を含むサーバー全体の資源を制限し、ネットワーク使用量や暗号処理量の総量を管理する。
 
 ## 有効期限と解放条件
 
@@ -111,11 +97,9 @@ TURN の状態の寿命と更新は、次に従う。
 Allocation・Permission・Channel Binding の寿命と更新は [RFC 8656 §6–9、§12](https://www.rfc-editor.org/rfc/rfc8656.html#section-6)に従う。
 Allocation の最大寿命を含む設定は、RFC の条件を満たす範囲で定める。
 
-データの送受信だけで、Allocation、Permission、Channel Binding の期限を更新しない。
-Refresh で Permission や Channel Binding の期限を更新せず、CreatePermission で Channel Binding の期限を更新しない。
+データの送受信だけでは、Allocation、Permission、Channel Binding のいずれの期限も更新しない。Refresh は Allocation の期限に、CreatePermission は Permission の期限に適用し、いずれの操作でも Channel Binding の期限は更新しない。
 
-期限切れ後の転送可否は、転送方向と Send Indication / Data Indication・ChannelData ごとの RFC の条件に従って判定する。
-Permission と Channel Binding の期限切れは、それぞれに判定する。
+転送時は Permission と Channel Binding の期限切れを別々に判定し、転送方向、および Send Indication / Data Indication・ChannelData ごとの RFC の条件に従って、期限切れ後の転送可否を決める。
 
 ## 自作範囲・既存実装の利用
 
@@ -153,13 +137,9 @@ STUN 形式のメッセージには、共通の解析・検証と RFC の処理�
 ChannelData は別の形式として、TURN チャネル番号、長さ、パディング、対応する Allocation と Channel Binding を検証する。
 不正な入力で範囲外アクセスや過大な資源確保を発生させない。
 
-Permission は IP アドレス単位で管理する。
-CreatePermission では対象 IP アドレスの許可を確認し、属性のポート値を Permission の制限として扱わない。
-ポートを含む制限は、ChannelBind と実際のデータ転送で確認する。
+CreatePermission の処理では、TURN サーバーは対象 IP アドレスの許可を確認し、属性のポート値は Permission の制限に使わない。ポートを含む中継先の制限は、ChannelBind と実際のデータ転送で確認する。
 
-Send Indication と ChannelData のどちらでも、中継先の制限を回避できないようにする。
-通信相手から受信するデータにも、転送方向に応じた Permission・Channel Binding の条件と、用途ごとに許可された通信先との対応を適用する。
-Permission が存在する IP アドレスでも、プラットフォームの許可対象外のポートや用途へ転送しない。
+データ転送では、Send Indication と ChannelData のいずれを使っても中継先の制限を適用する。通信相手から受信したデータにも、転送方向に応じた Permission・Channel Binding の条件と、用途ごとの中継先の許可を適用する。これにより、Permission がある IP アドレスでも、プラットフォームが許可したポートと用途に限って転送する。
 
 TLS / DTLS 接続では、サーバーが接続先に対応する適切な証明書を提示する。
 証明書の信頼・有効性・接続先名は、接続するクライアント側が検証する。
