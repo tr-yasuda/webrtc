@@ -8,6 +8,6 @@ rust = { version = "1.100.0", profile = "minimal", components = "clippy,rustfmt"
 description = "Install pinned workspace dependencies"
 run = "pnpm install --frozen-lockfile"
 
-[tasks.verify]
-description = "Build and verify the TypeScript and Rust workspaces"
+[tasks.ci]
+description = "Run the CI checks for TypeScript and Rust"
 run = "moon run :build :format :typecheck :lint :test"
