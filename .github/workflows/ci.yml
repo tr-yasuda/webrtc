@@ -18,6 +18,16 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Set up zizmor
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.9.12
+          install_args: 'aqua:zizmorcore/zizmor'
+          cache: false
+
+      - name: Check GitHub Actions
+        run: zizmor --offline --strict-collection --no-config --no-ignores .
+
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
