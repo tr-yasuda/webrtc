@@ -21,20 +21,20 @@ tasks:
     toolchains: 'system'
     script: |
       set -eu
-      cd crates/stun/verification/lean
+      cd crates/stun/proofs
       toolchain=$(cat lean-toolchain)
       elan run --install "$toolchain" lake build
     inputs:
-      - 'crates/stun/verification/lean/**/*.lean'
-      - 'crates/stun/verification/lean/lean-toolchain'
-      - 'crates/stun/verification/lean/lakefile.toml'
-      - 'crates/stun/verification/lean/lake-manifest.json'
+      - 'crates/stun/proofs/**/*.lean'
+      - 'crates/stun/proofs/lean-toolchain'
+      - 'crates/stun/proofs/lakefile.toml'
+      - 'crates/stun/proofs/lake-manifest.json'
 
   setup-tlc:
     toolchains: 'system'
     script: |
       set -eu
-      cd packages/browser-sdk/verification/tla
+      cd packages/browser-sdk/specs
       jar=.cache/tla2tools.jar
       expected=936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
       if [ -f "$jar" ]; then
@@ -61,10 +61,10 @@ tasks:
       - '~:setup-tlc'
     script: |
       set -eu
-      cd packages/browser-sdk/verification/tla
+      cd packages/browser-sdk/specs
       tmp=$(mktemp -d)
       trap 'rm -rf -- "$tmp"' EXIT
       java -Djava.io.tmpdir="$tmp" -jar .cache/tla2tools.jar -workers 1 -metadir "$tmp" ConnectionNotifications.tla
     inputs:
-      - 'packages/browser-sdk/verification/tla/**/*.tla'
-      - 'packages/browser-sdk/verification/tla/**/*.cfg'
+      - 'packages/browser-sdk/specs/**/*.tla'
+      - 'packages/browser-sdk/specs/**/*.cfg'

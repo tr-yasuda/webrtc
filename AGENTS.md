@@ -29,7 +29,7 @@ pnpm install --frozen-lockfile
 ```
 
 ローカルでは [mise.toml](mise.toml) でツールのバージョンを固定します。GitHub Actions は [CI ワークフロー](.github/workflows/ci.yml) の各セットアップステップで導入します。pnpm のバージョンは [package.json](package.json) の `packageManager` に揃え、pnpm と Cargo の依存関係はロックファイルで固定します。
-`mise install` はローカルの Elan も導入します。ローカルと CI では、Elan が Lake パッケージの [lean-toolchain](crates/stun/verification/lean/lean-toolchain) に指定された Lean を使います。
+`mise install` はローカルの Elan も導入します。ローカルと CI では、Elan が Lake パッケージの [lean-toolchain](crates/stun/proofs/lean-toolchain) に指定された Lean を使います。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -66,10 +66,10 @@ Rust と形式検証を個別に実行する場合は、リポジトリのルー
 | コマンド | 検証内容 |
 | --- | --- |
 | `moon run rust:test` | Cargo ワークスペースのテストを実行する |
-| `moon run :verify-lean` | [STUN の属性長](crates/stun/verification/lean/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
-| `moon run :verify-tla` | [Browser SDK の接続通知](packages/browser-sdk/verification/tla/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
+| `moon run :verify-lean` | [STUN の属性長](crates/stun/proofs/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
+| `moon run :verify-tla` | [Browser SDK の接続通知](packages/browser-sdk/specs/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
 
-コンポーネント固有の形式検証は、担当するクレートまたはパッケージの `verification/` に置き、実行コマンドはルートの [moon.yml](moon.yml) に定義します。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
+コンポーネント固有の TLA+ モデルは担当コードの `specs/`、Lean の証明は `proofs/` に置きます。実行コマンドはルートの [moon.yml](moon.yml) に定義します。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
 TLC の検証タスクは `openssl` で JAR を照合し、取得が必要な場合は `curl` を使います。
 
 | 検証 | TypeScript | Rust |
