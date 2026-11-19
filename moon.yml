@@ -1,0 +1,18 @@
+language: 'rust'
+
+taskOptions:
+  cache: false
+
+tasks:
+  build:
+    command: 'cargo build --workspace --locked'
+  format:
+    command: 'cargo fmt --all --check'
+  typecheck:
+    command: 'cargo check --workspace --all-targets --locked'
+  lint:
+    command: 'cargo clippy --workspace --all-targets --locked'
+    env:
+      CARGO_BUILD_WARNINGS: 'deny'
+  test:
+    command: 'cargo test --workspace --locked'

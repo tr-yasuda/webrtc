@@ -1,0 +1,13 @@
+[tools]
+node = "24.21.0"
+pnpm = "10.34.9"
+rust = { version = "1.100.0", profile = "minimal", components = "clippy,rustfmt" }
+"aqua:moonrepo/moon" = "2.6.5"
+
+[tasks.setup]
+description = "Install pinned workspace dependencies"
+run = "pnpm install --frozen-lockfile"
+
+[tasks.ci]
+description = "Run the CI checks for TypeScript and Rust"
+run = ["pnpm run format:check", "pnpm run lint", "moon run :build :format :typecheck :lint :test"]

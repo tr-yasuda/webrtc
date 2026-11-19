@@ -1,0 +1,21 @@
+inheritedBy:
+  file: 'tsconfig.json'
+
+tasks:
+  build:
+    command: 'pnpm run build'
+    deps:
+      - '~:typecheck'
+    outputs:
+      - 'dist'
+    options:
+      # Moon 2.6.5 can leave files from another build when restoring into dist.
+      cache: false
+  typecheck:
+    command: 'pnpm run typecheck'
+  test:
+    command: 'pnpm run test'
+    deps:
+      - '~:build'
+    options:
+      cache: false

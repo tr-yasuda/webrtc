@@ -1,0 +1,19 @@
+{
+  "name": "webrtc",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run build",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "test": "moon run :test --query \"projectSource~packages/*\"",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "oxfmt": "0.79.0",
+    "oxlint": "1.94.0",
+    "typescript": "7.0.2"
+  },
+  "packageManager": "pnpm@10.34.9"
+}

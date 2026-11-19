@@ -1,0 +1,8 @@
+projects:
+  globs:
+    - 'packages/*/package.json'
+  sources:
+    rust: '.'
+
+vcs:
+  defaultBranch: main
