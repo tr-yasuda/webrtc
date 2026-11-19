@@ -82,7 +82,7 @@ jobs:
         run: moon run rust:test
 
       - name: Check STUN proofs with Lean
-        run: moon run :verify-lean
+        run: moon run :check-proofs
 
       - name: Model-check Browser SDK notifications
-        run: moon run :verify-tla
+        run: moon run :check-models

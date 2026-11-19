@@ -17,7 +17,7 @@ tasks:
   test:
     command: 'cargo test --workspace --locked'
 
-  verify-lean:
+  check-proofs:
     toolchains: 'system'
     script: |
       set -eu
@@ -55,7 +55,7 @@ tasks:
       fi
       mv "$download" "$jar"
 
-  verify-tla:
+  check-models:
     toolchains: 'system'
     deps:
       - '~:setup-tlc'

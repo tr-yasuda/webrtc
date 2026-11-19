@@ -51,8 +51,8 @@ moon run rust:typecheck
 moon run rust:lint
 moon run rust:build
 moon run rust:test
-moon run :verify-lean
-moon run :verify-tla
+moon run :check-proofs
+moon run :check-models
 ```
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると `.oxfmtrc.json` が対象とする JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
@@ -66,8 +66,8 @@ Rust と形式検証を個別に実行する場合は、リポジトリのルー
 | コマンド | 検証内容 |
 | --- | --- |
 | `moon run rust:test` | Cargo ワークスペースのテストを実行する |
-| `moon run :verify-lean` | [STUN の属性長](crates/stun/proofs/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
-| `moon run :verify-tla` | [Browser SDK の接続通知](packages/browser-sdk/specs/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
+| `moon run :check-proofs` | [STUN の属性長](crates/stun/proofs/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
+| `moon run :check-models` | [Browser SDK の接続通知](packages/browser-sdk/specs/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
 
 コンポーネント固有の TLA+ モデルは担当コードの `specs/`、Lean の証明は `proofs/` に置きます。実行コマンドはルートの [moon.yml](moon.yml) に定義します。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
 TLC の検証タスクは `openssl` で JAR を照合し、取得が必要な場合は `curl` を使います。
