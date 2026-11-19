@@ -27,10 +27,12 @@ mise run ci
 
 ツールのバージョンは mise で固定します。依存関係は pnpm と Cargo で管理し、ロックファイルをリポジトリに含めます。
 
-Moon は `packages/*/package.json` と `crates/*/Cargo.toml` からプロジェクトを検出します。TypeScript プロジェクトでは、Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。Rust クレートには Cargo の共通タスクが適用されます。
+Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
 - TypeScript のライブラリや配布パッケージは tsdown でビルドし、JavaScript と型宣言を `dist/` に生成します。
 - TypeScript のサーバーアプリケーションは `tsc --project tsconfig.build.json` でビルドします。ビルド用設定は `tsconfig.json` を継承し、`noEmit: false`、`rootDir: "src"`、`outDir: "dist"` を指定します。
+
+Rust はルートの Cargo ワークスペースを一つの Moon プロジェクトとして扱います。`crates/` のクレートはワークスペース全体の検証に含まれます。`target/` の成果物は Cargo が再利用します。
 
 ### 検証
 
@@ -44,9 +46,9 @@ Moon は `packages/*/package.json` と `crates/*/Cargo.toml` からプロジェ�
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |
-| 整形チェック | Oxfmt | `cargo fmt --check` |
-| 型検査 | TypeScript 7 の `tsc` | `cargo check` |
-| 静的解析 | Oxlint | `cargo clippy` |
+| 整形チェック | Oxfmt | `cargo fmt --all --check` |
+| 型検査 | TypeScript 7 の `tsc` | `cargo check --workspace --all-targets --locked` |
+| 静的解析 | Oxlint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
 
 Browser SDK のテストはビルド後にパッケージを読み込めることを、STUN のテストはヘッダーの Magic Cookie を確認します。
 
