@@ -29,7 +29,7 @@ mise run setup
 mise run ci
 ```
 
-ツールのバージョンは mise で固定します。依存関係は pnpm と Cargo で管理し、ロックファイルをリポジトリに含めます。
+ツールのバージョンは [mise.toml](mise.toml) で固定します。pnpm と Cargo の依存関係はロックファイルで固定します。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -40,13 +40,21 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 ### 検証
 
-`mise run ci` は両言語のビルド・整形チェック・型検査・静的解析・テストを実行します。GitHub Actions の CI でも同じコマンドを実行します。
+`mise run ci` は TypeScript と Rust のビルド・整形チェック・型検査・静的解析・テストに加え、Lean 4 の証明チェックと TLA+ のモデル検査を実行します。GitHub Actions の CI でも同じコマンドを実行します。
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると `.oxfmtrc.json` が対象とする JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
 
 `pnpm typecheck` と `pnpm build` は、ルートでは全 TypeScript パッケージ、各パッケージ内ではそのパッケージが対象です。tsdown はビルド時に `dist/` を作り直します。
 
-ルートの `pnpm test` は Moon で `packages/` 配下の型検査・ビルド・テストを順に実行します。パッケージ内の `pnpm test` はビルド済みの成果物に対してテストを実行します。パッケージ内で型検査とビルドから実行するには `moon run '~:test'` を使います。
+ルートの `pnpm test` は Moon で `packages/` 配下の型検査・ビルド・Vitest を順に実行します。パッケージ内の `pnpm test` はビルド済みの成果物に対して Vitest を実行します。パッケージ内で型検査とビルドから実行するには `moon run '~:test'` を使います。
+
+Rust と形式検証を個別に実行する場合は、リポジトリのルートで次のコマンドを使います。
+
+| コマンド | 検証内容 |
+| --- | --- |
+| `mise exec -- moon run rust:test` | Cargo ワークスペースのテストを実行する |
+| `mise run verify:lean` | [Lean 4 の最小例](verification/lean/Smoke.lean)で自然数の定理の証明をチェックする |
+| `mise run verify:tla` | [TLA+ の最小例](verification/tla/Smoke.tla)で、カウンターが増減しても 0 から 2 の範囲に収まることを TLC で検査する |
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |

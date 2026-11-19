@@ -3,11 +3,51 @@ node = "24.21.0"
 pnpm = "10.34.9"
 rust = { version = "1.100.0", profile = "minimal", components = "clippy,rustfmt" }
 "aqua:moonrepo/moon" = "2.6.5"
+java = "temurin-21.0.13+9.0.LTS"
+
+[tools."http:tla2tools"]
+version = "1.7.4"
+url = "https://github.com/tlaplus/tlaplus/releases/download/v{{ version }}/tla2tools.jar"
+checksum = "sha256:936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
+bin = "tla2tools.jar"
+
+[tools."github:leanprover/lean4"]
+version = "4.36.0"
+strip_components = 1
+
+[tools."github:leanprover/lean4".platforms]
+linux-x64 = { asset_pattern = "lean-*-linux.tar.zst" }
+linux-arm64 = { asset_pattern = "lean-*-linux_aarch64.tar.zst" }
+macos-x64 = { asset_pattern = "lean-*-darwin.tar.zst" }
+macos-arm64 = { asset_pattern = "lean-*-darwin_aarch64.tar.zst" }
 
 [tasks.setup]
 description = "Install pinned workspace dependencies"
 run = "pnpm install --frozen-lockfile"
 
+[tasks."verify:lean"]
+description = "Check the Lean 4 example proof"
+run = "lean -DwarningAsError=true verification/lean/Smoke.lean"
+
+[tasks."verify:tla"]
+description = "Model-check the TLA+ example with TLC"
+dir = "verification/tla"
+run = '''
+set -eu
+tlc_jar="$(mise where http:tla2tools)/tla2tools.jar"
+tlc_tmp_dir=$(mktemp -d)
+trap 'rm -rf -- "$tlc_tmp_dir"' EXIT
+# TLC は標準モジュールを固定名で展開するため、並行実行で Java の一時領域を共有すると衝突する。
+java -Djava.io.tmpdir="$tlc_tmp_dir" -cp "$tlc_jar" \
+  tlc2.TLC -workers 1 -metadir "$tlc_tmp_dir" -config Smoke.cfg Smoke.tla
+'''
+
 [tasks.ci]
-description = "Run the CI checks for TypeScript and Rust"
-run = ["pnpm run format:check", "pnpm run lint", "moon run :build :format :typecheck :lint :test"]
+description = "Run the CI checks for TypeScript, Rust, Lean 4, and TLA+"
+run = [
+  "pnpm run format:check",
+  "pnpm run lint",
+  "moon run :build :format :typecheck :lint :test",
+  "mise run verify:lean",
+  "mise run verify:tla",
+]
