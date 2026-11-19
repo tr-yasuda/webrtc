@@ -9,8 +9,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "pnpm run typecheck && pnpm run build && pnpm run test:built",
-    "test:built": "node --test",
+    "test": "node --test",
     "typecheck": "tsc"
   },
   "devDependencies": {

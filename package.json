@@ -3,11 +3,11 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r run build",
-    "format": "oxfmt \"**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc,toml}\"",
-    "format:check": "pnpm run format --check",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "test": "pnpm -r run test",
+    "test": "moon run :test --query \"projectSource~packages/*\"",
     "typecheck": "pnpm -r run typecheck"
   },
   "devDependencies": {

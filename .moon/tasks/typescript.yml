@@ -14,7 +14,7 @@ tasks:
   typecheck:
     command: 'pnpm run typecheck'
   test:
-    command: 'pnpm run test:built'
+    command: 'pnpm run test'
     deps:
       - '~:build'
     options:

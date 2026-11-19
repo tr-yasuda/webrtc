@@ -1,0 +1,17 @@
+{
+  "ignorePatterns": [
+    "*",
+    "!*/",
+    "!*.js",
+    "!*.jsx",
+    "!*.mjs",
+    "!*.cjs",
+    "!*.ts",
+    "!*.tsx",
+    "!*.mts",
+    "!*.cts",
+    "!*.json",
+    "!*.jsonc",
+    "!*.toml"
+  ]
+}
