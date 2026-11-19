@@ -16,20 +16,23 @@
 
 ### セットアップ
 
-mise と、Rust のリンクに使うホスト OS の C ツールチェーンを用意してください。Linux では GCC など、macOS では Xcode Command Line Tools を使用できます。
+Node.js、pnpm、Rust（Clippy と rustfmt を含む）、Moon、zizmor を [mise.toml](mise.toml) に記載のバージョンで用意してください。Rust のリンクには、Linux では GCC など、macOS では Xcode Command Line Tools が必要です。
 
-`pnpm` や `moon` を直接実行できるよう、使っているシェルで mise を有効にします。Bash で現在のセッションを有効にするには `eval "$(mise activate bash)"` を実行します。他のシェルや起動時の設定は公式手順を参照してください。 [mise のシェル設定](https://mise.jdx.dev/shell-setup.html)
-
-クローン後、リポジトリのルートで次を実行します。
+mise でツールを揃える場合は、リポジトリのルートで次を実行します。Bash 以外のシェルでは公式手順を参照してください。 [mise のシェル設定](https://mise.jdx.dev/shell-setup.html)
 
 ```sh
+eval "$(mise activate bash)"
 mise trust
 mise install
-mise run setup
-mise run ci
 ```
 
-ツールのバージョンは mise で固定します。依存関係は pnpm と Cargo で管理し、ロックファイルをリポジトリに含めます。
+ツールに PATH が通ったら、リポジトリのルートで次を実行します。GitHub Actions でも同じコマンドを実行します。
+
+```sh
+pnpm install --frozen-lockfile
+```
+
+依存関係は pnpm と Cargo のロックファイルで管理します。ツールのバージョンを更新するときは、ローカル用の `mise.toml` と、CI が使う [ワークフロー](.github/workflows/ci.yml)・[package.json](package.json) の該当箇所を揃えます。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -40,7 +43,18 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 ### 検証
 
-`mise run ci` は両言語のビルド・整形チェック・型検査・静的解析・テストを実行します。GitHub Actions の CI でも同じコマンドを実行します。
+CI と同じ検証を行うには、ルートで各コマンドを上から順に実行します。`--upstream none` を指定すると、Moon は前のステップで済ませた型検査やビルドを再実行しません。
+
+| ステップ | コマンド |
+| --- | --- |
+| GitHub Actions の監査 | `pnpm run check:actions` |
+| TypeScript などの整形チェック | `pnpm run format:check` |
+| Rust の整形チェック | `moon run :format` |
+| TypeScript などの静的解析 | `pnpm run lint` |
+| Rust の静的解析 | `moon run :lint` |
+| 型検査 | `moon run :typecheck` |
+| ビルド | `moon run :build --upstream none` |
+| テスト | `moon run :test --upstream none` |
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると `.oxfmtrc.json` が対象とする JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
 
