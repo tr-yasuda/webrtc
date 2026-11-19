@@ -27,7 +27,10 @@ mise run ci
 
 ツールのバージョンは mise で固定します。依存関係は pnpm と Cargo で管理し、ロックファイルをリポジトリに含めます。
 
-Moon は `packages/*/package.json` と `crates/*/Cargo.toml` からプロジェクトを検出します。TypeScript のパッケージを追加するときは `tsconfig.json` の `outDir` を `dist` に設定し、Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義してください。Rust クレートには Cargo の共通タスクが適用されます。
+Moon は `packages/*/package.json` と `crates/*/Cargo.toml` からプロジェクトを検出します。TypeScript プロジェクトでは、Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。Rust クレートには Cargo の共通タスクが適用されます。
+
+- TypeScript のライブラリや配布パッケージは tsdown でビルドし、JavaScript と型宣言を `dist/` に生成します。
+- TypeScript のサーバーアプリケーションは `tsc --project tsconfig.build.json` でビルドします。ビルド用設定は `tsconfig.json` を継承し、`noEmit: false` と `outDir: "dist"` を指定します。
 
 ### 検証
 
@@ -35,12 +38,12 @@ Moon は `packages/*/package.json` と `crates/*/Cargo.toml` からプロジェ�
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
 
-`pnpm typecheck`、`pnpm build`、`pnpm test` は、ルートでは全 TypeScript パッケージ、各パッケージ内ではそのパッケージが対象です。ビルドは生成先の `dist/` を作り直します。
+`pnpm typecheck`、`pnpm build`、`pnpm test` は、ルートでは全 TypeScript パッケージ、各パッケージ内ではそのパッケージが対象です。tsdown はビルド時に `dist/` を作り直します。
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |
 | 整形チェック | Oxfmt | `cargo fmt --check` |
-| 型検査 | TypeScript 7 の `tsc --noEmit` | `cargo check` |
+| 型検査 | TypeScript 7 の `tsc` | `cargo check` |
 | 静的解析 | Oxlint | `cargo clippy` |
 
 Browser SDK のテストはビルド後にパッケージを読み込めることを、STUN のテストはヘッダーの Magic Cookie を確認します。

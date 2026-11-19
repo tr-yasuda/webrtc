@@ -8,9 +8,12 @@
     "default": "./dist/index.js"
   },
   "scripts": {
-    "build": "rimraf dist && tsc",
-    "test": "pnpm run build && pnpm run test:built",
+    "build": "tsdown",
+    "test": "pnpm run typecheck && pnpm run build && pnpm run test:built",
     "test:built": "node --test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "tsdown": "0.23.7"
   }
 }

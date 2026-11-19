@@ -4,6 +4,8 @@ inheritedBy:
 tasks:
   build:
     command: 'pnpm run build'
+    deps:
+      - '~:typecheck'
     outputs:
       - 'dist'
     options:
