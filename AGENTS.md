@@ -50,7 +50,7 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 | 型検査 | TypeScript 7 の `tsc` | `cargo check --workspace --all-targets --locked` |
 | 静的解析 | Oxlint | `cargo clippy --workspace --all-targets --locked` |
 
-`moon run rust:lint` は `CARGO_BUILD_WARNINGS=deny` を適用し、警告があれば失敗します。
+`moon run rust:lint` は `CARGO_BUILD_WARNINGS=deny` を適用し、lint の警告をエラーとして扱います。
 
 Browser SDK のテストはビルド後にパッケージを読み込めることを、STUN のテストはヘッダーの Magic Cookie を確認します。
 
