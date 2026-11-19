@@ -26,20 +26,20 @@ description = "Install pinned workspace dependencies"
 run = "pnpm install --frozen-lockfile"
 
 [tasks."verify:lean"]
-description = "Check the Lean 4 example proof"
-run = "lean -DwarningAsError=true verification/lean/Smoke.lean"
+description = "Build the Lean verification library"
+dir = "verification/lean"
+run = "lake build"
 
 [tasks."verify:tla"]
-description = "Model-check the TLA+ example with TLC"
+description = "Model-check Smoke.tla"
 dir = "verification/tla"
 run = '''
 set -eu
-tlc_jar="$(mise where http:tla2tools)/tla2tools.jar"
-tlc_tmp_dir=$(mktemp -d)
-trap 'rm -rf -- "$tlc_tmp_dir"' EXIT
-# TLC は標準モジュールを固定名で展開するため、並行実行で Java の一時領域を共有すると衝突する。
-java -Djava.io.tmpdir="$tlc_tmp_dir" -cp "$tlc_jar" \
-  tlc2.TLC -workers 1 -metadir "$tlc_tmp_dir" -config Smoke.cfg Smoke.tla
+jar="$(mise where http:tla2tools)/tla2tools.jar"
+tmp=$(mktemp -d)
+trap 'rm -rf -- "$tmp"' EXIT
+
+java -Djava.io.tmpdir="$tmp" -jar "$jar" -workers 1 -metadir "$tmp" Smoke.tla
 '''
 
 [tasks.ci]

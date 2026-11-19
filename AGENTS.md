@@ -30,6 +30,7 @@ mise run ci
 ```
 
 ツールのバージョンは [mise.toml](mise.toml) で固定します。pnpm と Cargo の依存関係はロックファイルで固定します。
+Lean を更新するときは、エディターと CI で同じバージョンを使うように [lean-toolchain](verification/lean/lean-toolchain) も更新します。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -53,8 +54,10 @@ Rust と形式検証を個別に実行する場合は、リポジトリのルー
 | コマンド | 検証内容 |
 | --- | --- |
 | `mise exec -- moon run rust:test` | Cargo ワークスペースのテストを実行する |
-| `mise run verify:lean` | [Lean 4 の最小例](verification/lean/Smoke.lean)で自然数の定理の証明をチェックする |
+| `mise run verify:lean` | Lake で [Lean 4 の証明ライブラリ](verification/lean/WebRTCVerification)をビルドする |
 | `mise run verify:tla` | [TLA+ の最小例](verification/tla/Smoke.tla)で、カウンターが増減しても 0 から 2 の範囲に収まることを TLC で検査する |
+
+Lean の証明ファイルは `verification/lean/WebRTCVerification/` に置きます。Lake はこのディレクトリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` を含む証明はエラーになります。
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |
