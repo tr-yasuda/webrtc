@@ -70,9 +70,9 @@ Management API credential は Management API 専用とし、参加 JWT の署名
 
 Management API credential の秘密値も Cloud KMS で暗号化して保存し、作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却する。ApplicationSigningKey とは別の鍵として払い出し、ローテーション・失効を管理する。通常の取得・再表示では秘密値を返さない。
 
-Management API credential は Project に束ね、明示的に付与した操作 scope だけを許可する。初期提供では Room 管理・Session / Participant 管理・利用量取得・監査取得の scope を指定できる。Project 削除、ProjectUser 管理、Application・ApplicationSigningKey・Management API credential の管理は顧客サーバー用 credential に許可しない。
+Management API credential は Project に束ね、明示的に付与した操作 scope だけを許可する。初期提供で指定できる scope は、Room 管理・Session / Participant 管理・利用量取得・監査取得である。Project 削除、ProjectUser 管理、Application・ApplicationSigningKey・Management API credential の管理は顧客サーバー用 credential に許可しない。
 
-Management は要求ごとに credential の有効性、対象 Project の利用可否、対象が scope 内であることを確認する。credential は発行者の ProjectUser ロールを自動的に引き継がない。credential を作成した ProjectUser が権限を失っても credential 自体は自動失効しないが、Project の削除・利用停止と credential の失効・期限切れでは以後の要求を拒否する。
+Management は要求ごとに、credential の有効性・対象 Project の利用可否・要求対象が scope 内であることを確認する。credential は発行者の ProjectUser ロールを自動的に引き継がない。credential を作成した ProjectUser が権限を失っても、credential 自体は自動失効しない。Project の削除・利用停止と credential の失効・期限切れでは、以後の要求を拒否する。
 
 強制切断は Participant / Session 単位のみとし、Project 全体を一括切断する操作は提供しない。強制切断を行ったときは、対象・理由・実行者・結果を監査し、Signaling の入退出履歴に kick イベントを記録する。
 
@@ -109,11 +109,14 @@ Management から Signaling へ状態を変更させる操作には、Pub/Sub �
 | `actor` | 管理操作の実行者 |
 | `issuedAt` / `expiresAt` | 発行時刻とコマンドの有効期限 |
 
-コマンドの配信方法は操作対象に合わせて分ける。対象 Session・Participant・Room を持つインスタンスだけが実行する対象限定コマンドと、鍵キャッシュのように全 Signaling インスタンスへ反映する必要がある全インスタンスコマンドである。いずれも Signaling の全インスタンスがコマンドを購読し、`commandId` で重複排除する。
+コマンドは配信方法で 2 種類に分ける。いずれも Signaling の全インスタンスがコマンドを購読し、`commandId` で重複排除する。
+
+- 対象限定コマンド: 対象 Session・Participant・Room を持つインスタンスだけが実行する。
+- 全インスタンスコマンド: 鍵キャッシュのように、全 Signaling インスタンスへ反映する必要がある。
 
 対象限定コマンドは、対象 Session・Participant・Room を保持するインスタンスだけ実行する。実行結果は Signaling schema に正本として記録し、結果イベントを Pub/Sub で Management へ返す。Management は結果イベントで管理コマンド状態を更新する。結果イベントが期限内に届かない場合は結果不明とし、失敗や完了として扱わない。照会用コマンドで現在状態を再確認し、必要な場合のみ新しい `commandId` で操作し直す。
 
-全インスタンスコマンドは、対象 ApplicationSigningKey をキャッシュしている可能性がある全インスタンスが対象 `projectId`・`applicationId`・`kid` のキャッシュを無効化する。各インスタンスは `instanceId` 付きの結果イベントを返し、Signaling schema に `commandId` ごとのインスタンス別結果を正本として記録する。Management は、コマンド発行時に購読していた全インスタンスが成功または該当キャッシュなしを期限内に報告した場合だけ反映完了とする。報告が欠けた場合は結果不明とし、期限前は同じ `commandId` で再送し、期限後は新しい `commandId` で再発行できる。反映完了または安全な再取得条件が確認できるまで、失効済み鍵を完了済みとして扱わない。
+全インスタンスコマンドでは、対象 ApplicationSigningKey をキャッシュしている可能性がある全インスタンスが、対象 `projectId`・`applicationId`・`kid` のキャッシュを無効化する。各インスタンスは `instanceId` 付きの結果イベントを返し、Signaling schema に `commandId` ごとのインスタンス別結果を正本として記録する。Management は、コマンド発行時に購読していた全インスタンスが成功または該当キャッシュなしを期限内に報告した場合だけ反映完了とする。報告が欠けた場合は結果不明とし、期限前は同じ `commandId` で再送し、期限後は新しい `commandId` で再発行できる。反映完了または安全な再取得条件が確認できるまで、失効済み鍵を完了済みとして扱わない。
 
 読み取り専用の Room・Session・Participant・利用量照会は、サービス間認証を行った Signaling の内部照会 API を利用できる。Management はその結果をキャッシュしても、取得時刻・対象範囲・有効期限を明示し、Signaling の正本を上書きしない。
 
@@ -123,7 +126,7 @@ TURN・SFU は DB に接続しないため、1 分ごとに集約した資源計
 
 | 障害 | 挙動 |
 |---|---|
-| Management 停止 | 既存通話は継続する。Management UI・Management API・新しい管理コマンドは失敗する。Signaling が有効鍵をキャッシュしている範囲の新規参加は継続できるが、未キャッシュ鍵・TTL 到達後の再取得・不明 `kid` の確認が必要な新規参加は失敗する |
+| Management 停止 | 既存通話は継続する。Management UI・Management API・新しい管理コマンドは失敗する。Signaling は有効鍵をキャッシュしている場合だけ、その鍵による新規参加を続けられる。未キャッシュ鍵、TTL 到達後の再取得、不明 `kid` の確認が必要な新規参加は失敗する |
 | Signaling 1 インスタンス停止 | Browser SDK が再接続し、Signaling DB の状態に基づいて別インスタンスで参加端末を引き継ぐ |
 | Pub/Sub 停止 | 既存通話は継続する。強制切断・鍵キャッシュ無効化・Room 削除などの管理コマンドは遅延または結果不明になる |
 | Cloud SQL 停止 | 新規参加・Room 作成・権限再確認・強制切断・利用量記録は失敗する。既存 TURN・SFU は検証済み権限と再確認期限内のみ継続し、期限を超えたら対象通信を停止する |
@@ -153,7 +156,7 @@ Cloud SQL を PITR で復旧した場合は、失効済み ApplicationSigningKey
 | Room 作成 | `room.create`・`room.join` 権限付き JWT の初回参加だけが未作成 Room を作成し、並行初回参加で Room・SFU 割り当てを重複させない |
 | 管理 API | Management UI と顧客サーバーが同じ Management API 契約を使い、API credential と JWT 署名鍵を流用しない。要求ごとに credential・Project・scope を再評価し、scope 外と Project 停止後の要求を拒否する |
 | 強制切断 | Participant / Session 単位だけ切断し、Project 全体一括切断を提供しない。kick の監査と入退出履歴を記録する |
-| コマンドバス | `commandId` で重複を排除する。対象限定コマンドは対象を持つ Signaling だけ実行し、全インスタンスコマンドは全インスタンスで反映結果を報告する。結果不明を完了・失敗と扱わない |
+| コマンドバス | `commandId` で重複を排除する。対象限定コマンドは対象を持つ Signaling だけ実行し、全インスタンスコマンドは全 Signaling インスタンスが反映結果を報告する。結果不明を完了・失敗と扱わない |
 | ApplicationSigningKey | HS256・`kid`・失効・ローテーションを検証し、秘密値の再表示と平文保存を行わない |
 | 利用量 | 1 分単位の Session・publication・subscription・TURN・SFU・DataChannel 計上を集計し、欠測をゼロとして扱わない |
 | 障害時 | Management・Signaling・Pub/Sub・Cloud SQL・IDaaS・KMS の各停止で、上の表に定めた挙動と停止条件を守る |

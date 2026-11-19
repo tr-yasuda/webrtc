@@ -23,7 +23,7 @@ Signaling は、ルーム ID、参加者 ID、参加端末、Signaling 接続、
 
 Signaling は、退出・除外の受け付けと、D-Plane による通信停止、資源解放、E2EE の鍵状態への反映を分けて扱う。受け付けの時点では、後続の処理を完了として通知しない。Browser SDK には終了理由を通知し、明示的な退出・除外・ルーム削除・通話時間上限による終了を自動再接続で取り消さない。要求の再送や完了通知の遅延があっても、退出済みの参加端末は復活させない。
 
-Management からの強制切断は、[Management と Signaling の通信](../platform/management.md#management-と-signaling-の通信)の Pub/Sub コマンドバスで受け取る。Signaling は `commandId` で重複を排除し、対象限定コマンドとして対象 Session・Participant を保持するインスタンスだけ処理する。実行結果を `signaling` schema の入退出履歴と管理コマンド状態に記録し、結果イベントを Management へ返す。結果イベントが届かない場合も、Management は受け付けや通知の送信を完了として扱わない。
+Management からの強制切断は、[Management と Signaling の通信](../platform/management.md#management-と-signaling-の通信)の Pub/Sub コマンドバスで受け取る。強制切断は対象限定コマンドであり、Signaling は `commandId` で重複を排除し、対象 Session・Participant を保持するインスタンスだけ処理する。実行結果を `signaling` schema の入退出履歴と管理コマンド状態に記録し、結果イベントを Management へ返す。結果イベントが届かない場合も、Management は受け付けや通知の送信を完了として扱わない。
 
 参加・退出に伴う鍵の配布・更新と参加端末ごとの完了条件は、[E2EE・鍵管理](../e2ee/key-management.md)に従う。E2EE の秘密鍵・復号鍵は Signaling へ渡さない。
 
@@ -226,7 +226,7 @@ SDP や受信メッセージの全文を、そのままログへ記録しない�
 | 退出の対象 | 通常の退出は要求した参加端末だけに適用する。別の参加端末の終了には対象と権限を確認する |
 | 明示的な終了 | 退出・除外・ルーム削除・通話時間上限を自動再接続で取り消さず、終了理由を通知する |
 | 処理の完了 | 要求の受け付け、参加登録、WebRTC Transport の接続・通信停止、資源解放、E2EE の準備・更新を区別する。未確認の処理を完了として通知しない |
-| 管理コマンド | `commandId` で重複を排除し、対象限定コマンドを対象 Session・Participant を持つインスタンスだけ実行する。結果イベントが不明でも完了と扱わない |
+| 管理コマンド | `commandId` で重複を排除する。対象限定コマンドは、対象 Session・Participant を持つインスタンスだけ実行する。結果イベントが不明でも完了と扱わない |
 | 履歴と資源計上 | 入退出・除外・発行・購読と TURN・SFU・DataChannel の計上を対象・期間に対応付けて記録し、欠測をゼロとして扱わない |
 | 接続情報の対応 | SDP、Answer、ICE 候補、ICE 候補の収集完了情報を、対象の参加端末・接続・交渉・ICE 世代へ適用する。別接続や終了済み世代の情報を混入させない |
 | 再交渉と競合 | 同時 Offer、再交渉の重複・遅延・失敗を処理し、整合する状態へ収束する。SDP の内容だけで操作権限を増やさない |

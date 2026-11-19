@@ -227,7 +227,7 @@ ApplicationSigningKey の配布・キャッシュ無効化は [Management 仕様
 
 発行用の秘密情報にアクセスできる処理を限定する。
 Browser SDK・React SDK に、サーバー側の署名鍵や TURN の共通秘密情報を渡さない。
-ApplicationSigningKey の秘密値は顧客アプリサーバーと Management・Signaling の必要範囲だけに配布する。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、DB に平文を保存しない。秘密値は作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。
+ApplicationSigningKey の秘密値は顧客アプリサーバーと Management・Signaling の必要範囲だけに配布する。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、DB に平文を保存しない。作成権限のある Owner / Admin は、作成直後の応答だけで秘密値を一度受け取る。通常の取得・再表示では返さない。
 
 Signaling は、JWT header の `kid` を設定済み ApplicationSigningKey に対応付けて検証鍵を選ぶ。
 資格情報に含まれる鍵の識別子や URL だけを根拠に、任意の鍵・接続先を信頼しない。
