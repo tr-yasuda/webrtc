@@ -1,10 +1,13 @@
 import { test, expect } from "vitest";
 
 import { readPort } from "../src/config.js";
-import { createApp } from "../src/server.js";
+import { app } from "../src/server.js";
+
+app.get("/internal-error", async () => {
+  throw new Error("internal error");
+});
 
 test("GET /healthz は 200 と ok を返す", async () => {
-  const app = createApp();
   const response = await app.inject({ method: "GET", url: "/healthz" });
 
   expect(response.statusCode).toBe(200);
@@ -13,7 +16,6 @@ test("GET /healthz は 200 と ok を返す", async () => {
 });
 
 test("POST /healthz は 405 を返す", async () => {
-  const app = createApp();
   const response = await app.inject({ method: "POST", url: "/healthz" });
 
   expect(response.statusCode).toBe(405);
@@ -23,7 +25,6 @@ test("POST /healthz は 405 を返す", async () => {
 });
 
 test("HEAD /healthz も GET 以外として 405 を返す", async () => {
-  const app = createApp();
   const response = await app.inject({ method: "HEAD", url: "/healthz" });
 
   expect(response.statusCode).toBe(405);
@@ -33,7 +34,6 @@ test("HEAD /healthz も GET 以外として 405 を返す", async () => {
 });
 
 test("未知のパスは 404 を返す", async () => {
-  const app = createApp();
   const response = await app.inject({ method: "GET", url: "/unknown" });
 
   expect(response.statusCode).toBe(404);
@@ -42,15 +42,26 @@ test("未知のパスは 404 を返す", async () => {
 });
 
 test("予期しない失敗は 500 を返す", async () => {
-  const app = createApp();
-  app.get("/internal-error", async () => {
-    throw new Error("internal error");
-  });
   const response = await app.inject({ method: "GET", url: "/internal-error" });
 
   expect(response.statusCode).toBe(500);
   expect(response.headers["content-type"]).toContain("application/problem+json");
   expect(response.json()).toEqual({ status: 500, title: "Internal Server Error" });
+});
+
+test("Swagger UI と OpenAPI ドキュメントを提供する", async () => {
+  const uiResponse = await app.inject({ method: "GET", url: "/docs" });
+  const openApiResponse = await app.inject({ method: "GET", url: "/docs/json" });
+
+  expect(uiResponse.statusCode).toBe(200);
+  expect(uiResponse.headers["content-type"]).toContain("text/html");
+  expect(openApiResponse.statusCode).toBe(200);
+  expect(openApiResponse.headers["content-type"]).toContain("application/json");
+  expect(openApiResponse.json()).toMatchObject({
+    openapi: "3.0.3",
+    info: { title: "Signaling Server", version: "0.1.0" },
+    paths: { "/healthz": expect.anything() },
+  });
 });
 
 test("ポート設定は既定値と明示値を解釈する", () => {

@@ -22,4 +22,11 @@ pnpm dev
 curl "http://127.0.0.1:${PORT}/healthz"
 ```
 
+Swagger UI と OpenAPI JSON を確認する。
+
+```sh
+curl "http://127.0.0.1:${PORT}/docs"
+curl "http://127.0.0.1:${PORT}/docs/json"
+```
+
 `.env` はローカル設定として Git 管理対象外にする。環境変数の雛形を変更するときは `.env.example` を更新する。

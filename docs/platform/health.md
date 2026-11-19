@@ -21,6 +21,17 @@ Signaling サーバーは次の契約を提供する。
 
 `HEAD` を含む GET 以外のメソッドは `405` を返す。HTTP の `HEAD` 仕様に従い、本文は送らない。
 
+## API ドキュメント
+
+Signaling サーバーは Zod Type Provider と Swagger を組み合わせて API ドキュメントを生成する。
+
+| パス | メソッド | 形式 |
+| --- | --- | --- |
+| `/docs` | `GET` | Swagger UI |
+| `/docs/json` | `GET` | OpenAPI 3.0 JSON |
+
+`GET /healthz` の応答形式は Zod で定義し、OpenAPI ドキュメントに反映する。
+
 ## エラーレスポンス
 
 エラーレスポンスは[共通の HTTP エラーレスポンス](http-errors.md)に従う。
@@ -40,3 +51,5 @@ Signaling サーバーは次の契約を提供する。
 - 未知のパスが `404` を返す。
 - 予期しない失敗が `500` を返す。
 - ポート環境変数の既定値と明示値が仕様どおり解釈される。
+- `GET /docs` が Swagger UI を返す。
+- `GET /docs/json` が `GET /healthz` を含む OpenAPI 3.0 JSON を返す。

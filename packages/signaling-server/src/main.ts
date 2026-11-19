@@ -1,7 +1,6 @@
 import { readPort } from "./config.js";
-import { createApp } from "./server.js";
+import { app } from "./server.js";
 
-const app = createApp();
 const port = readPort(process.env);
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
