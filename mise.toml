@@ -14,12 +14,3 @@ run = "pnpm install --frozen-lockfile"
 [tasks."check:actions"]
 description = "Audit the security of GitHub Actions workflows and composite actions"
 run = "zizmor --offline --strict-collection --no-config --no-ignores ."
-
-[tasks.ci]
-description = "Run the CI checks for GitHub Actions, TypeScript, and Rust"
-run = [
-  { task = "check:actions" },
-  "pnpm run format:check",
-  "pnpm run lint",
-  "moon run :build :format :typecheck :lint :test",
-]
