@@ -50,7 +50,9 @@ D-Plane から状態通知や処理結果が届いたら、送信元、対象資
 ログや処理結果に秘密情報を含めない。
 
 サービス認証、権限情報の配布、再確認、失効通知、結果照合にも、処理量・保持状態・待機時間の上限を設ける。
-Management と Signaling の公開 HTTP サーバーには Fastify を使用する。Management は WebSocket を扱わず、Signaling の WebSocket には `@fastify/websocket` を使用する。Management から Signaling へ状態を変更させる指示には Pub/Sub コマンドバスを使い、結果も Pub/Sub の結果イベントで返す。Signaling への鍵配布はサービス間認証を行った Management 内部 API、読み取り専用照会はサービス間認証を行った Signaling 内部照会 API を使う。サービス間認証の方式・識別情報の形式・Rust Worker の実行方式は、用途ごとに選定する。
+Management と Signaling の公開 HTTP サーバーには Fastify を使用する。Management は WebSocket を扱わず、Signaling は `@fastify/websocket` を使用する。
+
+Management から Signaling へ状態を変更させる指示には Pub/Sub コマンドバスを使い、結果も Pub/Sub の結果イベントで返す。Signaling への鍵配布にはサービス間認証を行った Management 内部 API を使う。読み取り専用照会には、サービス間認証を行った Signaling 内部照会 API を使う。サービス間認証の方式・識別情報の形式・Rust Worker の実行方式は、用途ごとに選定する。
 
 ## 方式選定
 

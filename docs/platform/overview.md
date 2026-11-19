@@ -87,7 +87,7 @@ React Native、Python、Go などの SDK は将来の拡張候補とし、今回
 サーバーを C-Plane と D-Plane に分ける。
 論理的な責務を分離し、独立して増設できる構成とする。
 実行プロセスの分離は必須としない。
-Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。Management と Signaling の TypeScript 公開サーバーには Fastify を使用する。公開サーバー・リクエスト受付は TypeScript host が担い、Rust をサーバー公開プロセスとして使用しない。
+Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。Management と Signaling の TypeScript 公開サーバーには Fastify を使用する。公開サーバーとリクエスト受付は TypeScript host が担い、Rust をサーバー公開プロセスとして使用しない。
 
 | 部分 | 実装言語 | 責務 |
 |---|---|---|

@@ -35,7 +35,7 @@ ProjectUser は初期提供で次の 4 ロールを持つ。
 | Operator | Project・Room・Session・Participant・利用量の閲覧。Room の設定変更と削除、Participant / Session 単位の強制切断。ProjectUser・Application・鍵・監査の管理・閲覧は不可 |
 | Auditor | Project・Room・Session・Participant・利用量・監査の読み取りのみ |
 
-Project は最低 1 人の Owner を持つ。Admin は自分またはほかの Admin・Operator・Auditor に権限を付与できるが、Owner を付与・変更できない。Owner の除外・ロール変更は、操作完了後も Project が有効な Owner を持つ場合だけ許可する。Owner がいなくなる操作は拒否し、一部だけ適用した状態を作らない。権限を失った ProjectUser に対しては、その後の API・通知・監査取得を拒否する。
+Project は最低 1 人の Owner を持つ。Admin は自分またはほかの Admin・Operator・Auditor に権限を付与できるが、Owner を付与・変更できない。Owner の除外・ロール変更は、操作完了後も Project が有効な Owner を持つ場合だけ許可する。Owner がいなくなる操作は拒否し、一部だけ適用した状態を作らない。権限を失った ProjectUser には、その後の API・通知・監査取得を拒否する。
 
 ## データの所有権
 
@@ -46,7 +46,7 @@ Project は最低 1 人の Owner を持つ。Admin は自分またはほかの A
 
 Management は Signaling 状態を直接更新しない。Signaling も `management` schema へ接続しない。TURN と SFU は DB 接続を持たず、Signaling から受け取った検証済みの指示・権限・期限に基づいて動作する。
 
-1 database への論理分割はコスト抑制のための初期構成であり、サービス間契約は Cloud SQL インスタンスや database を分離できる形にする。スキーマ分離後も、Management が Signaling 状態へ直接接続・更新する構成にはしない。
+コスト抑制のため、初期構成では 1 database を論理分割して使う。サービス間契約は、Cloud SQL インスタンスまたは database を分離しても成立する形にする。スキーマ分離後も、Management が Signaling 状態へ直接接続・更新する構成にはしない。
 
 ## Management API
 
@@ -82,11 +82,11 @@ Room は `room.create` 権限を持つ参加 JWT で未作成 Room に最初の�
 
 Application は複数の有効な ApplicationSigningKey を持てる。参加 JWT の header には `kid` を含め、Signaling は `kid` で対応する有効鍵を選び、HS256 署名を検証する。
 
-ApplicationSigningKey の作成時には、Zoom と同じ有効期限選択肢として `Never / 30 days / 90 days / 180 days / 1 year` を提供する。初期値は `90 days` を推奨する。`Never` は自動失効を行わない選択肢であり、失効できないことを意味しない。どの選択肢でも手動ローテーションと失効は必ず使用できる。有効期限は新しい参加 JWT の拒否にだけ影響し、既存接続の停止には使用しない。
+ApplicationSigningKey の作成時には、Zoom と同じ有効期限選択肢 `Never / 30 days / 90 days / 180 days / 1 year` を提供する。初期値は `90 days` を推奨する。`Never` は自動失効を行わないだけで、失効できないことを意味しない。どの選択肢でも手動ローテーションと失効は必ず使用できる。有効期限は新しい参加 JWT の拒否にだけ影響し、既存接続の停止には使用しない。
 
 鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成時に一度だけ表示し、再表示しない。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。
 
-Signaling の鍵キャッシュ TTL は 1〜5 分程度を推奨する。キャッシュ TTL は失効反映の上限の目安であり、キャッシュ無効化コマンドの完了条件や再取得失敗時の新規参加拒否条件を置き換えない。
+Signaling の鍵キャッシュ TTL は 1〜5 分程度を推奨する。この TTL は失効反映の上限の目安である。キャッシュ無効化コマンドの完了条件や、再取得失敗時の新規参加拒否条件を置き換えない。
 
 鍵失効は新しい参加 JWT の拒否のための操作であり、既存接続の切断は別の強制切断操作とする。ローテーション中は新旧鍵を併用し、旧鍵は明示的に失効した時点で新しい JWT 検証に使わない。
 
