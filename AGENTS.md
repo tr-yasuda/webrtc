@@ -42,6 +42,8 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 GitHub Actions はツールをセットアップした後、次のコマンドを個別のステップで実行します。ローカルでもリポジトリのルートから実行できます。
 
+モデル検査の前に `moon run :setup-tlc` を実行します。公式の JAR の取得と照合には `curl` と `openssl` を使います。 [TLA+ の CLI 手順](https://github.com/tlaplus/tlaplus/blob/master/USE.md#from-the-command-line)
+
 ```sh
 pnpm run format:check
 pnpm run lint
@@ -70,7 +72,6 @@ Rust と形式検証を個別に実行する場合は、リポジトリのルー
 | `moon run :check-models` | [Browser SDK の接続通知](packages/browser-sdk/specs/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
 
 コンポーネント固有の TLA+ モデルは担当コードの `specs/`、Lean の証明は `proofs/` に置きます。実行コマンドはルートの [moon.yml](moon.yml) に定義します。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
-TLC の検証タスクは `openssl` で JAR を照合し、取得が必要な場合は `curl` を使います。
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |

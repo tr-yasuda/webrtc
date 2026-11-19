@@ -46,6 +46,9 @@ jobs:
           distribution: temurin
           java-version: '21.0.13+9'
 
+      - name: Set up TLC
+        run: moon run :setup-tlc
+
       - name: Set up Lean
         uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1.7.1
         with:
