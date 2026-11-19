@@ -28,7 +28,7 @@ mise install
 pnpm install --frozen-lockfile
 ```
 
-mise が管理するツールのバージョンは [mise.toml](mise.toml) で固定します。pnpm と Cargo の依存関係はロックファイルで固定します。
+ローカルでは [mise.toml](mise.toml) でツールのバージョンを固定します。GitHub Actions は [CI ワークフロー](.github/workflows/ci.yml) の各セットアップステップで導入します。pnpm のバージョンは [package.json](package.json) の `packageManager` に揃え、pnpm と Cargo の依存関係はロックファイルで固定します。
 Elan は Lake パッケージの [lean-toolchain](crates/stun/verification/lean/lean-toolchain) に指定した Lean を初回の検証時に取得します。エディターと CI もこのファイルで同じバージョンを選びます。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
@@ -40,7 +40,7 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 ### 検証
 
-GitHub Actions は `lean-action` で Elan を導入し、次のコマンドを個別のステップで実行します。ローカルでもリポジトリのルートから実行できます。
+GitHub Actions はツールをセットアップした後、次のコマンドを個別のステップで実行します。ローカルでもリポジトリのルートから実行できます。
 
 ```sh
 pnpm run format:check
