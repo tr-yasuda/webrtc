@@ -1,5 +1,11 @@
 # Repository Guidelines
 
+## 変更の判断
+
+変更を読む人が、主要な判断、実行順、失敗時の挙動、影響範囲を追えることを完成条件にします。要件を満たせる標準機能や既存の仕組みがあれば、それを使います。
+
+維持すべき振る舞いと制約は、依頼、担当仕様、呼び出し側の契約で確認します。レビューで差が見つかったら、どの保証が変わり、誰に影響するかを確かめてから対応を決めます。
+
 ## リポジトリ構成
 
 [全体構成](docs/platform/overview.md)で用語とコンポーネントの責務を確認し、[仕様一覧](docs/README.md)から担当する仕様を探します。共通要件は `docs/platform/`、個別仕様は `docs/signaling/`、`docs/sfu/`、`docs/client-sdk/` などにあります。
@@ -26,13 +32,15 @@ mise trust
 mise install
 ```
 
-ツールに PATH が通ったら、リポジトリのルートで次を実行します。GitHub Actions でも同じコマンドを実行します。
+各ツールを実行できるようになったら、ルートでワークスペースの依存関係をインストールします。
 
 ```sh
 pnpm install --frozen-lockfile
 ```
 
-依存関係は pnpm と Cargo のロックファイルで管理します。ツールのバージョンを更新するときは、ローカル用の `mise.toml` と、CI が使う [ワークフロー](.github/workflows/ci.yml)・[package.json](package.json) の該当箇所を揃えます。
+依存関係は pnpm と Cargo のロックファイルで管理します。ツールを更新する際は、ローカル用の `mise.toml` と [CI ワークフロー](.github/workflows/ci.yml) の該当する版を揃えます。CI の pnpm は [package.json](package.json) の `packageManager` で指定します。
+
+### プロジェクトの追加
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -43,7 +51,7 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 ### 検証
 
-CI と同じ検証を行うには、ルートで各コマンドを上から順に実行します。`--upstream none` を指定すると、Moon は前のステップで済ませた型検査やビルドを再実行しません。
+CI と同じ検証をローカルで行うには、依存関係をインストールしてから、ルートで表の上から順に実行します。ビルドとテストの `--upstream none` は、先に済ませた型検査とビルドを省く指定です。テストだけを始める場合は `moon run :test` で依存タスクも実行できます。
 
 | ステップ | コマンド |
 | --- | --- |
@@ -62,15 +70,7 @@ CI と同じ検証を行うには、ルートで各コマンドを上から順�
 
 ルートの `pnpm test` は Moon で `packages/` 配下の型検査・ビルド・テストを順に実行します。パッケージ内の `pnpm test` はビルド済みの成果物に対してテストを実行します。パッケージ内で型検査とビルドから実行するには `moon run '~:test'` を使います。
 
-| 検証 | TypeScript | Rust |
-| --- | --- | --- |
-| 整形チェック | Oxfmt | `cargo fmt --all --check` |
-| 型検査 | TypeScript 7 の `tsc` | `cargo check --workspace --all-targets --locked` |
-| 静的解析 | Oxlint | `cargo clippy --workspace --all-targets --locked` |
-
 `moon run rust:lint` は `CARGO_BUILD_WARNINGS=deny` を適用し、lint の警告をエラーとして扱います。
-
-Browser SDK のテストはビルド後にパッケージを読み込めることを、STUN のテストはヘッダーの Magic Cookie を確認します。
 
 テストケース名は日本語で書き、どの条件でどんな振る舞いを確かめるかが分かる名前にします。
 
@@ -80,7 +80,7 @@ Browser SDK のテストはビルド後にパッケージを読み込めるこ�
 
 ### GitHub Actions
 
-他の GitHub リポジトリの Action や再利用ワークフローは、GitHub 公式のものも含め、配布元で確認した 40 桁のコミット SHA で `uses:` を固定します。追加・更新には、ローカルで `pinact run` を使用できます。
+ツールの導入は提供元の Action やパッケージマネージャーを利用し、検証は失敗箇所が分かる単位でステップにします。外部 Action と再利用ワークフローの SHA 固定や、導入するツールのバージョン固定は [サプライチェーン対策](docs/platform/supply-chain.md#依存関係と-ci) に従います。外部 Action の参照の固定には `pinact run` を使えます。
 
 ## コミットとプルリクエスト
 

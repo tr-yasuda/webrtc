@@ -17,63 +17,25 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install Node.js
-        shell: bash
-        run: |
-          cd "$RUNNER_TEMP"
-          curl --fail --silent --show-error --location \
-            --retry 3 --connect-timeout 30 --max-time 120 \
-            --output node.tar.xz https://nodejs.org/dist/v24.22.3/node-v24.22.3-linux-x64.tar.xz
-          sha256sum --check <<'CHECKSUM'
-          4f2b175a6d53a5c617a80dba2676238a0688cef28c6da4eba35c7d844e66fcfb  node.tar.xz
-          CHECKSUM
-          tar -xf node.tar.xz
-          echo "$RUNNER_TEMP/node-v24.22.3-linux-x64/bin" >> "$GITHUB_PATH"
-      - name: Install pnpm
-        shell: bash
-        run: |
-          cd "$RUNNER_TEMP"
-          mkdir pnpm-bin
-          curl --fail --silent --show-error --location \
-            --retry 3 --connect-timeout 30 --max-time 120 \
-            --output pnpm.tar.gz https://github.com/pnpm/pnpm/releases/download/v12.22.0/pnpm-linux-x64.tar.gz
-          sha256sum --check <<'CHECKSUM'
-          07ee196f91af1e21edb0c794401f4152932c74b0dba5d415dc4dbd5783f3c7af  pnpm.tar.gz
-          CHECKSUM
-          tar -xf pnpm.tar.gz -C pnpm-bin
-          echo "$RUNNER_TEMP/pnpm-bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.3'
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc
         env:
           RUSTUP_VERSION: '1.29.3'
         with:
           toolchain: '1.100.0'
           components: clippy, rustfmt
-      - name: Install Moon
-        shell: bash
-        run: |
-          cd "$RUNNER_TEMP"
-          mkdir moon-bin
-          curl --fail --silent --show-error --location \
-            --retry 3 --connect-timeout 30 --max-time 120 \
-            --output moon.tar.xz https://github.com/moonrepo/moon/releases/download/v2.6.5/moon_cli-x86_64-unknown-linux-gnu.tar.xz
-          sha256sum --check <<'CHECKSUM'
-          29b4bae3242c7bb65232227ae21a9996dba2d2d21871fe5bb946cbc88695ef20  moon.tar.xz
-          CHECKSUM
-          tar -xf moon.tar.xz --strip-components=1 -C moon-bin moon_cli-x86_64-unknown-linux-gnu/moon
-          echo "$RUNNER_TEMP/moon-bin" >> "$GITHUB_PATH"
+      - uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4
+        with:
+          moon-version: '2.6.5'
+          proto-version: '0.64.0'
+          cache: false
       - name: Install zizmor
-        shell: bash
         run: |
-          cd "$RUNNER_TEMP"
-          mkdir zizmor-bin
-          curl --fail --silent --show-error --location \
-            --retry 3 --connect-timeout 30 --max-time 120 \
-            --output zizmor.tar.gz https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-x86_64-unknown-linux-gnu.tar.gz
-          sha256sum --check <<'CHECKSUM'
-          bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b  zizmor.tar.gz
-          CHECKSUM
-          tar -xf zizmor.tar.gz -C zizmor-bin zizmor
-          echo "$RUNNER_TEMP/zizmor-bin" >> "$GITHUB_PATH"
+          pipx install 'zizmor==1.32.0'
+          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
       - name: Audit GitHub Actions
