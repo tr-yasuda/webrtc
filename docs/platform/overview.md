@@ -12,6 +12,7 @@
 - SFU を増設し、プラットフォーム全体の収容人数を増やせる構成にする。
 - STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel のプロトコル処理と SFU の中核は Rust で実装する。
 - アプリケーション制御、Signaling、Client SDK、管理 UI は TypeScript で実装する。
+- Rust は TypeScript から Wasm として呼び出す処理系であり、独立した HTTP サーバーとして実装しない。
 - 既存の WebRTC スタックや SFU 製品のラップはしない。
 - 暗号など、安全性のために既存実装を利用する部分は各コンポーネントの仕様で定める。
 - 録画や外部サービスへの配信を含めるかは、提供範囲の節で定める。
@@ -87,7 +88,7 @@ React Native、Python、Go などの SDK は将来の拡張候補とし、今回
 サーバーを C-Plane と D-Plane に分ける。
 論理的な責務を分離し、独立して増設できる構成とする。
 実行プロセスの分離は必須としない。
-Rust の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
+Rust の処理は TypeScript から Wasm として呼び出す。独立した HTTP サーバーとして実装しない。
 
 | 部分 | 実装言語 | 責務 |
 |---|---|---|

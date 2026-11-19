@@ -60,8 +60,7 @@ ICE の状態遷移、並行する ICE 接続確認、役割競合、経路の�
 ## 自作範囲・既存実装の利用
 
 ICE / WebRTC Transport のプロトコル処理は Rust で実装する。
-Rust の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
-Rust で実装しても、独立プロセスでの実行は必須としない。
+Rust の処理は TypeScript から Wasm として呼び出す。独立した HTTP サーバーとして実装しない。
 
 | 自作する部分 | 内容 |
 |---|---|
@@ -117,7 +116,7 @@ TURN を使用する場合は、[用途別の中継許可](../turn/destinations.
 
 初回の ICE 接続確認で対象経路の送信同意を取得するまでは、RFC の条件に従い、同意の確立に必要な ICE 接続確認とその応答だけを送信する。DTLS ハンドシェイク、SRTP/SRTCP、DataChannel などの通常データは、同意を取得し、現在の認可と通信段階に応じた相手認証・暗号条件を満たしてから送信する。
 
-信頼する ICE エージェントは、対象経路に STUN Binding Request を送り、対応する認証済みの成功応答で送信同意を取得・更新する。Consent Freshness の確認用 Request ごとに新しい Transaction ID を生成・管理し、同じ要求は再送しない。C-Plane / D-Plane のプロセス配置や Wasm・Native Addon・独立 Worker などの実行方式を問わず、信頼できないアプリケーションや Signaling からこの Transaction ID を取得・指定・操作できないようにする。
+信頼する ICE エージェントは、対象経路に STUN Binding Request を送り、対応する認証済みの成功応答で送信同意を取得・更新する。Consent Freshness の確認用 Request ごとに新しい Transaction ID を生成・管理し、同じ要求は再送しない。信頼できないアプリケーションや Signaling からこの Transaction ID を取得・指定・操作できないようにする。
 
 確認間隔、ランダム化、応答待ち、期限切れ時のトランザクション破棄は、[RFC 7675 §5](https://www.rfc-editor.org/rfc/rfc7675.html#section-5)に従う。Signaling の通知や単なるパケット受信だけでは同意を更新しない。
 

@@ -112,7 +112,7 @@ WebRTC 通信が失われた場合は、現在の配置と接続情報に従っ�
 
 Signaling サーバーは、TypeScript の C-Plane として実装する。
 C-Plane と D-Plane の分離は、論理的な責務の分離とし、実行プロセスの分離を必須としない。
-Rust の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
+Rust の処理は TypeScript から Wasm として呼び出す。独立した HTTP サーバーとして実装しない。
 
 | 自作する部分 | 内容 |
 |---|---|

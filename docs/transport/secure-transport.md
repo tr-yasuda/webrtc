@@ -64,8 +64,7 @@ WebRTC Transport の復号後も E2EE の本文は暗号化されたまま転送
 ## 自作範囲・既存実装の利用
 
 ICE / WebRTC Transport のプロトコル処理は Rust で実装する。
-Rust の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
-Rust で実装しても、独立プロセスでの実行は必須としない。
+Rust の処理は TypeScript から Wasm として呼び出す。独立した HTTP サーバーとして実装しない。
 
 | 自作する部分 | 内容 |
 |---|---|
