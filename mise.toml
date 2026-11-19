@@ -11,16 +11,6 @@ url = "https://github.com/tlaplus/tlaplus/releases/download/v{{ version }}/tla2t
 checksum = "sha256:936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
 bin = "tla2tools.jar"
 
-[tools."github:leanprover/lean4"]
-version = "4.36.0"
-strip_components = 1
-
-[tools."github:leanprover/lean4".platforms]
-linux-x64 = { asset_pattern = "lean-*-linux.tar.zst" }
-linux-arm64 = { asset_pattern = "lean-*-linux_aarch64.tar.zst" }
-macos-x64 = { asset_pattern = "lean-*-darwin.tar.zst" }
-macos-arm64 = { asset_pattern = "lean-*-darwin_aarch64.tar.zst" }
-
 [tasks.setup]
 description = "Install pinned workspace dependencies"
 run = "pnpm install --frozen-lockfile"

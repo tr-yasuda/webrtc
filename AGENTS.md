@@ -16,7 +16,7 @@
 
 ### セットアップ
 
-mise と、Rust のリンクに使うホスト OS の C ツールチェーンを用意してください。Linux では GCC など、macOS では Xcode Command Line Tools を使用できます。
+mise と、Rust のリンクに使うホスト OS の C ツールチェーンを用意してください。Linux では GCC など、macOS では Xcode Command Line Tools を使用できます。Lean の検証には Elan を公式手順で導入し、Elan の `bin` ディレクトリを PATH に追加してください。 [Lean のセットアップ](https://lean-lang.org/install/manual/)
 
 `pnpm` や `moon` を直接実行できるよう、使っているシェルで mise を有効にします。Bash で現在のセッションを有効にするには `eval "$(mise activate bash)"` を実行します。他のシェルや起動時の設定は公式手順を参照してください。 [mise のシェル設定](https://mise.jdx.dev/shell-setup.html)
 
@@ -29,8 +29,8 @@ mise run setup
 mise run ci
 ```
 
-ツールのバージョンは [mise.toml](mise.toml) で固定します。pnpm と Cargo の依存関係はロックファイルで固定します。
-Lean を更新するときは、エディターと CI で同じバージョンを使うように [lean-toolchain](verification/lean/lean-toolchain) も更新します。
+mise が管理するツールのバージョンは [mise.toml](mise.toml) で固定します。pnpm と Cargo の依存関係はロックファイルで固定します。
+Elan は [lean-toolchain](verification/lean/lean-toolchain) に指定した Lean を初回の検証時に取得します。エディターと CI もこのファイルで同じバージョンを選びます。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
