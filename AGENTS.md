@@ -25,12 +25,12 @@ mise と、Rust のリンクに使うホスト OS の C ツールチェーンを
 ```sh
 mise trust
 mise install
-mise run setup
-mise run ci
+pnpm install --frozen-lockfile
+pnpm run ci
 ```
 
 mise が管理するツールのバージョンは [mise.toml](mise.toml) で固定します。pnpm と Cargo の依存関係はロックファイルで固定します。
-Elan は [lean-toolchain](verification/lean/lean-toolchain) に指定した Lean を初回の検証時に取得します。エディターと CI もこのファイルで同じバージョンを選びます。
+Elan は Lake パッケージの [lean-toolchain](crates/stun/verification/lean/lean-toolchain) に指定した Lean を初回の検証時に取得します。エディターと CI もこのファイルで同じバージョンを選びます。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -41,7 +41,7 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 ### 検証
 
-`mise run ci` は TypeScript と Rust のビルド・整形チェック・型検査・静的解析・テストに加え、Lean 4 の証明チェックと TLA+ のモデル検査を実行します。GitHub Actions の CI でも同じコマンドを実行します。
+`pnpm run ci` は TypeScript と Rust のビルド・整形チェック・型検査・静的解析・テスト、Lean 4 の証明、TLA+ のモデルを検証します。GitHub Actions は `lean-action` で Elan を導入し、同じコマンドを実行します。
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると `.oxfmtrc.json` が対象とする JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
 
@@ -53,11 +53,12 @@ Rust と形式検証を個別に実行する場合は、リポジトリのルー
 
 | コマンド | 検証内容 |
 | --- | --- |
-| `mise exec -- moon run rust:test` | Cargo ワークスペースのテストを実行する |
-| `mise run verify:lean` | Lake で [Lean 4 の証明ライブラリ](verification/lean/WebRTCVerification)をビルドする |
-| `mise run verify:tla` | [TLA+ の最小例](verification/tla/Smoke.tla)で、カウンターが増減しても 0 から 2 の範囲に収まることを TLC で検査する |
+| `moon run rust:test` | Cargo ワークスペースのテストを実行する |
+| `moon run stun-lean:verify` | [STUN の属性長](crates/stun/verification/lean/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
+| `moon run browser-sdk-tla:verify` | [Browser SDK の接続通知](packages/browser-sdk/verification/tla/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
 
-Lean の証明ファイルは `verification/lean/WebRTCVerification/` に置きます。Lake はこのディレクトリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` を含む証明はエラーになります。
+コンポーネント固有の形式検証は、担当するクレートまたはパッケージの `verification/` に置きます。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
+TLC の初回実行では、`curl` と `openssl` を使って公式 JAR を取得・照合します。
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |

@@ -42,3 +42,5 @@ ICE・TURN で使用する STUN メッセージの読み書きにも、同じプ
 | Indication | 正常・異常のいずれも STUN 応答を返さない |
 
 共通処理を利用する ICE・TURN の認証順序と用途固有の動作は、それぞれの仕様の受け入れ条件でも確認する。
+
+[Lean の属性長の証明](../../crates/stun/verification/lean/StunVerification/AttributeLength.lean)は、属性値の長さを 0〜3 バイトの追加で 4 バイト境界に揃える計算を、すべての自然数の長さについて検証する。属性を読み書きする Rust 実装の境界検査は、実装を対象とした試験で確認する。 [RFC 8489 §14](https://www.rfc-editor.org/rfc/rfc8489.html#section-14)

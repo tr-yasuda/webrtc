@@ -156,6 +156,7 @@ vite.config.ts.timestamp-*
 .nx/workspace-data
 .nx/migrate-runs
 
-# Moon and Cargo
+# Moon, Cargo, and Lake
 /.moon/cache/
 /target/
+.lake/

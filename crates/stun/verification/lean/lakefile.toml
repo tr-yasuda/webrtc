@@ -1,0 +1,7 @@
+name = "StunVerification"
+defaultTargets = ["StunVerification"]
+moreLeanArgs = ["-DwarningAsError=true"]
+
+[[lean_lib]]
+name = "StunVerification"
+globs = ["StunVerification.*"]

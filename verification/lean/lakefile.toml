@@ -1,7 +1,0 @@
-name = "WebRTCVerification"
-defaultTargets = ["WebRTCVerification"]
-moreLeanArgs = ["-DwarningAsError=true"]
-
-[[lean_lib]]
-name = "WebRTCVerification"
-globs = ["WebRTCVerification.*"]

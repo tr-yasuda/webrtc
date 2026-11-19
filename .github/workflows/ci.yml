@@ -21,18 +21,15 @@ jobs:
         with:
           version: 2026.9.12
           cache: true
-      - name: Install Elan
-        working-directory: ${{ runner.temp }}
-        run: |
-          curl -fsSL https://github.com/leanprover/elan/releases/download/v4.4.0/elan-x86_64-unknown-linux-gnu.tar.gz -o elan.tar.gz
-          echo '0e8250aa2be86c7af929ade68db617af9edc8b9ccf6eaf5ece228250d0d032e2  elan.tar.gz' | sha256sum -c -
-          tar -xzf elan.tar.gz
-          ./elan-init -y --no-modify-path --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - name: Cache Lean toolchain
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.elan/toolchains
-          key: elan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('verification/lean/lean-toolchain') }}
-      - run: mise run setup
-      - run: mise run ci
+          key: elan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('crates/stun/verification/lean/lean-toolchain') }}
+      - uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1.7.1
+        with:
+          lake-package-directory: crates/stun/verification/lean
+          auto-config: false
+          use-github-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run ci
