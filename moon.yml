@@ -45,12 +45,7 @@ tasks:
 
   check-models:
     toolchains: 'system'
-    script: |
-      set -eu
-      cd packages/browser-sdk/specs
-      tmp=$(mktemp -d)
-      trap 'rm -rf -- "$tmp"' EXIT
-      java -Djava.io.tmpdir="$tmp" -jar ../../../.cache/tla2tools.jar -metadir "$tmp" ConnectionNotifications.tla
+    command: 'java -jar .cache/tla2tools.jar packages/browser-sdk/specs/ConnectionNotifications.tla'
     inputs:
       - 'packages/browser-sdk/specs/**/*.tla'
       - 'packages/browser-sdk/specs/**/*.cfg'
