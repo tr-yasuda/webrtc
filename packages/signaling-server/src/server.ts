@@ -10,6 +10,7 @@ import Fastify, { type FastifyError } from "fastify";
 import { z } from "zod/v4";
 
 import { sendProblem } from "./http-problem.js";
+import type { ProblemStatus } from "./http-problem.js";
 
 const healthResponseSchema = z.object({ status: z.literal("ok") });
 const healthResponse = { status: "ok" } as const;
@@ -59,5 +60,7 @@ app.setNotFoundHandler((request, reply) => {
 });
 
 app.setErrorHandler((error: FastifyError, _request, reply) => {
-  sendProblem(reply, error.statusCode ?? 500);
+  const status: ProblemStatus =
+    error.statusCode === 404 || error.statusCode === 405 ? error.statusCode : 500;
+  sendProblem(reply, status);
 });

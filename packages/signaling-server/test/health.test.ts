@@ -1,6 +1,5 @@
-import { test, expect } from "vitest";
+import { test, expect, vi } from "vitest";
 
-import { readPort } from "../src/config.js";
 import { app } from "../src/server.js";
 
 app.get("/internal-error", async () => {
@@ -64,9 +63,31 @@ test("Swagger UI と OpenAPI ドキュメントを提供する", async () => {
   });
 });
 
-test("ポート設定は既定値と明示値を解釈する", () => {
-  expect(readPort({})).toBe(8080);
-  expect(readPort({ PORT: "9" })).toBe(9);
-  expect(() => readPort({ PORT: "invalid" })).toThrow();
-  expect(() => readPort({ PORT: "" })).toThrow();
+test("環境変数は既定値と明示値を解釈する", async () => {
+  const previousPort = process.env.PORT;
+
+  vi.resetModules();
+  delete process.env.PORT;
+  const defaultEnv = (await import("../src/env.js")).env;
+
+  vi.resetModules();
+  process.env.PORT = "9";
+  const explicitEnv = (await import("../src/env.js")).env;
+
+  vi.resetModules();
+  process.env.PORT = "invalid";
+  await expect(import("../src/env.js")).rejects.toThrow();
+
+  vi.resetModules();
+  process.env.PORT = "";
+  await expect(import("../src/env.js")).rejects.toThrow();
+
+  if (previousPort === undefined) {
+    delete process.env.PORT;
+  } else {
+    process.env.PORT = previousPort;
+  }
+
+  expect(defaultEnv.PORT).toBe(8080);
+  expect(explicitEnv.PORT).toBe(9);
 });
