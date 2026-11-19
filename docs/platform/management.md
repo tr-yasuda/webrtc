@@ -68,7 +68,11 @@ Management API は Management UI と顧客サーバーの両方が利用する�
 
 Management API credential は Management API 専用とし、参加 JWT の署名鍵として流用しない。参加 JWT の署名鍵は顧客アプリサーバーが JWT に署名するためだけに使う。
 
-Management API credential の秘密値も Cloud KMS で暗号化して保存し、作成時に一度だけ表示する。ApplicationSigningKey とは別の鍵として払い出し、ローテーション・失効を管理する。
+Management API credential の秘密値も Cloud KMS で暗号化して保存し、作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却する。ApplicationSigningKey とは別の鍵として払い出し、ローテーション・失効を管理する。通常の取得・再表示では秘密値を返さない。
+
+Management API credential は Project に束ね、明示的に付与した操作 scope だけを許可する。初期提供では Room 管理・Session / Participant 管理・利用量取得・監査取得の scope を指定できる。Project 削除、ProjectUser 管理、Application・ApplicationSigningKey・Management API credential の管理は顧客サーバー用 credential に許可しない。
+
+Management は要求ごとに credential の有効性、対象 Project の利用可否、対象が scope 内であることを確認する。credential は発行者の ProjectUser ロールを自動的に引き継がない。credential を作成した ProjectUser が権限を失っても credential 自体は自動失効しないが、Project の削除・利用停止と credential の失効・期限切れでは以後の要求を拒否する。
 
 強制切断は Participant / Session 単位のみとし、Project 全体を一括切断する操作は提供しない。強制切断を行ったときは、対象・理由・実行者・結果を監査し、Signaling の入退出履歴に kick イベントを記録する。
 
@@ -84,7 +88,7 @@ Application は複数の有効な ApplicationSigningKey を持てる。参加 JW
 
 ApplicationSigningKey の作成時には、Zoom と同じ有効期限選択肢 `Never / 30 days / 90 days / 180 days / 1 year` を提供する。初期値は `90 days` を推奨する。`Never` は自動失効を行わないだけで、失効できないことを意味しない。どの選択肢でも手動ローテーションと失効は必ず使用できる。有効期限は新しい参加 JWT の拒否にだけ影響し、既存接続の停止には使用しない。
 
-鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成時に一度だけ表示し、再表示しない。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。
+鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。
 
 Signaling の鍵キャッシュ TTL は 1〜5 分程度を推奨する。この TTL は失効反映の上限の目安である。キャッシュ無効化コマンドの完了条件や、再取得失敗時の新規参加拒否条件を置き換えない。
 
@@ -105,7 +109,11 @@ Management から Signaling へ状態を変更させる操作には、Pub/Sub �
 | `actor` | 管理操作の実行者 |
 | `issuedAt` / `expiresAt` | 発行時刻とコマンドの有効期限 |
 
-Signaling の全インスタンスがコマンドを購読し、`commandId` で重複を排除した上で、対象 Session・Participant・Room を保持するインスタンスだけ実行する。実行結果は Signaling schema に正本として記録し、結果イベントを Pub/Sub で Management へ返す。Management は結果イベントで管理コマンド状態を更新する。結果イベントが期限内に届かない場合は結果不明とし、失敗や完了として扱わない。照会用コマンドで現在状態を再確認し、必要な場合のみ新しい `commandId` で操作し直す。
+コマンドの配信方法は操作対象に合わせて分ける。対象 Session・Participant・Room を持つインスタンスだけが実行する対象限定コマンドと、鍵キャッシュのように全 Signaling インスタンスへ反映する必要がある全インスタンスコマンドである。いずれも Signaling の全インスタンスがコマンドを購読し、`commandId` で重複排除する。
+
+対象限定コマンドは、対象 Session・Participant・Room を保持するインスタンスだけ実行する。実行結果は Signaling schema に正本として記録し、結果イベントを Pub/Sub で Management へ返す。Management は結果イベントで管理コマンド状態を更新する。結果イベントが期限内に届かない場合は結果不明とし、失敗や完了として扱わない。照会用コマンドで現在状態を再確認し、必要な場合のみ新しい `commandId` で操作し直す。
+
+全インスタンスコマンドは、対象 ApplicationSigningKey をキャッシュしている可能性がある全インスタンスが対象 `projectId`・`applicationId`・`kid` のキャッシュを無効化する。各インスタンスは `instanceId` 付きの結果イベントを返し、Signaling schema に `commandId` ごとのインスタンス別結果を正本として記録する。Management は、コマンド発行時に購読していた全インスタンスが成功または該当キャッシュなしを期限内に報告した場合だけ反映完了とする。報告が欠けた場合は結果不明とし、期限前は同じ `commandId` で再送し、期限後は新しい `commandId` で再発行できる。反映完了または安全な再取得条件が確認できるまで、失効済み鍵を完了済みとして扱わない。
 
 読み取り専用の Room・Session・Participant・利用量照会は、サービス間認証を行った Signaling の内部照会 API を利用できる。Management はその結果をキャッシュしても、取得時刻・対象範囲・有効期限を明示し、Signaling の正本を上書きしない。
 
@@ -115,7 +123,7 @@ TURN・SFU は DB に接続しないため、1 分ごとに集約した資源計
 
 | 障害 | 挙動 |
 |---|---|
-| Management 停止 | 既存通話は継続する。Management UI・Management API・新しい管理コマンドだけ失敗する |
+| Management 停止 | 既存通話は継続する。Management UI・Management API・新しい管理コマンドは失敗する。Signaling が有効鍵をキャッシュしている範囲の新規参加は継続できるが、未キャッシュ鍵・TTL 到達後の再取得・不明 `kid` の確認が必要な新規参加は失敗する |
 | Signaling 1 インスタンス停止 | Browser SDK が再接続し、Signaling DB の状態に基づいて別インスタンスで参加端末を引き継ぐ |
 | Pub/Sub 停止 | 既存通話は継続する。強制切断・鍵キャッシュ無効化・Room 削除などの管理コマンドは遅延または結果不明になる |
 | Cloud SQL 停止 | 新規参加・Room 作成・権限再確認・強制切断・利用量記録は失敗する。既存 TURN・SFU は検証済み権限と再確認期限内のみ継続し、期限を超えたら対象通信を停止する |
@@ -128,12 +136,12 @@ Cloud SQL を PITR で復旧した場合は、失効済み ApplicationSigningKey
 
 | 検証方法 | 重点対象 |
 |---|---|
-| TLA+ によるモデル検査 | ProjectUser 権限の遷移、Room 初回作成と並行参加、強制切断コマンドと再接続の競合、失効済み鍵・切断済み Session の復活防止 |
-| Lean 4 による証明の評価 | DB schema 所有権の不変条件、ProjectUser ロールの権限包含関係、`commandId` の重複排除規則を数学モデルとして表現できるか |
-| Property-based Testing | JWT claim・`grants`・期限の生成パターン、Management API のロールと対象の組み合わせ、コマンド再送・結果欠落の操作列 |
+| TLA+ によるモデル検査 | ProjectUser 権限の遷移、Management API credential の scope 判定、Room 初回作成と並行参加、強制切断コマンドと再接続の競合、失効済み鍵・切断済み Session の復活防止 |
+| Lean 4 による証明の評価 | DB schema 所有権の不変条件、ProjectUser ロールの権限包含関係、Management API credential の scope 包含関係、`commandId` の重複排除規則を数学モデルとして表現できるか |
+| Property-based Testing | JWT claim・`grants`・期限の生成パターン、Management API のロール・credential scope・対象の組み合わせ、対象限定コマンドと全インスタンスコマンドの再送・結果欠落の操作列 |
 | 統合試験・障害注入 | Management・Signaling・Pub/Sub・Cloud SQL・IDaaS・KMS の停止・復旧、TURN・SFU の資源計上報告、PITR 後の安全側処理 |
 
-数学モデルでは、コマンドの配送重複・欠落・順序逆転、Room 作成の並行初回参加、失効と再接続の競合を状態として表現する。実際の Cloud Run・Pub/Sub・Cloud SQL 構成での統合試験と区別して結果を記録する。
+数学モデルでは、対象限定コマンドと全インスタンスコマンドの配送重複・欠落・順序逆転、Room 作成の並行初回参加、失効と再接続の競合を状態として表現する。実際の Cloud Run・Pub/Sub・Cloud SQL 構成での統合試験と区別して結果を記録する。
 
 ## 受け入れ条件
 
@@ -143,9 +151,9 @@ Cloud SQL を PITR で復旧した場合は、失効済み ApplicationSigningKey
 | ProjectUser ロール | Owner・Admin・Operator・Auditor の操作範囲を API・通知・監査取得に適用し、権限喪失後に迂回できない。Owner がいなくなる変更を拒否する |
 | DB 所有権 | Management と Signaling が自分の schema だけにアクセスし、TURN・SFU が DB に接続しない |
 | Room 作成 | `room.create`・`room.join` 権限付き JWT の初回参加だけが未作成 Room を作成し、並行初回参加で Room・SFU 割り当てを重複させない |
-| 管理 API | Management UI と顧客サーバーが同じ Management API 契約を使い、API credential と JWT 署名鍵を流用しない |
+| 管理 API | Management UI と顧客サーバーが同じ Management API 契約を使い、API credential と JWT 署名鍵を流用しない。要求ごとに credential・Project・scope を再評価し、scope 外と Project 停止後の要求を拒否する |
 | 強制切断 | Participant / Session 単位だけ切断し、Project 全体一括切断を提供しない。kick の監査と入退出履歴を記録する |
-| コマンドバス | `commandId` で重複を排除し、対象を持つ Signaling だけ実行する。結果不明を完了・失敗と扱わない |
+| コマンドバス | `commandId` で重複を排除する。対象限定コマンドは対象を持つ Signaling だけ実行し、全インスタンスコマンドは全インスタンスで反映結果を報告する。結果不明を完了・失敗と扱わない |
 | ApplicationSigningKey | HS256・`kid`・失効・ローテーションを検証し、秘密値の再表示と平文保存を行わない |
 | 利用量 | 1 分単位の Session・publication・subscription・TURN・SFU・DataChannel 計上を集計し、欠測をゼロとして扱わない |
 | 障害時 | Management・Signaling・Pub/Sub・Cloud SQL・IDaaS・KMS の各停止で、上の表に定めた挙動と停止条件を守る |
