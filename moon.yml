@@ -19,11 +19,9 @@ tasks:
 
   check-proofs:
     toolchains: 'system'
-    script: |
-      set -eu
-      cd crates/stun/proofs
-      toolchain=$(cat lean-toolchain)
-      elan run --install "$toolchain" lake build
+    script: >-
+      elan run --install "$(cat crates/stun/proofs/lean-toolchain)"
+      lake -d crates/stun/proofs build
     inputs:
       - 'crates/stun/proofs/**/*.lean'
       - 'crates/stun/proofs/lean-toolchain'
@@ -64,7 +62,7 @@ tasks:
       cd packages/browser-sdk/specs
       tmp=$(mktemp -d)
       trap 'rm -rf -- "$tmp"' EXIT
-      java -Djava.io.tmpdir="$tmp" -jar .cache/tla2tools.jar -workers 1 -metadir "$tmp" ConnectionNotifications.tla
+      java -Djava.io.tmpdir="$tmp" -jar .cache/tla2tools.jar -metadir "$tmp" ConnectionNotifications.tla
     inputs:
       - 'packages/browser-sdk/specs/**/*.tla'
       - 'packages/browser-sdk/specs/**/*.cfg'
