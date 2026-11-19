@@ -1,5 +1,5 @@
 import { test } from "node:test";
 
-test("the built Browser SDK is importable as a package", async () => {
+test("ビルド済みの Browser SDK をパッケージとして読み込める", async () => {
   await import("@webrtc/browser-sdk");
 });

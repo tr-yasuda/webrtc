@@ -9,12 +9,8 @@ tasks:
     options:
       # Moon 2.6.5 can leave files from another build when restoring into dist.
       cache: false
-  format:
-    command: 'pnpm run format:check'
   typecheck:
     command: 'pnpm run typecheck'
-  lint:
-    command: 'pnpm run lint'
   test:
     command: 'pnpm run test:built'
     deps:

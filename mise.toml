@@ -10,4 +10,4 @@ run = "pnpm install --frozen-lockfile"
 
 [tasks.ci]
 description = "Run the CI checks for TypeScript and Rust"
-run = "moon run :build :format :typecheck :lint :test"
+run = ["pnpm run format:check", "pnpm run lint", "moon run :build :format :typecheck :lint :test"]

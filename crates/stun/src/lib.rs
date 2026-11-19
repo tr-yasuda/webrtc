@@ -5,7 +5,7 @@ mod tests {
     use super::MAGIC_COOKIE;
 
     #[test]
-    fn magic_cookie_matches_the_stun_wire_format() {
+    fn マジッククッキーのバイト列は仕様どおり() {
         assert_eq!(MAGIC_COOKIE.to_be_bytes(), [0x21, 0x12, 0xa4, 0x42]);
     }
 }
