@@ -1,13 +1,23 @@
 [tools]
-node = "24.21.0"
-pnpm = "10.34.9"
+node = "24.22.3"
+pnpm = "12.22.0"
 rust = { version = "1.100.0", profile = "minimal", components = "clippy,rustfmt" }
 "aqua:moonrepo/moon" = "2.6.5"
+"aqua:zizmorcore/zizmor" = "1.32.0"
 
 [tasks.setup]
 description = "Install pinned workspace dependencies"
 run = "pnpm install --frozen-lockfile"
 
+[tasks."check:actions"]
+description = "Audit the security of GitHub Actions workflows and composite actions"
+run = "zizmor --offline --strict-collection --no-config --no-ignores ."
+
 [tasks.ci]
-description = "Run the CI checks for TypeScript and Rust"
-run = ["pnpm run format:check", "pnpm run lint", "moon run :build :format :typecheck :lint :test"]
+description = "Run the CI checks for GitHub Actions, TypeScript, and Rust"
+run = [
+  { task = "check:actions" },
+  "pnpm run format:check",
+  "pnpm run lint",
+  "moon run :build :format :typecheck :lint :test",
+]
