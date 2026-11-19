@@ -11,6 +11,8 @@ tasks:
   typecheck:
     command: 'cargo check --workspace --all-targets --locked'
   lint:
-    command: 'cargo clippy --workspace --all-targets --locked -- -D warnings'
+    command: 'cargo clippy --workspace --all-targets --locked'
+    env:
+      CARGO_BUILD_WARNINGS: 'deny'
   test:
     command: 'cargo test --workspace --locked'
