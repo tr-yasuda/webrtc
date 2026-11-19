@@ -3,7 +3,6 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r run build",
-    "ci": "pnpm run format:check && pnpm run lint && moon run :build :format :typecheck :lint :test :verify",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint",

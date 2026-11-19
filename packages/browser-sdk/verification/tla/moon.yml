@@ -1,26 +1,39 @@
 language: 'unknown'
 
 tasks:
-  verify:
+  setup:
     script: |
       set -eu
-      version=1.7.4
-      jar=".cache/tla2tools-$version.jar"
-      mkdir -p .cache
-      tmp=$(mktemp -d "$PWD/.cache/tlc.XXXXXXXX")
-      trap 'rm -rf -- "$tmp"' EXIT
-
-      if [ ! -f "$jar" ]; then
-        curl -fsSL "https://github.com/tlaplus/tlaplus/releases/download/v$version/tla2tools.jar" -o "$tmp/tla2tools.jar"
-        checksum=$(openssl dgst -sha256 -r "$tmp/tla2tools.jar")
-        if [ "${checksum%% *}" != "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88" ]; then
-          echo "tla2tools.jar: SHA-256 mismatch" >&2
-          exit 1
+      jar=.cache/tla2tools.jar
+      expected=936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+      if [ -f "$jar" ]; then
+        checksum=$(openssl dgst -sha256 -r "$jar")
+        if [ "${checksum%% *}" = "$expected" ]; then
+          exit 0
         fi
-        mv "$tmp/tla2tools.jar" "$jar"
       fi
 
-      java -Djava.io.tmpdir="$tmp" -jar "$jar" -workers 1 -metadir "$tmp" ConnectionNotifications.tla
+      mkdir -p .cache
+      download=$(mktemp .cache/tla2tools.XXXXXXXX)
+      trap 'rm -f -- "$download"' EXIT
+      curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar -o "$download"
+      checksum=$(openssl dgst -sha256 -r "$download")
+      if [ "${checksum%% *}" != "$expected" ]; then
+        echo "tla2tools.jar: SHA-256 mismatch" >&2
+        exit 1
+      fi
+      mv "$download" "$jar"
+    options:
+      cache: false
+
+  verify:
+    deps:
+      - '~:setup'
+    script: |
+      set -eu
+      tmp=$(mktemp -d)
+      trap 'rm -rf -- "$tmp"' EXIT
+      java -Djava.io.tmpdir="$tmp" -jar .cache/tla2tools.jar -workers 1 -metadir "$tmp" ConnectionNotifications.tla
     inputs:
       - '**/*.tla'
       - '**/*.cfg'

@@ -26,7 +26,6 @@ mise と、Rust のリンクに使うホスト OS の C ツールチェーンを
 mise trust
 mise install
 pnpm install --frozen-lockfile
-pnpm run ci
 ```
 
 mise が管理するツールのバージョンは [mise.toml](mise.toml) で固定します。pnpm と Cargo の依存関係はロックファイルで固定します。
@@ -41,7 +40,20 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 ### 検証
 
-`pnpm run ci` は TypeScript と Rust のビルド・整形チェック・型検査・静的解析・テスト、Lean 4 の証明、TLA+ のモデルを検証します。GitHub Actions は `lean-action` で Elan を導入し、同じコマンドを実行します。
+GitHub Actions は `lean-action` で Elan を導入し、次のコマンドを個別のステップで実行します。ローカルでもリポジトリのルートから実行できます。
+
+```sh
+pnpm run format:check
+pnpm run lint
+pnpm test
+moon run rust:format
+moon run rust:typecheck
+moon run rust:lint
+moon run rust:build
+moon run rust:test
+moon run stun-lean:verify
+moon run browser-sdk-tla:verify
+```
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると `.oxfmtrc.json` が対象とする JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
 

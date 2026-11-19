@@ -31,5 +31,26 @@ jobs:
           lake-package-directory: crates/stun/verification/lean
           auto-config: false
           use-github-cache: false
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run ci
+          use-mathlib-cache: false
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check workspace formatting
+        run: pnpm run format:check
+      - name: Lint TypeScript and JavaScript
+        run: pnpm run lint
+      - name: Type-check, build, and test TypeScript
+        run: pnpm test
+      - name: Check Rust formatting
+        run: moon run rust:format
+      - name: Type-check Rust
+        run: moon run rust:typecheck
+      - name: Lint Rust
+        run: moon run rust:lint
+      - name: Build Rust
+        run: moon run rust:build
+      - name: Test Rust
+        run: moon run rust:test
+      - name: Check STUN proofs with Lean
+        run: moon run stun-lean:verify
+      - name: Model-check Browser SDK notifications
+        run: moon run browser-sdk-tla:verify
