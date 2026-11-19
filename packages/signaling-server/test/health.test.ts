@@ -1,8 +1,9 @@
 import { test, expect } from "vitest";
 
-import { createApp, parsePort } from "../src/server.js";
+import { readPort } from "../src/config.js";
+import { createApp } from "../src/server.js";
 
-test("GET /healthz はヘルス状態を返す", async () => {
+test("GET /healthz は 200 と ok を返す", async () => {
   const app = createApp();
   const response = await app.inject({ method: "GET", url: "/healthz" });
 
@@ -11,7 +12,7 @@ test("GET /healthz はヘルス状態を返す", async () => {
   expect(response.json()).toEqual({ status: "ok" });
 });
 
-test("GET 以外の /healthz は RFC 9457 の 405 を返す", async () => {
+test("POST /healthz は 405 を返す", async () => {
   const app = createApp();
   const response = await app.inject({ method: "POST", url: "/healthz" });
 
@@ -31,7 +32,7 @@ test("HEAD /healthz も GET 以外として 405 を返す", async () => {
   expect(response.body).toBe("");
 });
 
-test("未実装パスは RFC 9457 の 404 を返す", async () => {
+test("未知のパスは 404 を返す", async () => {
   const app = createApp();
   const response = await app.inject({ method: "GET", url: "/unknown" });
 
@@ -40,7 +41,7 @@ test("未実装パスは RFC 9457 の 404 を返す", async () => {
   expect(response.json()).toEqual({ status: 404, title: "Not Found" });
 });
 
-test("予期しない失敗は RFC 9457 の 500 を返す", async () => {
+test("予期しない失敗は 500 を返す", async () => {
   const app = createApp();
   app.get("/internal-error", async () => {
     throw new Error("internal error");
@@ -53,7 +54,8 @@ test("予期しない失敗は RFC 9457 の 500 を返す", async () => {
 });
 
 test("ポート設定は既定値と明示値を解釈する", () => {
-  expect(parsePort(undefined, 8080)).toBe(8080);
-  expect(parsePort("9", 8080)).toBe(9);
-  expect(() => parsePort("invalid", 8080)).toThrow();
+  expect(readPort({})).toBe(8080);
+  expect(readPort({ PORT: "9" })).toBe(9);
+  expect(() => readPort({ PORT: "invalid" })).toThrow();
+  expect(() => readPort({ PORT: "" })).toThrow();
 });

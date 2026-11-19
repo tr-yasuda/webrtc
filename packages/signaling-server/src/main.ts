@@ -1,7 +1,8 @@
-import { createApp, parsePort } from "./server.js";
+import { readPort } from "./config.js";
+import { createApp } from "./server.js";
 
 const app = createApp();
-const port = parsePort(process.env.SIGNALING_PORT, 8080);
+const port = readPort(process.env);
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {

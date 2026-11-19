@@ -4,7 +4,7 @@ Signaling サーバーの開発用起動手順。
 
 ## 開発
 
-`.env.example` をコピーして `.env` を作成し、必要に応じて `SIGNALING_PORT` を変更する。
+`.env.example` をコピーして `.env` を作成し、必要に応じて `PORT` を変更する。
 
 ```sh
 cp .env.example .env
@@ -19,7 +19,7 @@ pnpm dev
 ヘルスエンドポイントを確認する。
 
 ```sh
-curl "http://127.0.0.1:${SIGNALING_PORT}/healthz"
+curl "http://127.0.0.1:${PORT}/healthz"
 ```
 
 `.env` はローカル設定として Git 管理対象外にする。環境変数の雛形を変更するときは `.env.example` を更新する。
