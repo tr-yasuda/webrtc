@@ -1,13 +1,29 @@
 [tools]
-node = "24.21.0"
-pnpm = "10.34.9"
+node = "24.22.3"
+pnpm = "12.22.0"
 rust = { version = "1.100.0", profile = "minimal", components = "clippy,rustfmt" }
 "aqua:moonrepo/moon" = "2.6.5"
+"aqua:zizmorcore/zizmor" = "1.32.0"
 
 [tasks.setup]
 description = "Install pinned workspace dependencies"
 run = "pnpm install --frozen-lockfile"
 
+[tasks."check:actions"]
+description = "Audit the security of GitHub Actions workflows and composite actions"
+# Without --ignore-lockfile, zizmor accepts tag references covered by actions.lock.
+run = '''
+git ls-files -z --cached --others --exclude-standard -- \
+  ':(glob).github/workflows/*.yml' ':(glob).github/workflows/*.yaml' \
+  ':(glob)**/action.yml' ':(glob)**/action.yaml' |
+  xargs -0 zizmor --offline --no-config --no-ignores --ignore-lockfile --strict-collection --
+'''
+
 [tasks.ci]
-description = "Run the CI checks for TypeScript and Rust"
-run = ["pnpm run format:check", "pnpm run lint", "moon run :build :format :typecheck :lint :test"]
+description = "Run the CI checks for GitHub Actions, TypeScript, and Rust"
+run = [
+  { task = "check:actions" },
+  "pnpm run format:check",
+  "pnpm run lint",
+  "moon run :build :format :typecheck :lint :test",
+]
