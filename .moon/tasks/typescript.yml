@@ -12,7 +12,7 @@ tasks:
   format:
     command: 'pnpm run format:check'
   typecheck:
-    command: 'pnpm run check'
+    command: 'pnpm run typecheck'
   lint:
     command: 'pnpm run lint'
   test:

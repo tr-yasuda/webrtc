@@ -33,7 +33,7 @@ Moon は `packages/*/package.json` と `crates/*/Cargo.toml` からプロジェ�
 
 `mise run ci` は両言語のビルド・整形チェック・型検査・静的解析・テストを実行します。GitHub Actions の CI でも同じコマンドを実行します。
 
-TypeScript だけを作業するときは、mise の環境で `pnpm lint`、`pnpm check`、`pnpm format:check`、`pnpm build`、`pnpm test` を使えます。ルートではワークスペース全体、パッケージ内ではそのパッケージが対象です。`pnpm format` はファイルを整形します。ビルドは生成先の `dist/` を作り直します。
+TypeScript だけを作業するときは、mise の環境で `pnpm lint`、`pnpm typecheck`、`pnpm format:check`、`pnpm build`、`pnpm test` を使えます。ルートではワークスペース全体、パッケージ内ではそのパッケージが対象です。`pnpm format` はファイルを整形します。ビルドは生成先の `dist/` を作り直します。
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |

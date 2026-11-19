@@ -9,11 +9,11 @@
   },
   "scripts": {
     "build": "rimraf dist && tsc --project tsconfig.json",
-    "check": "tsc --project tsconfig.json --noEmit",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint --deny correctness --deny suspicious .",
     "test": "pnpm run build && pnpm run test:built",
-    "test:built": "node --test"
+    "test:built": "node --test",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
   }
 }
