@@ -35,6 +35,8 @@ tasks:
   check-models:
     toolchains: 'system'
     command: 'scripts/check-models.sh'
+    deps:
+      - '~:setup-tlc'
     inputs:
       - 'packages/**/*.tla'
       - 'packages/**/*.cfg'

@@ -42,7 +42,7 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 GitHub Actions はツールをセットアップした後、次のコマンドを個別のステップで実行します。ローカルでもリポジトリのルートから実行できます。
 
-モデル検査の前に `moon run :setup-tlc` を実行します。公式の JAR の取得と照合には `curl` と `openssl` を使います。 [TLA+ の CLI 手順](https://github.com/tlaplus/tlaplus/blob/master/USE.md#from-the-command-line)
+モデル検査の前に `moon run :setup-tlc` を実行します。公式の JAR の取得と照合には `curl` と `sha256sum` を使います。 [TLA+ の CLI 手順](https://github.com/tlaplus/tlaplus/blob/master/USE.md#from-the-command-line)
 
 ```sh
 pnpm run format:check

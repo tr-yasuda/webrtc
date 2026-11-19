@@ -164,3 +164,6 @@ vite.config.ts.timestamp-*
 
 # Lake build output and dependencies
 .lake/
+
+# TLA+ model checker output
+states/
