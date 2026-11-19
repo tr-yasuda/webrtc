@@ -25,11 +25,11 @@ mise と、Rust のリンクに使うホスト OS の C ツールチェーンを
 ```sh
 mise trust
 mise install
-mise run setup
-mise run ci
+pnpm install --frozen-lockfile
 ```
 
-ツールのバージョンは mise で固定します。依存関係は pnpm と Cargo で管理し、ロックファイルをリポジトリに含めます。
+ローカルでは [mise.toml](mise.toml) でツールのバージョンを固定します。GitHub Actions は [CI ワークフロー](.github/workflows/ci.yml) の各セットアップステップで導入します。pnpm のバージョンは [package.json](package.json) の `packageManager` に揃え、pnpm と Cargo の依存関係はロックファイルで固定します。
+`mise install` はローカルの Elan も導入します。ローカルと CI では、Elan が Lake パッケージの [lean-toolchain](crates/stun/proofs/lean-toolchain) に指定された Lean を使います。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -40,13 +40,38 @@ Rust はルートの Cargo ワークスペースを一つの Moon プロジェ�
 
 ### 検証
 
-`mise run ci` は両言語のビルド・整形チェック・型検査・静的解析・テストを実行します。GitHub Actions の CI でも同じコマンドを実行します。
+GitHub Actions はツールをセットアップした後、次のコマンドを個別のステップで実行します。ローカルでもリポジトリのルートから実行できます。
+
+モデル検査の前に `moon run :setup-tlc` を実行します。公式の JAR の取得と照合には `curl` と `sha256sum` を使います。 [TLA+ の CLI 手順](https://github.com/tlaplus/tlaplus/blob/master/USE.md#from-the-command-line)
+
+```sh
+pnpm run format:check
+pnpm run lint
+pnpm test
+moon run rust:format
+moon run rust:typecheck
+moon run rust:lint
+moon run rust:build
+moon run rust:test
+moon run :check-proofs
+moon run :check-models
+```
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると `.oxfmtrc.json` が対象とする JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
 
 `pnpm typecheck` と `pnpm build` は、ルートでは全 TypeScript パッケージ、各パッケージ内ではそのパッケージが対象です。tsdown はビルド時に `dist/` を作り直します。
 
-ルートの `pnpm test` は Moon で `packages/` 配下の型検査・ビルド・テストを順に実行します。パッケージ内の `pnpm test` はビルド済みの成果物に対してテストを実行します。パッケージ内で型検査とビルドから実行するには `moon run '~:test'` を使います。
+ルートの `pnpm test` は Moon で `packages/` 配下の型検査・ビルド・Vitest を順に実行します。パッケージ内の `pnpm test` はビルド済みの成果物に対して Vitest を実行します。パッケージ内で型検査とビルドから実行するには `moon run '~:test'` を使います。
+
+Rust と形式検証を個別に実行する場合は、リポジトリのルートで次のコマンドを使います。
+
+| コマンド | 検証内容 |
+| --- | --- |
+| `moon run rust:test` | Cargo ワークスペースのテストを実行する |
+| `moon run :check-proofs` | [STUN の属性長](crates/stun/proofs/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
+| `moon run :check-models` | [Browser SDK の接続通知](packages/browser-sdk/specs/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
+
+コンポーネント固有の TLA+ モデルは担当コードの `specs/`、Lean の証明は `proofs/` に置きます。実行コマンドはルートの [moon.yml](moon.yml) に定義します。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |

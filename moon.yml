@@ -16,3 +16,27 @@ tasks:
       CARGO_BUILD_WARNINGS: 'deny'
   test:
     command: 'cargo test --workspace --locked'
+
+  check-proofs:
+    toolchains: 'system'
+    script: >-
+      elan run --install "$(cat crates/stun/proofs/lean-toolchain)"
+      lake -d crates/stun/proofs build
+    inputs:
+      - 'crates/stun/proofs/**/*.lean'
+      - 'crates/stun/proofs/lean-toolchain'
+      - 'crates/stun/proofs/lakefile.toml'
+      - 'crates/stun/proofs/lake-manifest.json'
+
+  setup-tlc:
+    toolchains: 'system'
+    command: 'scripts/setup-tlc.sh'
+
+  check-models:
+    toolchains: 'system'
+    command: 'scripts/check-models.sh'
+    deps:
+      - '~:setup-tlc'
+    inputs:
+      - 'packages/**/*.tla'
+      - 'packages/**/*.cfg'

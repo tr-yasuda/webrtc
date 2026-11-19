@@ -156,6 +156,14 @@ vite.config.ts.timestamp-*
 .nx/workspace-data
 .nx/migrate-runs
 
-# Moon and Cargo
+# Moon workspace cache
 /.moon/cache/
+
+# Cargo build output
 /target/
+
+# Lake build output and dependencies
+.lake/
+
+# TLA+ model checker output
+states/
