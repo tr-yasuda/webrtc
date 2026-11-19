@@ -16,7 +16,11 @@
 
 ### セットアップ
 
-mise と、Rust のリンクに使うホスト OS の C ツールチェーンを用意してください。Linux では GCC など、macOS では Xcode Command Line Tools を使用できます。クローン後、リポジトリのルートで次を実行します。
+mise と、Rust のリンクに使うホスト OS の C ツールチェーンを用意してください。Linux では GCC など、macOS では Xcode Command Line Tools を使用できます。
+
+`pnpm` や `moon` を直接実行できるよう、使っているシェルで mise を有効にします。Bash で現在のセッションを有効にするには `eval "$(mise activate bash)"` を実行します。他のシェルや起動時の設定は公式手順を参照してください。 [mise のシェル設定](https://mise.jdx.dev/shell-setup.html)
+
+クローン後、リポジトリのルートで次を実行します。
 
 ```sh
 mise trust
