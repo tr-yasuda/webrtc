@@ -15,10 +15,7 @@ import type { ProblemStatus } from "./http-problem.js";
 const healthResponseSchema = z.object({ status: z.literal("ok") });
 const healthResponse = { status: "ok" } as const;
 
-export const app = Fastify({
-  logger: false,
-  exposeHeadRoutes: false,
-}).withTypeProvider<ZodTypeProvider>();
+export const app = Fastify({ logger: false, exposeHeadRoutes: false });
 
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
@@ -27,7 +24,7 @@ await app.register(swagger, {
   openapi: {
     info: {
       title: "Signaling Server",
-      description: "Signaling サーバーの HTTP API。",
+      description: "Signaling サーバーの HTTP API",
       version: "0.1.0",
     },
   },
@@ -36,17 +33,16 @@ await app.register(swagger, {
 
 await app.register(swaggerUi, { routePrefix: "/docs" });
 
-app.get(
-  "/healthz",
-  {
-    schema: {
-      description: "Signaling サーバーが HTTP リクエストを受け付けられることを確認する。",
-      tags: ["health"],
-      response: { 200: healthResponseSchema },
-    },
+app.withTypeProvider<ZodTypeProvider>().route({
+  method: "GET",
+  url: "/healthz",
+  schema: {
+    description: "Signaling サーバーが HTTP リクエストを受け付けられることを確認する。",
+    tags: ["health"],
+    response: { 200: healthResponseSchema },
   },
-  async () => healthResponse,
-);
+  handler: async () => healthResponse,
+});
 
 app.setNotFoundHandler((request, reply) => {
   const path = new URL(request.url, "http://localhost").pathname;

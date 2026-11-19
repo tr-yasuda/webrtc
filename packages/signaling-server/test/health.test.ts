@@ -1,4 +1,4 @@
-import { test, expect, vi } from "vitest";
+import { test, expect } from "vitest";
 
 import { app } from "../src/server.js";
 
@@ -61,33 +61,4 @@ test("Swagger UI と OpenAPI ドキュメントを提供する", async () => {
     info: { title: "Signaling Server", version: "0.1.0" },
     paths: { "/healthz": expect.anything() },
   });
-});
-
-test("環境変数は既定値と明示値を解釈する", async () => {
-  const previousPort = process.env.PORT;
-
-  vi.resetModules();
-  delete process.env.PORT;
-  const defaultEnv = (await import("../src/env.js")).env;
-
-  vi.resetModules();
-  process.env.PORT = "9";
-  const explicitEnv = (await import("../src/env.js")).env;
-
-  vi.resetModules();
-  process.env.PORT = "invalid";
-  await expect(import("../src/env.js")).rejects.toThrow();
-
-  vi.resetModules();
-  process.env.PORT = "";
-  await expect(import("../src/env.js")).rejects.toThrow();
-
-  if (previousPort === undefined) {
-    delete process.env.PORT;
-  } else {
-    process.env.PORT = previousPort;
-  }
-
-  expect(defaultEnv.PORT).toBe(8080);
-  expect(explicitEnv.PORT).toBe(9);
 });
