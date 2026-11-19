@@ -4,3 +4,4 @@ pnpm = "10.34.9"
 rust = { version = "1.100.0", profile = "minimal", components = "clippy,rustfmt" }
 "aqua:moonrepo/moon" = "2.6.5"
 java = "temurin-21.0.13+9.0.LTS"
+"github:leanprover/elan" = { version = "4.4.0", rename_exe = "elan" }

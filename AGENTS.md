@@ -16,7 +16,7 @@
 
 ### セットアップ
 
-mise と、Rust のリンクに使うホスト OS の C ツールチェーンを用意してください。Linux では GCC など、macOS では Xcode Command Line Tools を使用できます。Lean の検証には Elan を公式手順で導入し、Elan の `bin` ディレクトリを PATH に追加してください。 [Lean のセットアップ](https://lean-lang.org/install/manual/)
+mise と、Rust のリンクに使うホスト OS の C ツールチェーンを用意してください。Linux では GCC など、macOS では Xcode Command Line Tools を使用できます。
 
 `pnpm` や `moon` を直接実行できるよう、使っているシェルで mise を有効にします。Bash で現在のセッションを有効にするには `eval "$(mise activate bash)"` を実行します。他のシェルや起動時の設定は公式手順を参照してください。 [mise のシェル設定](https://mise.jdx.dev/shell-setup.html)
 
@@ -29,7 +29,7 @@ pnpm install --frozen-lockfile
 ```
 
 ローカルでは [mise.toml](mise.toml) でツールのバージョンを固定します。GitHub Actions は [CI ワークフロー](.github/workflows/ci.yml) の各セットアップステップで導入します。pnpm のバージョンは [package.json](package.json) の `packageManager` に揃え、pnpm と Cargo の依存関係はロックファイルで固定します。
-Elan は Lake パッケージの [lean-toolchain](crates/stun/verification/lean/lean-toolchain) に指定した Lean を初回の検証時に取得します。エディターと CI もこのファイルで同じバージョンを選びます。
+`mise install` はローカルの Elan も導入します。ローカルと CI では、Elan が Lake パッケージの [lean-toolchain](crates/stun/verification/lean/lean-toolchain) に指定された Lean を使います。
 
 Moon は `packages/*/package.json` から TypeScript プロジェクトを検出します。Browser SDK と同じ名前のビルド・型検査・テスト用スクリプトを `package.json` に定義します。`tsconfig.json` の `noEmit` を有効にし、型検査は `tsc` で行います。
 
@@ -51,8 +51,8 @@ moon run rust:typecheck
 moon run rust:lint
 moon run rust:build
 moon run rust:test
-moon run stun-lean:verify
-moon run browser-sdk-tla:verify
+moon run :verify-lean
+moon run :verify-tla
 ```
 
 ルートで `pnpm lint` を実行すると JavaScript・TypeScript を静的解析し、`pnpm format:check` を実行すると `.oxfmtrc.json` が対象とする JavaScript・TypeScript・JSON・JSONC・TOML の整形を確認します。修正には `pnpm lint:fix` と `pnpm format` を使います。
@@ -66,11 +66,11 @@ Rust と形式検証を個別に実行する場合は、リポジトリのルー
 | コマンド | 検証内容 |
 | --- | --- |
 | `moon run rust:test` | Cargo ワークスペースのテストを実行する |
-| `moon run stun-lean:verify` | [STUN の属性長](crates/stun/verification/lean/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
-| `moon run browser-sdk-tla:verify` | [Browser SDK の接続通知](packages/browser-sdk/verification/tla/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
+| `moon run :verify-lean` | [STUN の属性長](crates/stun/verification/lean/StunVerification/AttributeLength.lean)がパディングで 4 バイト境界に揃うことを証明する |
+| `moon run :verify-tla` | [Browser SDK の接続通知](packages/browser-sdk/verification/tla/ConnectionNotifications.tla)が現在の接続状態を巻き戻さないことを検査する |
 
-コンポーネント固有の形式検証は、担当するクレートまたはパッケージの `verification/` に置きます。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
-TLC の初回実行では、`curl` と `openssl` を使って公式 JAR を取得・照合します。
+コンポーネント固有の形式検証は、担当するクレートまたはパッケージの `verification/` に置き、実行コマンドはルートの [moon.yml](moon.yml) に定義します。複数のコンポーネントにまたがるモデルは、対象となる共通仕様からたどれる場所に置きます。Lake は証明ライブラリ配下のモジュールを `import` の有無にかかわらず検査し、`sorry` をエラーにします。
+TLC の検証タスクは `openssl` で JAR を照合し、取得が必要な場合は `curl` を使います。
 
 | 検証 | TypeScript | Rust |
 | --- | --- | --- |

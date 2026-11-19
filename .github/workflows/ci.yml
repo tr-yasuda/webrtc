@@ -17,12 +17,15 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.21.0'
+
       - name: Set up pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
@@ -30,16 +33,19 @@ jobs:
           components: clippy,rustfmt
           build-warnings: ''
           cache: false
+
       - name: Set up Moon
         uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4
         with:
           moon-version: '2.6.5'
           cache: false
+
       - name: Set up Java
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '21.0.13+9'
+
       - name: Set up Lean
         uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1.7.1
         with:
@@ -47,25 +53,36 @@ jobs:
           auto-config: false
           use-github-cache: false
           use-mathlib-cache: false
+
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Check workspace formatting
         run: pnpm run format:check
+
       - name: Lint TypeScript and JavaScript
         run: pnpm run lint
+
       - name: Type-check, build, and test TypeScript
         run: pnpm test
+
       - name: Check Rust formatting
         run: moon run rust:format
+
       - name: Type-check Rust
         run: moon run rust:typecheck
+
       - name: Lint Rust
         run: moon run rust:lint
+
       - name: Build Rust
         run: moon run rust:build
+
       - name: Test Rust
         run: moon run rust:test
+
       - name: Check STUN proofs with Lean
-        run: moon run stun-lean:verify
+        run: moon run :verify-lean
+
       - name: Model-check Browser SDK notifications
-        run: moon run browser-sdk-tla:verify
+        run: moon run :verify-tla

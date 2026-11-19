@@ -3,8 +3,6 @@ projects:
     - 'packages/*/package.json'
   sources:
     rust: '.'
-    stun-lean: 'crates/stun/verification/lean'
-    browser-sdk-tla: 'packages/browser-sdk/verification/tla'
 
 vcs:
   defaultBranch: main
