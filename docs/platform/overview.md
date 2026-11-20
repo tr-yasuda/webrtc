@@ -10,8 +10,8 @@
 - 音声・カメラ映像・画面共有は PubSub 形式で転送する。
 - 参加者は購読対象を変更できる。
 - SFU を増設し、プラットフォーム全体の収容人数を増やせる構成にする。
-- STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel のプロトコル処理と SFU の中核は Rust で実装する。
-- アプリケーション制御、Signaling、Client SDK、管理 UI は TypeScript で実装する。
+- STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel のプロトコル処理と SFU の中核は、TypeScript host から呼び出す Rust Worker として実装する。
+- Management、Signaling、Client SDK、管理 UI は TypeScript で実装する。
 - 既存の WebRTC スタックや SFU 製品のラップはしない。
 - 暗号など、安全性のために既存実装を利用する部分は各コンポーネントの仕様で定める。
 - 録画や外部サービスへの配信を含めるかは、提供範囲の節で定める。
@@ -87,22 +87,27 @@ React Native、Python、Go などの SDK は将来の拡張候補とし、今回
 サーバーを C-Plane と D-Plane に分ける。
 論理的な責務を分離し、独立して増設できる構成とする。
 実行プロセスの分離は必須としない。
-Rust の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
+Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。Management と Signaling の TypeScript 公開サーバーには Fastify を使用する。公開サーバーとリクエスト受付は TypeScript host が担い、Rust をサーバー公開プロセスとして使用しない。
 
 | 部分 | 実装言語 | 責務 |
 |---|---|---|
-| C-Plane | TypeScript | ルーム管理、参加・権限の確認、Signaling、発行・購読の制御、接続先 SFU の割り当て、管理 UI への情報提供 |
-| D-Plane | Rust | STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel の通信処理 |
+| Management | TypeScript / Cloud Run | Project・ProjectUser・Application・ApplicationSigningKey・管理 API・監査・管理コマンド状態 |
+| Signaling | TypeScript / Cloud Run | Room・Member・Publication・Subscription・Session、参加 JWT 検証、発行・購読の制御、SFU 割り当て、資源計上の正本 |
+| TURN / SFU host | TypeScript / Compute Engine | D-Plane Worker の起動・資源管理・結果報告。DB には接続しない |
+| D-Plane Worker | Rust | STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel の通信処理 |
 
-Client SDK や管理 UI から操作を要求すると、C-Plane が権限を確認し、必要な処理を D-Plane に指示する。
+Client SDK は Signaling に参加 JWT を提示し、Signaling が権限を確認して必要な処理を D-Plane に指示する。管理 UI と顧客サーバーは Management API を利用し、Signaling 状態を変更する操作は [Management と Signaling の通信](management.md#management-と-signaling-の通信)に従う。
+
+初期構成では、Cloud SQL for PostgreSQL の 1 インスタンス・1 database に `management` schema と `signaling` schema を置き、Prisma でアクセスする。両 schema は別々の DB role を使い、直接参照しない。詳細は [Management サーバー・管理 API](management.md#データの所有権)に従う。
 
 音声・映像・データの送受信では、Browser SDK を利用するブラウザーは C-Plane を経由せずに、割り当てられた SFU と通信する。SFU に直接到達できない場合は TURN を経由する。
 
 ```mermaid
 flowchart LR
-    UI[管理 UI] --> C[C-Plane]
-    SDK[ブラウザー / Browser SDK] -->|参加・発行・購読の制御| C
-    C -->|通信処理の指示| D[D-Plane / SFU]
+    UI[管理 UI] --> M[Management API]
+    M -->|Pub/Sub コマンド| S[Signaling]
+    SDK[ブラウザー / Browser SDK] -->|参加 JWT| S
+    S -->|通信処理の指示| D[D-Plane / SFU]
     SDK <-->|音声・映像・データ| D
     SDK <-->|中継が必要な場合| T[TURN]
     T <--> D
