@@ -91,7 +91,7 @@ Application は複数の有効な ApplicationSigningKey を持てる。参加 JW
 
 ApplicationSigningKey の作成時には、Zoom と同じ有効期限選択肢 `Never / 30 days / 90 days / 180 days / 1 year` を提供する。初期値は `90 days` を推奨する。`Never` は自動失効を行わないだけで、失効できないことを意味しない。どの選択肢でも手動ローテーションと失効は必ず使用できる。有効期限は新しい参加 JWT の拒否にだけ影響し、既存接続の停止には使用しない。
 
-鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。
+鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。秘密値の 32 byte 生成と padding なし base64url 表現は、[資格情報仕様](../auth/credentials.md#参加-jwt-の発行更新失効) に従う。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。
 
 Signaling の鍵キャッシュ TTL は 1〜5 分程度を推奨する。この TTL は失効反映の上限の目安である。キャッシュ無効化コマンドの完了条件や、再取得失敗時の新規参加拒否条件を置き換えない。
 

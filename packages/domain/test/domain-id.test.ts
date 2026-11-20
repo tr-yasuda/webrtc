@@ -1,3 +1,4 @@
+import { ulid } from "ulid";
 import { describe, expect, test } from "vitest";
 import {
   parseAccountId,
@@ -9,9 +10,8 @@ import {
   parseProjectId,
   parseProjectUserId,
   parseRoomId,
-} from "@webrtc/domain";
+} from "../src/index.js";
 
-const validUlid = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const idParsers = [
   { idType: "ProjectId", parseId: parseProjectId },
   { idType: "AccountId", parseId: parseAccountId },
@@ -26,6 +26,7 @@ const idParsers = [
 
 describe("共通ドメイン ID 契約", () => {
   test.each(idParsers)("各ドメイン ID $idType は規定形式だけを受け入れる", ({ parseId }) => {
+    const validUlid = ulid();
     expect(parseId(validUlid)).toStrictEqual({ ok: true, id: validUlid });
     expect(parseId("")).toStrictEqual({ ok: false, error: "invalid-domain-id" });
     expect(parseId(validUlid.slice(0, -1))).toStrictEqual({
@@ -36,9 +37,6 @@ describe("共通ドメイン ID 契約", () => {
       ok: false,
       error: "invalid-domain-id",
     });
-    expect(parseId(validUlid.toLowerCase())).toStrictEqual({
-      ok: false,
-      error: "invalid-domain-id",
-    });
+    expect(parseId(validUlid.toLowerCase())).toStrictEqual({ ok: true, id: validUlid });
   });
 });

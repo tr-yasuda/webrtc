@@ -1,15 +1,7 @@
+use ulid::Ulid;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InvalidDomainId;
-
-const ID_BODY_LENGTH: usize = 26;
-
-fn is_valid_ulid(value: &str) -> bool {
-    value.len() == ID_BODY_LENGTH
-        && value.bytes().all(|byte| {
-            byte.is_ascii_digit()
-                || (byte.is_ascii_uppercase() && !matches!(byte, b'I' | b'L' | b'O' | b'U'))
-        })
-}
 
 macro_rules! domain_id {
     ($name:ident) => {
@@ -18,11 +10,9 @@ macro_rules! domain_id {
 
         impl $name {
             pub fn parse(value: &str) -> Result<Self, InvalidDomainId> {
-                if !is_valid_ulid(value) {
-                    return Err(InvalidDomainId);
-                }
+                let ulid = Ulid::from_string(value).map_err(|_| InvalidDomainId)?;
 
-                Ok(Self(value.to_owned()))
+                Ok(Self(ulid.to_string()))
             }
 
             pub fn as_str(&self) -> &str {

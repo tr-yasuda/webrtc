@@ -7,3 +7,6 @@ license.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+ulid = { version = "3.0.0", default-features = false }

@@ -50,7 +50,7 @@ TypeScript は `@webrtc/domain`、Rust は `webrtc-domain` を使う。両者の
 <26 文字の ULID>
 ```
 
-ULID は 26 文字ちょうどの Crockford Base32 とし、`[0-9A-HJKMNP-TV-Z]` だけを使う。`I`・`L`・`O`・`U` と小文字は不正値として扱う。形式の異なる ID は不正値として扱う。
+ULID は 26 文字ちょうどの Crockford Base32 とし、正規表現は `[0-9A-HJKMNP-TV-Z]` で表す。TypeScript と Rust の両パーサーは、この文字の大文字・小文字を受け入れ、解析後に大文字へ正規化して保持する。`I`・`L`・`O`・`U` は不正値として扱う。形式の異なる ID は不正値として扱う。
 
 ID を生成する実装は ULID を使う。共通型は生成処理を持たず、境界で受け取った ID の形式だけを検証する。TypeScript の branded type と Rust の newtype は、値の形式が同じでも型を混用できないように区別する。
 

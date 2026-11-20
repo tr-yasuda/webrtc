@@ -1,3 +1,5 @@
+import { isValid } from "ulid";
+
 type BrandedDomainId<T extends string> = string & {
   readonly __domainId: T;
 };
@@ -78,13 +80,11 @@ export type DomainIdParseResult<T> =
       readonly error: "invalid-domain-id";
     };
 
-const idBodyLength = 26;
-const ulidPattern = /^[0-9A-HJKMNP-TV-Z]{26}$/;
-
 function parseDomainId<T extends string>(value: string): DomainIdParseResult<T> {
-  const isValid = value.length === idBodyLength && ulidPattern.test(value);
+  if (!isValid(value)) return { ok: false, error: "invalid-domain-id" };
 
-  return isValid ? { ok: true, id: value as T } : { ok: false, error: "invalid-domain-id" };
+  const canonicalUlid = value.toUpperCase();
+  return { ok: true, id: canonicalUlid as T };
 }
 
 export function parseProjectId(value: string): DomainIdParseResult<ProjectId> {

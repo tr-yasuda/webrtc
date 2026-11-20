@@ -1,24 +1,32 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+use ulid::Ulid;
 use webrtc_domain::{
     AccountId, ApplicationId, ApplicationSigningKeyId, InvalidDomainId, ManagementApiCredentialId,
     ParticipantDeviceId, ParticipantId, ProjectId, ProjectUserId, RoomId,
 };
 
 fn assert_id_contract<T>(parse: fn(&str) -> Result<T, InvalidDomainId>, as_str: fn(&T) -> &str) {
-    let valid_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
-    let parsed_id = parse(valid_id);
-    assert_eq!(parsed_id.as_ref().map(as_str), Ok(valid_id));
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time is before Unix epoch");
+    let timestamp_ms = u64::try_from(now.as_millis()).expect("timestamp is too large");
+    let valid_id = Ulid::from_parts(timestamp_ms, u128::from(now.subsec_nanos())).to_string();
+    let parsed_id = parse(&valid_id);
+    assert_eq!(parsed_id.as_ref().map(as_str), Ok(valid_id.as_str()));
 
     let invalid_ids = [
         String::new(),
         valid_id[..valid_id.len() - 1].to_owned(),
         format!("{}U", &valid_id[..valid_id.len() - 1]),
-        valid_id.to_lowercase(),
         format!("bad_{valid_id}"),
     ];
 
     for invalid_id in invalid_ids {
         assert!(parse(&invalid_id).is_err());
     }
+
+    let lowercase_id = parse(&valid_id.to_lowercase()).expect("lowercase ULID is valid");
+    assert_eq!(as_str(&lowercase_id), valid_id);
 }
 
 #[test]
