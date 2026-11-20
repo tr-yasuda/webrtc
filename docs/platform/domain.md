@@ -22,11 +22,13 @@ TypeScript は `@webrtc/domain`、Rust は `webrtc-domain` を使う。両者の
 | `Application` | Project に属し、参加 JWT に署名するための鍵を保有する顧客アプリケーション |
 | `ApplicationSigningKey` | Application が参加 JWT に HS256 署名を行うための鍵 |
 | `ManagementApiCredential` | Management API 専用の顧客サーバー用認証情報 |
-| `Room` | 参加者が音声・映像・データを共有する単位 |
+| `Room` | 参加者が音声・映像・データを共有する単位。`name` は Project 内で一意とする |
 | `Participant` / `Member` | ルームに参加する利用者 |
 | `ParticipantDevice` | Participant がルームに参加するためのブラウザー側主体 |
 | `ConnectionState` | 接続確立・維持・失敗・終了を表す共通の粗い状態 |
 | `ResourceState` | 資源の予約・使用・解放と解放結果不明を表す状態 |
+
+`Project`・`Account`・`ProjectUser`・`Application`・`ApplicationSigningKey`・`ManagementApiCredential`・`Room`・`Participant` / `Member`・`ParticipantDevice` は `name` を持つ。`name` はドメイン上の名前であり、人間用の表示だけを目的としない。`Room.name` は Project 内で一意の作成前識別名とし、参加 JWT の `room` 対象に使う。作成後の正本 ID は `RoomId` とし、Signaling は既存 Room の照合に `ProjectId` と `Room.name` を使う。`Room.name` 以外の `name` は表示・監査・管理のための名前であり、重複を許す。どの `name` も認可・操作対象の正本を ID の代わりに置き換えない。`name` の入力上限・不正値の扱い・表示方法は Management API と管理 UI の仕様で定める。
 
 ## 関連付け
 
