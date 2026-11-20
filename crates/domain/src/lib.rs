@@ -3,26 +3,22 @@ pub struct InvalidDomainId;
 
 const ID_BODY_LENGTH: usize = 26;
 
-fn is_valid_id_body(body: &str) -> bool {
-    body.len() == ID_BODY_LENGTH
-        && body
-            .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+fn is_valid_ulid(value: &str) -> bool {
+    value.len() == ID_BODY_LENGTH
+        && value.bytes().all(|byte| {
+            byte.is_ascii_digit()
+                || (byte.is_ascii_uppercase() && !matches!(byte, b'I' | b'L' | b'O' | b'U'))
+        })
 }
 
 macro_rules! domain_id {
-    ($name:ident, $prefix:expr) => {
+    ($name:ident) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name(String);
 
         impl $name {
             pub fn parse(value: &str) -> Result<Self, InvalidDomainId> {
-                let prefix: &str = $prefix;
-
-                if !value.starts_with(prefix)
-                    || value.len() != prefix.len() + ID_BODY_LENGTH
-                    || !is_valid_id_body(&value[prefix.len()..])
-                {
+                if !is_valid_ulid(value) {
                     return Err(InvalidDomainId);
                 }
 
@@ -36,15 +32,15 @@ macro_rules! domain_id {
     };
 }
 
-domain_id!(ProjectId, "prj_");
-domain_id!(AccountId, "acct_");
-domain_id!(ProjectUserId, "pusr_");
-domain_id!(ApplicationId, "app_");
-domain_id!(ApplicationSigningKeyId, "sig_");
-domain_id!(ManagementApiCredentialId, "cred_");
-domain_id!(RoomId, "room_");
-domain_id!(ParticipantId, "part_");
-domain_id!(ParticipantDeviceId, "pdev_");
+domain_id!(ProjectId);
+domain_id!(AccountId);
+domain_id!(ProjectUserId);
+domain_id!(ApplicationId);
+domain_id!(ApplicationSigningKeyId);
+domain_id!(ManagementApiCredentialId);
+domain_id!(RoomId);
+domain_id!(ParticipantId);
+domain_id!(ParticipantDeviceId);
 
 pub type MemberId = ParticipantId;
 

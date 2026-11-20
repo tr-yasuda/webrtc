@@ -70,48 +70,45 @@ export type DomainIdParseResult<T> =
     };
 
 const idBodyLength = 26;
-const idBodyPattern = /^[0-9a-z]{26}$/;
+const ulidPattern = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 
-function parseDomainId<T extends string>(value: string, prefix: string): DomainIdParseResult<T> {
-  const isValid =
-    value.startsWith(prefix) &&
-    value.length === prefix.length + idBodyLength &&
-    idBodyPattern.test(value.slice(prefix.length));
+function parseDomainId<T extends string>(value: string): DomainIdParseResult<T> {
+  const isValid = value.length === idBodyLength && ulidPattern.test(value);
 
   return isValid ? { ok: true, id: value as T } : { ok: false, error: "invalid-domain-id" };
 }
 
 export function parseProjectId(value: string): DomainIdParseResult<ProjectId> {
-  return parseDomainId(value, "prj_");
+  return parseDomainId(value);
 }
 export function parseAccountId(value: string): DomainIdParseResult<AccountId> {
-  return parseDomainId(value, "acct_");
+  return parseDomainId(value);
 }
 export function parseProjectUserId(value: string): DomainIdParseResult<ProjectUserId> {
-  return parseDomainId(value, "pusr_");
+  return parseDomainId(value);
 }
 export function parseApplicationId(value: string): DomainIdParseResult<ApplicationId> {
-  return parseDomainId(value, "app_");
+  return parseDomainId(value);
 }
 export function parseApplicationSigningKeyId(
   value: string,
 ): DomainIdParseResult<ApplicationSigningKeyId> {
-  return parseDomainId(value, "sig_");
+  return parseDomainId(value);
 }
 export function parseManagementApiCredentialId(
   value: string,
 ): DomainIdParseResult<ManagementApiCredentialId> {
-  return parseDomainId(value, "cred_");
+  return parseDomainId(value);
 }
 export function parseRoomId(value: string): DomainIdParseResult<RoomId> {
-  return parseDomainId(value, "room_");
+  return parseDomainId(value);
 }
 export function parseParticipantId(value: string): DomainIdParseResult<ParticipantId> {
-  return parseDomainId(value, "part_");
+  return parseDomainId(value);
 }
 export function parseMemberId(value: string): DomainIdParseResult<MemberId> {
   return parseParticipantId(value);
 }
 export function parseParticipantDeviceId(value: string): DomainIdParseResult<ParticipantDeviceId> {
-  return parseDomainId(value, "pdev_");
+  return parseDomainId(value);
 }

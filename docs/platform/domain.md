@@ -45,26 +45,14 @@ TypeScript は `@webrtc/domain`、Rust は `webrtc-domain` を使う。両者の
 共通 ID は文字列とし、業務名や設定値から推測できる値を使わない不透明な識別子とする。各 ID は次の形式だけを受け入れる。
 
 ```text
-<接頭辞><26 文字の小文字英数字>
+<26 文字の ULID>
 ```
 
-接頭辞の後ろには `[0-9a-z]` だけを使い、長さは 26 文字ちょうどとする。形式の異なる ID は不正値として扱う。
+ULID は 26 文字ちょうどの Crockford Base32 とし、`[0-9A-HJKMNP-TV-Z]` だけを使う。`I`・`L`・`O`・`U` と小文字は不正値として扱う。形式の異なる ID は不正値として扱う。
 
-| ID | 接頭辞 |
-|---|---|
-| `ProjectId` | `prj_` |
-| `AccountId` | `acct_` |
-| `ProjectUserId` | `pusr_` |
-| `ApplicationId` | `app_` |
-| `ApplicationSigningKeyId` | `sig_` |
-| `ManagementApiCredentialId` | `cred_` |
-| `RoomId` | `room_` |
-| `ParticipantId` / `MemberId` | `part_` |
-| `ParticipantDeviceId` | `pdev_` |
+ID を生成する実装は ULID を使う。共通型は生成処理を持たず、境界で受け取った ID の形式だけを検証する。TypeScript の branded type と Rust の newtype は、値の形式が同じでも型を混用できないように区別する。
 
-ID を生成する実装は、この表の接頭辞と 26 文字の英数字本文を持つ値を作る。共通型は生成処理を持たず、境界で受け取った ID の形式だけを検証する。
-
-TypeScript では `parseProjectId` などの `parse<型名>` 関数、Rust では各 ID 型の `parse` メソッドを使う。空文字・接頭辞不一致・長さ不足・長さ超過・英小文字と数字以外を含む値は、例外を投げずに失敗結果として返す。
+TypeScript では `parseProjectId` などの `parse<型名>` 関数、Rust では各 ID 型の `parse` メソッドを使う。空文字・長さ不足・長さ超過・Crockford Base32 以外の文字を含む値は、例外を投げずに失敗結果として返す。
 
 ## 状態型
 
