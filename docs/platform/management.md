@@ -21,8 +21,11 @@
 | ExternalUser | 顧客アプリケーションが参加 JWT の `sub` で指定する通話利用者の識別子。PaaS の Account とは別物 |
 | Application | Project に属し、顧客アプリサーバーが参加 JWT に署名するための鍵を保有する顧客アプリケーション |
 | ApplicationSigningKey | Application が参加 JWT に HS256 署名を行うための鍵。複数保有・ローテーション・失効を管理する |
+| ManagementApiCredential | Management API 専用の顧客サーバー用認証情報 |
 | Management API | Management UI と顧客サーバーが利用する公開管理 API |
-| Signaling 状態 | Room・Member・Publication・Subscription・Session・SFU 割り当て・失効・資源計上の正本 |
+| Signaling 状態 | Room・Participant（Member）・Publication・Subscription・Session・SFU 割り当て・失効・資源計上の正本 |
+
+Project・Account・ProjectUser・Application・ApplicationSigningKey・ManagementApiCredential・Room・Participant・ParticipantDevice に対応する共通型と ID 形式は、[共通ドメイン型と ID 契約](domain.md)に従う。`Member` は `Participant` の別名として使う。
 
 ## ProjectUser の権限ロール
 

@@ -8,7 +8,7 @@
 
 | 担当範囲 | 仕様 |
 |---|---|
-| 共通仕様 | [目的・提供範囲・全体構成](platform/overview.md)<br>[Management サーバー・管理 API](platform/management.md)<br>[ルームと参加端末のライフサイクル](platform/rooms.md)<br>[共通の資源管理](platform/resources.md)<br>[共通のセキュリティ条件](platform/security.md)<br>[実装・検証方針と性能評価](platform/verification.md) |
+| 共通仕様 | [目的・提供範囲・全体構成](platform/overview.md)<br>[Management サーバー・管理 API](platform/management.md)<br>[ルームと参加端末のライフサイクル](platform/rooms.md)<br>[共通ドメイン型と ID 契約](platform/domain.md)<br>[共通の資源管理](platform/resources.md)<br>[共通のセキュリティ条件](platform/security.md)<br>[実装・検証方針と性能評価](platform/verification.md) |
 | 依存関係・CI・配備 | [サプライチェーン対策](platform/supply-chain.md) |
 | 認証・認可・資格情報 | [外部認証との連携・認可・権限の失効](auth/authorization.md)<br>[資格情報の発行・検証・更新・失効](auth/credentials.md)<br>[内部サービスの認証と権限の伝達](auth/service-auth.md) |
 | STUN | [共用する STUN メッセージ処理](stun/messages.md)<br>[STUN Binding サービス](stun/binding.md) |
