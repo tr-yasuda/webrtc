@@ -14,7 +14,7 @@
 - Management、Signaling、Client SDK、管理 UI は TypeScript で実装する。
 - 既存の WebRTC スタックや SFU 製品のラップはしない。
 - 暗号など、安全性のために既存実装を利用する部分は各コンポーネントの仕様で定める。
-- 録画や外部サービスへの配信を含めるかは、提供範囲の節で定める。
+- 録画や外部サービスへの配信を含めるかは、[提供範囲](#提供範囲と対応クライアント)の節で定める。
 
 ## 利用場面
 
@@ -84,10 +84,9 @@ React Native、Python、Go などの SDK は将来の拡張候補とし、今回
 
 ## 全体構成
 
-サーバーを C-Plane と D-Plane に分ける。
-論理的な責務を分離し、独立して増設できる構成とする。
-実行プロセスの分離は必須としない。
-Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。Management と Signaling の TypeScript 公開サーバーには Fastify を使用する。公開サーバーとリクエスト受付は TypeScript host が担い、Rust をサーバー公開プロセスとして使用しない。
+サーバーを C-Plane と D-Plane に分ける。論理的な責務を分離し、独立して増設できる構成とする。実行プロセスの分離は必須としない。
+
+公開サーバーとリクエスト受付は TypeScript host が担い、Rust をサーバー公開プロセスとして使用しない。Management と Signaling の TypeScript 公開サーバーには Fastify を使用する。Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
 
 | 部分 | 実装言語 | 責務 |
 |---|---|---|
@@ -97,8 +96,6 @@ Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢�
 | D-Plane Worker | Rust | STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel の通信処理 |
 
 Client SDK は Signaling に参加 JWT を提示し、Signaling が権限を確認して必要な処理を D-Plane に指示する。管理 UI と顧客サーバーは Management API を利用し、Signaling 状態を変更する操作は [Management と Signaling の通信](management.md#management-と-signaling-の通信)に従う。
-
-初期構成では、Cloud SQL for PostgreSQL の 1 インスタンス・1 database に `management` schema と `signaling` schema を置き、Prisma でアクセスする。両 schema は別々の DB role を使い、直接参照しない。詳細は [Management サーバー・管理 API](management.md#データの所有権)に従う。
 
 音声・映像・データの送受信では、Browser SDK を利用するブラウザーは C-Plane を経由せずに、割り当てられた SFU と通信する。SFU に直接到達できない場合は TURN を経由する。
 
@@ -116,3 +113,5 @@ flowchart LR
 通常時は、参加者がいるルームを 1 つの SFU に割り当て、同じルームの参加者はその SFU に接続する。計画的な移行中は、新旧の SFU を併用できる。
 
 1 つの SFU に複数のルームを配置できる。SFU を増設したときは、新しく配置するルームを増設先にも割り当てる。稼働中のルームを移動する場合や、SFU の障害で再配置が必要になった場合は、[SFU のスケール](../sfu/placement.md#sfu-のスケール)に従う。
+
+初期構成では、Cloud SQL for PostgreSQL の 1 インスタンス・1 database に `management` schema と `signaling` schema を置き、Prisma でアクセスする。両 schema は別々の DB role を使い、直接参照しない。詳細は [Management サーバー・管理 API](management.md#データの所有権)に従う。
