@@ -14,9 +14,7 @@ WebRTC、Signaling、E2EE、配送・復旧の中核ロジックは Browser SDK 
 ## 自作範囲・既存実装の利用
 
 Browser SDK と React SDK は TypeScript で実装する。
-Browser SDK は通信と状態管理の中核を担い、React SDK はその機能を React アプリケーションへ提供する。
-
-React SDK は Hooks・Context・コンポーネントを実装し、状態変更の通知購読と、操作・結果の React 向けインターフェースを提供する。
+Browser SDK は通信と状態管理の中核を担う。React SDK は Hooks・Context・コンポーネントを実装し、状態変更の通知購読と、操作・結果の React 向けインターフェースを提供する。
 
 React SDK は Browser SDK が管理する接続・鍵・配送状態を受け取り、表示に必要な形へ変換して提供する。変換後も元の完了条件と失敗理由を維持する。状態遷移や認可・暗号化・再接続の判断は Browser SDK に委ねる。
 
@@ -43,7 +41,9 @@ Node.js や、React Native・Python・Go などへの対応と共通実装は、
 
 ## セキュリティ
 
-React SDK は Browser SDK の検証結果と状態を利用する。認可・鍵状態の管理は Browser SDK が担い、秘密鍵・復号鍵は [E2EE 仕様](../e2ee/key-management.md) の使用・保持・削除条件に従って、暗号処理に必要な Browser SDK 内部で扱う。React SDK が状態を提供する際には、公開 Context、コンポーネントの props、表示用状態、その他の公開状態、アプリケーションの状態管理ライブラリ、開発者向けデバッグ機能に秘密鍵・復号鍵を露出させない。
+React SDK は Browser SDK の検証結果と状態を利用し、認可・鍵状態の管理は Browser SDK が担う。秘密鍵・復号鍵は、[E2EE 仕様](../e2ee/key-management.md) の使用・保持・削除条件に従い、暗号処理に必要な Browser SDK 内部で扱う。
+
+React SDK は状態を提供するとき、公開 Context、コンポーネントの props、表示用状態、その他の公開状態、アプリケーションの状態管理ライブラリ、開発者向けデバッグ機能に秘密鍵・復号鍵を露出させない。
 
 アンマウントや Hooks・Effect の再実行時も、[通知購読の終了と共有資源の所有](#通知購読の終了と共有資源の所有) に従い、ほかの利用元が必要とする接続・トラック・鍵状態を維持する。
 

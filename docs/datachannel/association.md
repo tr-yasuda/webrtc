@@ -7,31 +7,42 @@ SCTP Association と DataChannel の確立・維持・終了を定める。論�
 
 ## 接続
 
-DataChannel は、参加端末と SFU 間の WebRTC Transport 上に確立する。参加端末間の P2P 接続は使用せず、SFU が各接続の SCTP を終端した上で、認可された転送先へ E2EE の本文を復号せずに中継する。
+DataChannel は、参加端末と SFU 間の WebRTC Transport 上に確立する。参加端末間の P2P 接続は使用しない。SFU が各接続の SCTP を終端し、認可された転送先へ E2EE の本文を復号せずに中継する。
 
-SCTP は DTLS 上で使用し、下位の接続・相手認証・Consent Freshness の条件は WebRTC Transport 仕様に従う。
+SCTP は DTLS 上で使用する。下位の接続・相手認証・Consent Freshness の条件は WebRTC Transport 仕様に従う。
 SCTP の利用方法は [RFC 8831](https://www.rfc-editor.org/rfc/rfc8831.html)、SDP による交渉は [RFC 8841](https://www.rfc-editor.org/rfc/rfc8841.html)に従う。
 
-送受信を開始するまでに、次の条件をそれぞれ確認する。
+### 送受信を開始する条件
+
+下位の接続が成立しただけで、アプリケーション送受信を許可しない。送受信を開始するまでに、次の条件をそれぞれ確認する。
 
 1. WebRTC Transport が、必要な経路・認証・暗号・送信同意の条件を満たしている。
 2. 対象接続で SCTP Association が確立し、SCTP の通信が成立している。
 3. 対象の DataChannel が、DCEP の進行段階に応じた送受信条件と必要な設定を満たしている。
 4. アプリケーションの送受信について、現在の通信権限と E2EE の鍵状態を確認している。
 
-下位の接続が成立しただけで、アプリケーション送受信を許可しない。
+### DCEP による DataChannel の確立
 
-RFC 8831 は Out-of-band Negotiation も認めるが、このプラットフォームでは [RFC 8832](https://www.rfc-editor.org/rfc/rfc8832.html)の DCEP で DataChannel を確立する。確立時には DTLS ロールなどの規定に従って SCTP ストリーム番号を割り当て、重複や競合を処理する。送信元と通信権限の判定には、ラベルやプロトコル名以外に、認可された接続と論理チャネルとの対応を使う。
+RFC 8831 は Out-of-band Negotiation も認めるが、このプラットフォームでは [RFC 8832](https://www.rfc-editor.org/rfc/rfc8832.html)の DCEP で DataChannel を確立する。
+
+確立時には、DTLS ロールなどの規定に従って SCTP ストリーム番号を割り当て、重複や競合を処理する。送信元と通信権限は、ラベルやプロトコル名だけでは判断せず、認可された接続と論理チャネルとの対応を確認して判定する。
 
 DCEP の DATA_CHANNEL_OPEN（OPEN）を送った側は、対応する DATA_CHANNEL_ACK（ACK）の受信前でもユーザーデータを送信できる。その DataChannel で ACK またはほかのメッセージを受信するまでは ordered で送信し、受信後に交渉済みの ordered / unordered 設定を適用する。
 
-OPEN を受け取った側は、形式・パラメーター・SCTP ストリーム割り当てを検証する。正当な OPEN なら ACK を送信して対象の DataChannel のデータを扱う。不正な OPEN を受け取った場合や、OPEN による確立を経ずに未使用ストリームへユーザーデータが届いた場合は、RFC 8832 のエラー処理に従って対象の DataChannel を閉じる。
+OPEN を受け取った側は、形式・パラメーター・SCTP ストリーム割り当てを検証する。正当な OPEN なら ACK を送信し、対象の DataChannel のデータを扱う。次の場合は、RFC 8832 のエラー処理に従って対象の DataChannel を閉じる。
 
-ACK の前後を問わず、ユーザーデータの送信・受信・中継には C-Plane の認可と E2EE 仕様の鍵状態確認を適用する。鍵の使用可否・認証・復号を確認するのは参加端末側であり、SFU は E2EE 本文を復号せずに中継する。ACK が示すのは DCEP の進行段階であり、認可・鍵状態や相手アプリケーションへの送達はそれぞれ確認する。
+- 不正な OPEN を受け取った場合
+- OPEN による確立を経ずに、未使用ストリームへユーザーデータが届いた場合
 
-DataChannel を終了するときは、規定の SCTP ストリームリセット手順に従い、終了処理が完了するまで番号を新しい DataChannel へ割り当て直さない。遅延したデータや終了通知は、番号が再利用された後も新しい DataChannel のものとして処理しない。
+ACK が示すのは DCEP の進行段階であり、認可・鍵状態や相手アプリケーションへの送達はそれぞれ確認する。ACK の前後を問わず、ユーザーデータの送信・受信・中継には C-Plane の認可と E2EE 仕様の鍵状態確認を適用する。鍵の使用可否・認証・復号を確認するのは参加端末側であり、SFU は E2EE 本文を復号せずに中継する。
 
-ICE restart と SCTP Association の再確立は別々に判断する。Association を継続できるかは WebRTC Transport と SCTP の状態を確認して決め、再接続・SFU 移行で新たな確立が必要なら新旧の状態を分離する。その上で、論理チャネルの継続、未配送データ、順序、重複を[配送仕様](delivery.md#データ配送)に従って扱う。
+### DataChannel の終了と SCTP Association の再確立
+
+DataChannel を終了するときは、規定の SCTP ストリームリセット手順に従う。終了処理が完了するまで、その番号を新しい DataChannel へ割り当て直さない。遅延したデータや終了通知は、番号が再利用された後も新しい DataChannel のものとして処理しない。
+
+ICE restart と SCTP Association の再確立は別々に判断する。Association を継続できるかは、WebRTC Transport と SCTP の状態を確認して決める。再接続・SFU 移行で新たな確立が必要なら、新旧の状態を分離する。その上で、論理チャネルの継続、未配送データ、順序、重複を[配送仕様](delivery.md#データ配送)に従って扱う。
+
+### 資源の上限と失敗の通知
 
 SCTP Association 数、DataChannel 数、確立・終了待ちの処理、バッファ、タイマーには、設定可能な上限を設ける。
 並行する作成・終了でも共通の資源管理要件を満たす。
@@ -55,6 +66,8 @@ SCTP Association 数、DataChannel 数、確立・終了待ちの処理、バッ
 必要な SCTP 拡張も、自作するプロトコル処理の対象に含める。
 対応する拡張と交渉結果は、接続・配送要件に従って管理する。
 
+### SCTP 拡張
+
 [RFC 8831 §6.1](https://www.rfc-editor.org/rfc/rfc8831.html#section-6.1)で要求される拡張は、次を自作範囲に含める。
 
 | 必須の拡張 | 実装する機能 |
@@ -68,13 +81,24 @@ Message Interleaving（[RFC 8260](https://www.rfc-editor.org/rfc/rfc8260.html)�
 未対応の相手との配送と大きなメッセージによる占有対策を確認する。
 検討結果にかかわらず、ブラウザーとの相互接続に必要な機能を省略しない。
 
-SCTP のチェックサムは CRC32c の生成・検証に対応する。評価対象の Zero Checksum 拡張（[RFC 9653](https://www.rfc-editor.org/rfc/rfc9653.html)）を採用する場合もこの対応を維持し、未対応の相手や拡張の利用条件を満たさない通信には通常の CRC32c を使用する。
+### チェックサムと Zero Checksum
 
-SCTP Association の確立時に、Zero Checksum Acceptable パラメーターによる方向ごとの受け入れ通知と、対象の代替誤り検出方式に基づいて拡張の利用可否を確認する。送信側は相手から対応する通知を受け取り、SCTP over DTLS の保護条件を満たした場合に限り、規定に従ってチェックサム計算を省略できる。INIT・COOKIE ECHO・ASCONF を含むパケット、OOTB パケットへの応答など、RFC 9653 が CRC32c を要求する条件では、交渉結果にかかわらず正しいチェックサムを使用する。
+SCTP のチェックサムは CRC32c の生成・検証に対応する。
 
 通常の CRC32c 検証では、受信したチェックサムが計算値と一致すれば有効とする。計算値がゼロの場合も同じ条件で判定する。一致しなければパケットを破棄する。
 
-Zero Checksum 拡張で計算を省略したゼロ値は、受信側が通知した受け入れ条件と DTLS の検証を満たす場合に限り受け入れる。
+評価対象の Zero Checksum 拡張（[RFC 9653](https://www.rfc-editor.org/rfc/rfc9653.html)）を採用する場合も、CRC32c の生成・検証への対応を維持する。未対応の相手や拡張の利用条件を満たさない通信には、通常の CRC32c を使用する。
+
+SCTP Association の確立時に、次の 2 つに基づいて拡張の利用可否を確認する。
+
+- Zero Checksum Acceptable パラメーターによる方向ごとの受け入れ通知
+- 対象の代替誤り検出方式
+
+送信側は、相手から対応する通知を受け取り、SCTP over DTLS の保護条件を満たした場合に限り、規定に従ってチェックサム計算を省略できる。ただし、INIT・COOKIE ECHO・ASCONF を含むパケット、OOTB パケットへの応答など、RFC 9653 が CRC32c を要求する条件では、交渉結果にかかわらず正しいチェックサムを使用する。
+
+受信側は、Zero Checksum 拡張で計算を省略したゼロ値を、受信側が通知した受け入れ条件と DTLS の検証を満たす場合に限り受け入れる。
+
+### 既存実装の利用と責務の分担
 
 ICE、DTLS、相手認証、Consent Freshness は、WebRTC Transport の共通処理を利用する。
 SCTP / DataChannel に同じ処理や DTLS の暗号状態を重複実装しない。
@@ -100,7 +124,7 @@ SCTP 内部の実装方式も、この段階では固定しない。
 SCTP / DataChannel は、認可された参加端末・WebRTC Transport・論理チャネルに対応付けて利用する。
 DTLS の認証、SCTP Association の確立、DCEP の成功だけで、論理チャネルの作成・送信・受信の権限を取得したとは扱わない。
 
-SCTP パケットを受信したら、DTLS の検証を通過したものだけを処理する。送信元の認証が済んでいる場合も、ポート番号、Verification Tag、チャンク・パラメーターの長さ、パディング、組み合わせ、SCTP ストリーム番号、PPID を確認し、SCTP の形式と状態遷移を検証する。未知のチャンク・パラメーターには各仕様の処理を、チェックサムには前節の CRC32c と Zero Checksum の条件を適用する。
+SCTP パケットを受信したら、DTLS の検証を通過したものだけを処理する。送信元の認証が済んでいる場合も、ポート番号、Verification Tag、チャンク・パラメーターの長さ、パディング、組み合わせ、SCTP ストリーム番号、PPID を確認し、SCTP の形式と状態遷移を検証する。未知のチャンク・パラメーターには各仕様の処理を適用する。チェックサムには、[チェックサムと Zero Checksum](#チェックサムと-zero-checksum) の条件を適用する。
 
 SCTP State Cookie は、DTLS Cookie や利用者認証とは区別する。
 MAC、対象の SCTP Association との対応、有効性を、[RFC 9260 §5](https://www.rfc-editor.org/rfc/rfc9260.html#section-5)に従って検証する。
@@ -152,18 +176,27 @@ SCTP ストリーム番号の再利用だけで、過去の論理チャネルと
 | 資源上限と回収 | 大量の DataChannel、未完了断片、順序待ち、再送、確認応答待ちでも上限を超えない。並行確保・解放、結果不明、遅延通知を共通の資源管理に従って処理する |
 | ログ・通知 | 認証情報、暗号鍵、SCTP State Cookie、本文、パケット全体を出力しない。識別情報の記録にアクセス制御と保持期限を適用する |
 
+Message Interleaving と Zero Checksum の採用可否は未確定とする。両拡張について、採用の評価結果と実装・試験の完了を区別する。
+
+### Message Interleaving と最大メッセージサイズ
+
 Message Interleaving を採用する場合は、能力通知、I-DATA、I-FORWARD-TSN、複数メッセージの再構成・順序・部分信頼性に加え、未対応の相手との相互接続と、大きなメッセージによる占有対策を検証する。
 
 Message Interleaving が利用できない区間では、[RFC 8831 §6.6](https://www.rfc-editor.org/rfc/rfc8831.html#section-6.6)の推奨を踏まえ、SCTP ユーザーメッセージの最大サイズを原則 16 KiB（16,384 bytes）とする。E2EE と配送情報による増加分を含めて判定し、相手の受信上限やプラットフォームの上限がさらに小さい場合はその上限を適用する。
 
-16 KiB を超えるサイズを許可する場合は、対象ブラウザー・接続構成、許可する最大サイズ、負荷条件、公平性と遅延・キュー使用量の合否基準を事前に定める。その条件で、損失・遅延がある場合も含めて、大きなメッセージと並行するほかの論理チャネルの配送や音声・映像への影響、相互接続性を実測する。基準を満たすことを確認し、例外の適用範囲と根拠を記録する。
+16 KiB を超えるサイズを許可する場合は、次の順で進める。
+
+1. 対象ブラウザー・接続構成、許可する最大サイズ、負荷条件、公平性と遅延・キュー使用量の合否基準を事前に定める。
+2. その条件で、損失・遅延がある場合も含めて、大きなメッセージと並行するほかの論理チャネルの配送や音声・映像への影響、相互接続性を実測する。
+3. 基準を満たすことを確認し、例外の適用範囲と根拠を記録する。
+
+### Zero Checksum
 
 Zero Checksum を採用する場合は、方向ごとの受け入れ通知と DTLS の完全性保護が利用条件を満たすことを確認する。
 未交渉のゼロ値を、DTLS 保護だけを理由に受け入れない。
 [RFC 9653 §5.2](https://www.rfc-editor.org/rfc/rfc9653.html#section-5.2)に従い、INIT・COOKIE ECHO を含むパケット、所定の OOTB 応答、ASCONF を利用する場合の当該パケットなど、正しい CRC32c が必要な条件を区別して検証する。
 代替誤り検出方式の利用条件を満たさない場合にも正しい CRC32c を使用し、拡張の交渉成功だけですべての SCTP パケットをゼロ値にしない。
 拡張に未対応の相手との CRC32c による互換性も確認する。
-Message Interleaving と Zero Checksum の採用可否は未確定とし、両拡張について、採用の評価結果と実装・試験の完了を区別する。
 
 ### 共通の検証方法と結果の記録
 
