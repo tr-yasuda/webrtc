@@ -37,6 +37,7 @@ export type ParticipantAuthorizationReason =
   | "credential-target-mismatch"
   | "room-already-exists"
   | "room-create-required"
+  | "room-join-required"
   | "room-not-active"
   | "grant-not-granted"
   | "session-required"
@@ -138,9 +139,13 @@ export function authorizeParticipantAction(
 
   switch (input.operation) {
     case "room.create":
-      return input.room.state === "absent"
-        ? allow(input, target)
-        : deny(input, target, "room-already-exists");
+      if (input.room.state !== "absent") {
+        return deny(input, target, "room-already-exists");
+      }
+      if (input.credential.grants["room.join"] !== true) {
+        return deny(input, target, "room-join-required");
+      }
+      return allow(input, target);
     case "room.join":
       if (input.room.state === "absent") {
         if (input.credential.grants["room.create"] !== true) {
