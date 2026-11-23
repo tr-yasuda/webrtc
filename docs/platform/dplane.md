@@ -46,10 +46,13 @@ Worker は、プロセスの起動・停止と制御接続の状態を別々に�
 | Starting | プロセス起動中 | 不可 | - |
 | Active | Room または予約がある | 可 | - |
 | Idle | Room 0 かつ予約 0 | 可 | 30 秒の idle timeout を開始 |
-| Stopping | idle timeout 到達、または drain 指示 | 不可 | 資源解放後に Exited |
+| Draining | drain 指示 | 不可 | 既存 Room の終了または退役期限後に Stopping |
+| Stopping | idle timeout 到達、または Draining 完了 | 不可 | 資源解放後に Exited |
 | Exited | プロセス終了 | 不可 | - |
 
 - idle timeout 中に新しい Room が割り当てられたら、停止をキャンセルして Active に戻る。
+- drain は新規 Room の割り当てだけを止める。既存 Room の通話・途中参加・再接続は、移行完了または退役期限まで継続する。
+- Draining 中も既存 Room の Transport 作成・再接続は許可する。強制停止とは区別する。
 - Stopping に入った Worker は新しい Room を受け付けない。割り当てが必要なら Node host が別 Worker を起動する。
 - Worker 数は 0 まで縮退できる。Node host と TURN プロセスは残る。
 - Worker の再起動は Node host が需要と容量を見て要求する。supervisor は空の Worker を残さないよう、自動再起動を無効にする。
@@ -60,18 +63,22 @@ Worker は、プロセスの起動・停止と制御接続の状態を別々に�
 |---|---|---|---|
 | Connected | 制御接続が有効 | 継続 | 可 |
 | Orphaned | 制御接続が切断 | 継続 | 不可 |
-| Draining | orphan timeout 到達、または drain 指示 | 停止へ移行 | 不可 |
+| ForcedDraining | orphan timeout 到達 | 停止へ移行 | 不可 |
 | Exited | プロセス終了 | 停止 | 不可 |
 
-Orphaned では、既知の認可期限をローカルで適用する。認可期限が orphan timeout より早く切れる場合は、その時点で対象のメディアを停止する。orphan timeout は暫定 120 秒とし、設定可能にする。期限を超えたら Draining に移り、すべてのメディアを停止して資源を解放する。
+Orphaned では、既知の認可期限をローカルで適用する。認可期限が orphan timeout より早く切れる場合は、その時点で対象のメディアを停止する。orphan timeout は暫定 120 秒とし、設定可能にする。期限を超えたら ForcedDraining に移り、すべてのメディアを停止して資源を解放する。
 
-Node host が Orphaned の間に戻った場合は、接続元の `controllerId` と `controllerEpoch` を検証して Connected に戻す。戻った時点で有効な認可を再確認し、失効しているメディアを停止する。Draining に入った Worker は再開しない。
+Node host が Orphaned の間に戻った場合は、接続元の `controllerId` と `controllerEpoch` を検証して Connected に戻す。戻った時点で有効な認可を再確認し、失効しているメディアを停止する。ForcedDraining に入った Worker は再開しない。
+
+制御接続が orphan timeout に達した場合、プロセスの起動・停止状態は Stopping に移り、ForcedDraining として全メディアを停止する。
 
 ## TURN プロセスのライフサイクル
 
 TURN プロセスは待受ポートを維持するため常駐し、SFU Worker のような idle timeout で停止しない。Allocation はクライアントの Allocate 時に確保し、TURN の TTL で解放する。
 
 Node host の再起動時は TURN プロセスを生存させ、新しい Node host が制御を引き継ぐ。TURN プロセスの再起動では、既存 Allocation は失われる。制御接続が切れた場合の新規確保と既存 Allocation の扱いは、[TURN プロセスの生存期間と制御接続](../turn/allocation.md#プロセスの生存期間と制御接続)に従い、orphan timeout を上限とする。
+
+TURN の資格情報の期限切れは、新規 Allocate、Refresh、新しい Permission・Channel Binding の作成を拒否する条件であり、既存 Allocation の停止条件ではない。
 
 ## Room と Router のライフサイクル
 
@@ -102,7 +109,7 @@ Worker の idle 判定は、Router を閉じた後に行う。Router の閉鎖�
 
 Orphaned 中は、次の規則で既存メディアを扱う。
 
-- 既知の認可期限と失効条件を適用する。
+- 既知の認可期限と失効条件を、各プロトコルの仕様に従って適用する。
 - 新規 Room、Transport、Produce、Consume は受け付けない。
 - orphan timeout を超えたら、認可期限が残っていても停止する。
 - Node host が戻ったら、有効な認可を再確認してから再開する。
@@ -125,19 +132,19 @@ Orphaned 中は、次の規則で既存メディアを扱う。
 
 ## Signaling 再起動時の照合
 
-Signaling は再起動後、永続化された割り当てと Node host のスナップショットを照合する。Worker にある Room を、DB にないことだけで孤児として閉じない。
+Signaling は再起動後、永続化された割り当てと Node host のスナップショットを照合する。Worker にある Room の実行状態を、DB に同じ Room がないことだけで孤児として閉じない。
 
-孤児として閉じるのは、次のすべてを確認できた場合だけとする。
+孤児として閉じるのは、対象の `(Room, processInstanceId, assignmentVersion)` について、次のすべてを確認できた場合だけとする。
 
-- 同じ `commandId` の保留中・結果不明の操作がない。
-- DB に現在の割り当てがない。
-- 現在の Node host がその Room を所有していると主張していない。
-- Node host / Signaling のどちらも、Worker の `processInstanceId` を現在の割り当てとして保持していない。
+- 対象の `commandId` の保留中・結果不明の操作がない。
+- DB に、対象の `(Room, processInstanceId, assignmentVersion)` と一致する現在の割り当てがない。
+- 現在の Node host が、対象の Worker と Router を現在の割り当てとして主張していない。
+- Node host / Signaling が、対象の `(Room, processInstanceId, assignmentVersion)` を現在の割り当てとして保持していない。
 - 確認期間を置いて再照合しても結果が変わらない。
 
-DB の割り当てが Worker より古い場合は、未確定の割り当てとして修復し、孤児にしない。`ownerEpoch` の新旧だけでは閉じない。
+DB に同じ Room のより新しい `assignmentVersion` がある場合は、対象の古い割り当てを孤児として扱える。DB の割り当てが Worker の版より古い場合は、未確定の割り当てとして修復し、孤児にしない。`ownerEpoch` の新旧だけでは閉じない。
 
-照合が確定するまでの Room は Quarantine とし、既存メディアは継続するが、新規参加と Transport 作成を拒否する。割り当てが見つかれば Active に戻し、孤児が確定したら Draining に移す。判定できない場合は Quarantine を維持し、運用者に通知する。
+照合が確定するまでの対象の割り当ては Quarantine とし、その割り当ての既存メディアは継続するが、新規参加と Transport 作成を拒否する。同じ Room の新しい割り当ては通常どおり扱う。対象の割り当てが現在のものとして確認できれば Active に戻し、孤児が確定したら対象の Router を閉じて容量を解放する。判定できない場合は Quarantine を維持し、運用者に通知する。
 
 DB にあるが Worker にない割り当ては失敗として再配置する。再配置には新しい `assignmentVersion` を払い出し、古い Worker が後から接続しても古い版の操作を適用しない。
 
@@ -197,7 +204,7 @@ TURN 固有の制御は、TURN の仕様で定めるコマンドとして同じ�
 |---|---|---|
 | Node host 再起動 | 継続 | 新しい Node host が生存する TURN プロセスと SFU Worker に接続し、スナップショットとイベント境界から制御を引き継ぐ。古い制御接続は無効化する |
 | Worker 再起動 | その Worker の Room は停止 | Node host が影響 Room を C-Plane に通知し、C-Plane が再配置する。参加端末は再接続する。ICE / DTLS の状態は復元しない |
-| Signaling 再起動 | 継続 | 永続化された割り当てと Node host のスナップショットを照合する。孤児は Quarantine で確認してから閉じ、欠けた割り当ては再配置する |
+| Signaling 再起動 | 継続 | 永続化された割り当てと Node host のスナップショットを照合する。孤児の割り当ては Quarantine で確認してから閉じ、欠けた割り当ては再配置する |
 | Node host が戻らない | orphan timeout まで継続 | TURN プロセスと Worker は Orphaned となり、新規受付を止める。期限後に既存メディアを停止し、資源を解放する |
 | TURN プロセス再起動 | 既存 Allocation は停止 | クライアントは新しい Allocation を作成する。TURN は永続状態を持たない |
 
@@ -207,15 +214,16 @@ TURN 固有の制御は、TURN の仕様で定めるコマンドとして同じ�
 |---|---|
 | Node host 再起動 | TURN プロセスと Worker が生存し、メディアが継続する。新しい Node host が状態を引き継ぎ、古い制御接続のコマンドを実行しない |
 | TURN の常駐と Allocation | Node host 再起動後も TURN リスナーと既存 Allocation が継続する。Allocation は Allocate 時に確保し、全中継ポートを事前に bind しない |
-| TURN の Orphaned | 制御接続が切れたら新規 Allocate を拒否し、既存 Allocation は資格情報と Allocation の期限まで継続する。orphan timeout で停止する |
+| TURN の Orphaned | 制御接続が切れたら新規 Allocate を拒否し、既存 Allocation は Allocation・Permission・Channel Binding の期限まで継続する。資格情報の期限切れだけでは停止せず、orphan timeout で停止する |
 | 同一 epoch の再接続 | 同じ `controllerId` の再接続を受け付け、古い `controlSessionId` のコマンドを拒否する |
 | epoch の永続性 | VM 再起動後も `controllerEpoch` が単調増加する。永続状態を失った場合は既存の D-Plane プロセスを制御しない |
 | Worker idle と縮退 | Room 0 かつ予約 0 で 30 秒後に停止し、新規 Room で停止をキャンセルする。Worker 数を 0 にできる |
+| drain と強制停止 | drain 中は新規 Room の割り当てだけを止め、既存 Room の通話・途中参加・再接続は退役期限まで継続する。orphan timeout の強制停止と混同しない |
 | Room の閉鎖 | 明示退出は処理完了後に閉じ、異常切断は 30 秒の猶予後に閉じる。再接続で閉鎖をキャンセルする |
 | 容量予約 | 空き枠 1 に対する同時 Room 作成で、確保が 1 件だけになる。予約中の Worker を idle で停止しない |
 | Worker 再起動 | 影響 Room が再配置され、クライアントが再接続する。古い Worker の状態を復元済みとして扱わない |
-| Signaling 再起動 | DB にない Room を即座に閉じず、`assignmentVersion`、`commandId`、所有状態の照合後に孤児を確定する |
-| Orphaned の認可 | 既知の認可期限が orphan timeout より早い場合はその時点で停止し、期限到達で全メディアを停止する |
+| Signaling 再起動 | DB にない割り当てを即座に閉じず、`(Room, processInstanceId, assignmentVersion)`、`commandId`、所有状態の照合後に孤児を確定する。同じ Room の新しい割り当てを妨げない |
+| Orphaned の認可 | 各プロトコルの仕様で停止条件となる認可期限が orphan timeout より早い場合はその時点で停止し、期限到達で全メディアを停止する |
 | 統計の欠測 | バッファ溢れで集約を黙って破棄せず、圧縮または欠測期間を記録する。Signaling は欠測を 0 として扱わない |
 | IPC の境界 | メディアパケットと DataChannel 本文が IPC に流れない。UDS が公開ネットワークに露出しない |
 | プロセスの独立 | Node host の終了で TURN プロセスと Worker が道連れにならず、停止後のプロセスが残らない |

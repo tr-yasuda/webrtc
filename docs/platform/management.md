@@ -135,7 +135,7 @@ TURN・SFU は DB に接続しないため、1 分ごとに集約した資源計
 
 計上イベントを送れない場合は、欠測期間と理由を明示し、欠測を 0 として扱わない。厳密な利用量計上が必要な場合は、永続バッファの導入を別途検討する。
 
-Signaling は Room の SFU 割り当てに `assignmentVersion` と `ownerEpoch` を記録し、再起動時の照合に使う。照合が確定するまで対象 Room を Quarantine とし、既存メディアを継続しながら新規参加と Transport 作成を拒否する。孤児の確定条件と再配置は [D-Plane のプロセスモデルと IPC 境界](dplane.md#signaling-再起動時の照合)に従う。
+Signaling は Room の SFU 割り当てに `assignmentVersion` と `ownerEpoch` を記録し、再起動時の照合に使う。照合が確定するまで対象の割り当てを Quarantine とし、その割り当ての既存メディアを継続しながら新規参加と Transport 作成を拒否する。同じ Room の新しい割り当ては通常どおり扱う。孤児の確定条件と再配置は [D-Plane のプロセスモデルと IPC 境界](dplane.md#signaling-再起動時の照合)に従う。
 
 ## 障害時の挙動
 

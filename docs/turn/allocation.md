@@ -25,7 +25,7 @@ DTLS の条件は [共通 DTLS 仕様](../dtls/association.md)に従う。
 
 TURN プロセスは待受ポートを維持するが、中継用のポートは Allocate 時に確保する。設定した中継ポート範囲の全ポートを起動時に bind しない。TURN プロセスの生存期間は Node host から独立させ、Node host の再起動で既存 Allocation を失わない構成にする。
 
-Node host との制御接続が切れた場合、TURN プロセスは新規 Allocate と新しい Permission・Channel Binding の作成を拒否する。既存 Allocation は資格情報と Allocation の期限まで継続し、Refresh は資格情報の期限と [D-Plane のプロセスモデルと IPC 境界](../platform/dplane.md#認可と-orphaned)で定める orphan timeout の早い方まで許可する。orphan timeout を超えたら停止する。
+Node host との制御接続が切れた場合、TURN プロセスは新規 Allocate と新しい Permission・Channel Binding の作成を拒否する。既存 Allocation は Allocation・Permission・Channel Binding の期限まで継続し、資格情報の期限切れだけでは停止しない。Refresh は、資格情報の期限・Allocation の最大寿命・[D-Plane のプロセスモデルと IPC 境界](../platform/dplane.md#認可と-orphaned)で定める orphan timeout のうち最も早い時点まで許可する。orphan timeout を超えたら停止する。
 
 ## 利用認証
 
