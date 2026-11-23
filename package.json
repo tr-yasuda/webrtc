@@ -8,7 +8,7 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "test": "moon run :test --query \"projectSource~packages/*\"",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm --dir packages/domain build && pnpm -r run typecheck"
   },
   "devDependencies": {
     "oxfmt": "0.79.0",
