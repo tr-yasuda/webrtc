@@ -1,18 +1,38 @@
-import type { ProjectId } from "@webrtc/domain";
+import type { ParticipantId, ProjectId, RoomId } from "@webrtc/domain";
 import type { AuthorizationDecision } from "./decision.js";
-import type { ManagementOperation } from "./management-operation.js";
+import { isManagementOperation, type ManagementOperation } from "./management-operation.js";
 import type { ProjectState } from "./project-state.js";
 
-export type ManagementCredentialScope =
-  | "room.manage"
-  | "session.manage"
-  | "usage.read"
-  | "audit.read";
+const managementCredentialScopeValues = [
+  "room.manage",
+  "session.manage",
+  "usage.read",
+  "audit.read",
+] as const;
 
-export type ManagementCredentialAuthorizationTarget = {
-  readonly projectId: ProjectId;
-  readonly resourceId?: string;
-};
+export type ManagementCredentialScope = (typeof managementCredentialScopeValues)[number];
+
+const managementCredentialScopeSet: ReadonlySet<ManagementCredentialScope> = new Set(
+  managementCredentialScopeValues,
+);
+
+export type ManagementCredentialAuthorizationTarget =
+  | {
+      readonly projectId: ProjectId;
+      readonly resourceId?: string;
+    }
+  | {
+      readonly projectId: ProjectId;
+      readonly roomId: RoomId;
+    }
+  | {
+      readonly projectId: ProjectId;
+      readonly sessionId: string;
+    }
+  | {
+      readonly projectId: ProjectId;
+      readonly participantId: ParticipantId;
+    };
 
 export type ManagementCredentialAuthorizationReason =
   | "allowed"
@@ -21,8 +41,11 @@ export type ManagementCredentialAuthorizationReason =
   | "credential-expired"
   | "credential-target-mismatch"
   | "project-not-active"
+  | "credential-input-invalid"
+  | "target-id-required"
   | "credential-operation-not-allowed"
-  | "credential-scope-missing";
+  | "credential-scope-missing"
+  | "unsupported-operation";
 
 export type ManagementCredentialAuthorizationDecision = AuthorizationDecision<
   ManagementOperation,
@@ -62,7 +85,7 @@ const operationScopes: Partial<Record<ManagementOperation, readonly ManagementCr
 export function authorizeManagementCredentialAction(
   input: ManagementCredentialAuthorizationInput,
 ): ManagementCredentialAuthorizationDecision {
-  if (input.credential.revoked) {
+  if (input.credential.revoked !== false) {
     return deny(input, "credential-revoked");
   }
   if (!Number.isFinite(input.credential.expiresAt) || !Number.isFinite(input.now)) {
@@ -80,6 +103,18 @@ export function authorizeManagementCredentialAction(
   if (input.project.state !== "active") {
     return deny(input, "project-not-active");
   }
+  if (
+    !Array.isArray(input.credential.scopes) ||
+    !input.credential.scopes.every(isManagementCredentialScope)
+  ) {
+    return deny(input, "credential-input-invalid");
+  }
+  if (!isManagementOperation(input.operation)) {
+    return deny(input, "unsupported-operation");
+  }
+  if (!hasRequiredTargetId(input)) {
+    return deny(input, "target-id-required");
+  }
 
   const requiredScopes = operationScopes[input.operation];
   if (requiredScopes === undefined) {
@@ -90,6 +125,27 @@ export function authorizeManagementCredentialAction(
   }
 
   return allow(input);
+}
+
+function hasRequiredTargetId(input: ManagementCredentialAuthorizationInput): boolean {
+  switch (input.operation) {
+    case "room.update":
+    case "room.delete":
+      return "roomId" in input.target;
+    case "session.disconnect":
+      return "sessionId" in input.target;
+    case "participant.disconnect":
+      return "participantId" in input.target;
+    default:
+      return true;
+  }
+}
+
+function isManagementCredentialScope(value: unknown): value is ManagementCredentialScope {
+  return (
+    typeof value === "string" &&
+    managementCredentialScopeSet.has(value as ManagementCredentialScope)
+  );
 }
 
 function allow(

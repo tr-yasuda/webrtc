@@ -1,6 +1,11 @@
-import type { ProjectId } from "@webrtc/domain";
+import type { AccountId, ProjectId, ProjectUserId } from "@webrtc/domain";
 import type { AuthorizationDecision } from "./decision.js";
-import type { ManagementOperation, ProjectUserRole } from "./management-operation.js";
+import {
+  isManagementOperation,
+  isProjectUserRole,
+  type ManagementOperation,
+  type ProjectUserRole,
+} from "./management-operation.js";
 import type { ProjectState } from "./project-state.js";
 
 const roleOperations: Record<ProjectUserRole, ReadonlySet<ManagementOperation>> = {
@@ -66,12 +71,25 @@ const roleOperations: Record<ProjectUserRole, ReadonlySet<ManagementOperation>> 
   ]),
 };
 
-export type ProjectUserAuthorizationTarget = {
-  readonly projectId: ProjectId;
-  readonly resourceId?: string;
-  readonly currentRole?: ProjectUserRole;
-  readonly nextRole?: ProjectUserRole;
-};
+export type ProjectUserAuthorizationTarget =
+  | {
+      readonly projectId: ProjectId;
+      readonly accountId: AccountId;
+      readonly currentRole?: ProjectUserRole;
+      readonly nextRole?: ProjectUserRole;
+    }
+  | {
+      readonly projectId: ProjectId;
+      readonly projectUserId: ProjectUserId;
+      readonly currentRole?: ProjectUserRole;
+      readonly nextRole?: ProjectUserRole;
+    }
+  | {
+      readonly projectId: ProjectId;
+      readonly resourceId?: string;
+      readonly currentRole?: ProjectUserRole;
+      readonly nextRole?: ProjectUserRole;
+    };
 
 export type ProjectUserAuthorizationReason =
   | "allowed"
@@ -79,10 +97,13 @@ export type ProjectUserAuthorizationReason =
   | "actor-project-mismatch"
   | "target-project-mismatch"
   | "project-user-role-missing"
+  | "project-user-role-invalid"
+  | "project-user-target-id-required"
   | "insufficient-role"
   | "owner-management-forbidden"
   | "project-user-current-role-required"
-  | "project-user-next-role-required";
+  | "project-user-next-role-required"
+  | "unsupported-operation";
 
 export type ProjectUserAuthorizationDecision = AuthorizationDecision<
   ManagementOperation,
@@ -115,13 +136,31 @@ export function authorizeProjectUserAction(
   if (input.target.projectId !== input.project.id) {
     return deny(input, "target-project-mismatch");
   }
+  if (!isManagementOperation(input.operation)) {
+    return deny(input, "unsupported-operation");
+  }
   if (input.actor.role === null) {
     return deny(input, "project-user-role-missing");
   }
-  const allowedOperations = roleOperations[input.actor.role];
-  if (allowedOperations === undefined) {
-    return deny(input, "project-user-role-missing");
+  if (!isProjectUserRole(input.actor.role)) {
+    return deny(input, "project-user-role-invalid");
   }
+  if (
+    (input.target.currentRole !== undefined && !isProjectUserRole(input.target.currentRole)) ||
+    (input.target.nextRole !== undefined && !isProjectUserRole(input.target.nextRole))
+  ) {
+    return deny(input, "project-user-role-invalid");
+  }
+  if (input.operation === "projectUser.add" && !("accountId" in input.target)) {
+    return deny(input, "project-user-target-id-required");
+  }
+  if (
+    (input.operation === "projectUser.remove" || input.operation === "projectUser.changeRole") &&
+    !("projectUserId" in input.target)
+  ) {
+    return deny(input, "project-user-target-id-required");
+  }
+  const allowedOperations = roleOperations[input.actor.role];
   if (!allowedOperations.has(input.operation)) {
     return deny(input, "insufficient-role");
   }

@@ -4,12 +4,15 @@ import type { ProjectState } from "./project-state.js";
 
 export type { ProjectState } from "./project-state.js";
 
-export type ParticipantOperation =
-  | "room.create"
-  | "room.join"
-  | "media.publish"
-  | "media.subscribe"
-  | "data.send";
+const participantOperationValues = [
+  "room.create",
+  "room.join",
+  "media.publish",
+  "media.subscribe",
+  "data.send",
+] as const;
+
+export type ParticipantOperation = (typeof participantOperationValues)[number];
 
 export type ParticipantGrants = Readonly<Record<ParticipantOperation, boolean>>;
 
@@ -27,6 +30,9 @@ export type ParticipantAuthorizationTarget = {
 
 export type ParticipantAuthorizationReason =
   | "allowed"
+  | "unsupported-operation"
+  | "subject-required"
+  | "subject-mismatch"
   | "project-not-active"
   | "credential-target-mismatch"
   | "room-already-exists"
@@ -40,6 +46,18 @@ export type ParticipantAuthorizationReason =
   | "participant-not-active"
   | "participant-target-mismatch";
 
+const participantOperationSet: ReadonlySet<ParticipantOperation> = new Set(
+  participantOperationValues,
+);
+
+function isParticipantOperation(value: unknown): value is ParticipantOperation {
+  return typeof value === "string" && participantOperationSet.has(value as ParticipantOperation);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
 export type ParticipantAuthorizationDecision = AuthorizationDecision<
   ParticipantOperation,
   ParticipantAuthorizationTarget,
@@ -51,6 +69,7 @@ export type ParticipantAuthorizationInput = {
   readonly credential: {
     readonly projectId: ProjectId;
     readonly roomName: string;
+    readonly subject: string;
     readonly grants: ParticipantGrants;
   };
   readonly project: {
@@ -79,6 +98,7 @@ export type ParticipantAuthorizationInput = {
   readonly participant?: {
     readonly id: ParticipantId;
     readonly roomId: RoomId;
+    readonly externalUserId: string;
     readonly state: ParticipantState;
   };
 };
@@ -88,6 +108,9 @@ export function authorizeParticipantAction(
 ): ParticipantAuthorizationDecision {
   const target = buildTarget(input);
 
+  if (!isParticipantOperation(input.operation)) {
+    return deny(input, target, "unsupported-operation");
+  }
   if (input.project.state !== "active") {
     return deny(input, target, "project-not-active");
   }
@@ -97,6 +120,17 @@ export function authorizeParticipantAction(
     input.room.projectId !== input.project.id
   ) {
     return deny(input, target, "credential-target-mismatch");
+  }
+  if (!isNonEmptyString(input.credential.subject)) {
+    return deny(input, target, "subject-required");
+  }
+  if (input.participant !== undefined) {
+    if (!isNonEmptyString(input.participant.externalUserId)) {
+      return deny(input, target, "subject-required");
+    }
+    if (input.participant.externalUserId !== input.credential.subject) {
+      return deny(input, target, "subject-mismatch");
+    }
   }
   if (input.credential.grants[input.operation] !== true) {
     return deny(input, target, "grant-not-granted");
@@ -109,13 +143,44 @@ export function authorizeParticipantAction(
         : deny(input, target, "room-already-exists");
     case "room.join":
       if (input.room.state === "absent") {
-        return input.credential.grants["room.create"] === true
-          ? allow(input, target)
-          : deny(input, target, "room-create-required");
+        if (input.credential.grants["room.create"] !== true) {
+          return deny(input, target, "room-create-required");
+        }
+        if (input.session !== undefined) {
+          return deny(input, target, "session-target-mismatch");
+        }
+        if (input.participant !== undefined) {
+          return deny(input, target, "participant-target-mismatch");
+        }
+        return allow(input, target);
       }
-      return input.room.state === "active"
-        ? allow(input, target)
-        : deny(input, target, "room-not-active");
+      if (input.room.state !== "active") {
+        return deny(input, target, "room-not-active");
+      }
+      if (input.session !== undefined && input.participant === undefined) {
+        return deny(input, target, "participant-required");
+      }
+      if (input.session !== undefined) {
+        if (input.session.state !== "active") {
+          return deny(input, target, "session-not-active");
+        }
+        if (
+          input.session.projectId !== input.project.id ||
+          input.session.roomId !== input.room.id ||
+          (input.participant !== undefined && input.session.participantId !== input.participant.id)
+        ) {
+          return deny(input, target, "session-target-mismatch");
+        }
+      }
+      if (input.participant !== undefined) {
+        if (input.participant.state !== "active") {
+          return deny(input, target, "participant-not-active");
+        }
+        if (input.participant.roomId !== input.room.id) {
+          return deny(input, target, "participant-target-mismatch");
+        }
+      }
+      return allow(input, target);
     case "media.publish":
     case "media.subscribe":
     case "data.send":

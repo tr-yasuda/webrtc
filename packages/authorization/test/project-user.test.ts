@@ -1,4 +1,4 @@
-import type { ProjectId } from "@webrtc/domain";
+import type { AccountId, ProjectId, ProjectUserId } from "@webrtc/domain";
 import { describe, expect, test } from "vitest";
 import type { ManagementOperation, ProjectUserRole } from "../src/management-operation.js";
 import {
@@ -8,11 +8,26 @@ import {
 } from "../src/project-user.js";
 
 const projectId = "01ARZ3NDEKTSV4RRFFQ69G5FAV" as ProjectId;
-const target: ProjectUserAuthorizationTarget = {
-  projectId,
-  currentRole: "auditor",
-  nextRole: "auditor",
-};
+const accountId = "01ARZ3NDEKTSV4RRFFQ69G5FAW" as AccountId;
+const projectUserId = "01ARZ3NDEKTSV4RRFFQ69G5FAX" as ProjectUserId;
+
+function targetFor(operation: ManagementOperation): ProjectUserAuthorizationTarget {
+  switch (operation) {
+    case "projectUser.add":
+      return { projectId, accountId, nextRole: "auditor" };
+    case "projectUser.remove":
+      return { projectId, projectUserId, currentRole: "auditor" };
+    case "projectUser.changeRole":
+      return {
+        projectId,
+        projectUserId,
+        currentRole: "auditor",
+        nextRole: "auditor",
+      };
+    default:
+      return { projectId, resourceId: "resource-a" };
+  }
+}
 
 const expectedAllowedOperations: Record<ProjectUserRole, readonly ManagementOperation[]> = {
   owner: [
@@ -95,7 +110,7 @@ describe("ProjectUser ロールの認可", () => {
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: true,
       operation: "project.delete",
       reason: "allowed",
@@ -119,7 +134,7 @@ describe("ProjectUser ロールの認可", () => {
             state: "active",
           },
           operation,
-          target,
+          target: targetFor(operation),
         });
 
         expect(decision.allowed, `${role} / ${operation}`).toBe(
@@ -136,6 +151,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.add",
       target: {
         projectId,
+        accountId,
         nextRole: "owner",
       },
       allowed: false,
@@ -146,6 +162,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.changeRole",
       target: {
         projectId,
+        projectUserId,
         currentRole: "owner",
         nextRole: "admin",
       },
@@ -157,6 +174,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.remove",
       target: {
         projectId,
+        projectUserId,
         currentRole: "owner",
       },
       allowed: false,
@@ -167,6 +185,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.changeRole",
       target: {
         projectId,
+        projectUserId,
         currentRole: "auditor",
         nextRole: "admin",
       },
@@ -178,6 +197,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.add",
       target: {
         projectId,
+        accountId,
         nextRole: "owner",
       },
       allowed: true,
@@ -202,10 +222,11 @@ describe("ProjectUser ロールの認可", () => {
       target: requestedTarget,
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed,
       operation,
-      ...(allowed ? { reason: "allowed" } : { reason: "owner-management-forbidden" }),
+      target: requestedTarget,
+      reason: allowed ? "allowed" : "owner-management-forbidden",
     });
   });
 
@@ -215,6 +236,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.add",
       target: {
         projectId,
+        accountId,
       },
       reason: "project-user-next-role-required",
     },
@@ -223,6 +245,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.changeRole",
       target: {
         projectId,
+        projectUserId,
         currentRole: "auditor",
       },
       reason: "project-user-next-role-required",
@@ -232,6 +255,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.changeRole",
       target: {
         projectId,
+        projectUserId,
         nextRole: "admin",
       },
       reason: "project-user-current-role-required",
@@ -241,6 +265,7 @@ describe("ProjectUser ロールの認可", () => {
       operation: "projectUser.remove",
       target: {
         projectId,
+        projectUserId,
       },
       reason: "project-user-current-role-required",
     },
@@ -263,9 +288,10 @@ describe("ProjectUser ロールの認可", () => {
       target: requestedTarget,
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
       operation,
+      target: requestedTarget,
       reason,
     });
   });
@@ -365,32 +391,225 @@ describe("ProjectUser ロールの認可", () => {
   ])("$name 場合は拒否する", ({ input, reason }) => {
     const decision = authorizeProjectUserAction(input);
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
       operation: input.operation,
+      target: input.target,
       reason,
     });
   });
 
-  test("定義外の ProjectUser ロールは拒否する", () => {
+  test.each(["superuser", "__proto__", "constructor"] as ProjectUserRole[])(
+    "定義外の ProjectUser ロール %s は拒否する",
+    (role) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role,
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation: "project.read",
+        target: {
+          projectId,
+        },
+      });
+
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation: "project.read",
+        target: { projectId },
+        reason: "project-user-role-invalid",
+      });
+    },
+  );
+
+  test.each([
+    {
+      name: "付与後ロールが定義外である",
+      operation: "projectUser.add",
+      target: {
+        projectId,
+        accountId,
+        nextRole: "Owner" as ProjectUserRole,
+      },
+    },
+    {
+      name: "現在ロールが定義外である",
+      operation: "projectUser.changeRole",
+      target: {
+        projectId,
+        projectUserId,
+        currentRole: "Owner" as ProjectUserRole,
+        nextRole: "auditor",
+      },
+    },
+    {
+      name: "変更後ロールが定義外である",
+      operation: "projectUser.changeRole",
+      target: {
+        projectId,
+        projectUserId,
+        currentRole: "auditor",
+        nextRole: "superuser" as ProjectUserRole,
+      },
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    operation: ManagementOperation;
+    target: ProjectUserAuthorizationTarget;
+  }>)("$name場合は拒否する", ({ operation, target: requestedTarget }) => {
     const decision = authorizeProjectUserAction({
       actor: {
         projectId,
-        role: "superuser" as ProjectUserRole,
+        role: "admin",
       },
       project: {
         id: projectId,
         state: "active",
       },
-      operation: "project.read",
+      operation,
+      target: requestedTarget,
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation,
+      target: requestedTarget,
+      reason: "project-user-role-invalid",
+    });
+  });
+
+  test.each([
+    {
+      name: "ProjectUser の追加",
+      operation: "projectUser.add",
+      target: {
+        projectId,
+        nextRole: "auditor",
+      },
+    },
+    {
+      name: "ProjectUser の除外",
+      operation: "projectUser.remove",
+      target: {
+        projectId,
+        currentRole: "auditor",
+      },
+    },
+    {
+      name: "ProjectUser のロール変更",
+      operation: "projectUser.changeRole",
+      target: {
+        projectId,
+        currentRole: "auditor",
+        nextRole: "operator",
+      },
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    operation: ManagementOperation;
+    target: ProjectUserAuthorizationTarget;
+  }>)("$name に対象 ID がない場合は拒否する", ({ operation, target: requestedTarget }) => {
+    const decision = authorizeProjectUserAction({
+      actor: {
+        projectId,
+        role: "owner",
+      },
+      project: {
+        id: projectId,
+        state: "active",
+      },
+      operation,
+      target: requestedTarget,
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation,
+      target: requestedTarget,
+      reason: "project-user-target-id-required",
+    });
+  });
+
+  test.each([
+    {
+      name: "ProjectUser の追加",
+      operation: "projectUser.add",
+      target: {
+        projectId,
+        accountId,
+        nextRole: "auditor",
+      },
+    },
+    {
+      name: "ProjectUser の除外",
+      operation: "projectUser.remove",
+      target: {
+        projectId,
+        projectUserId,
+        currentRole: "auditor",
+      },
+    },
+    {
+      name: "ProjectUser のロール変更",
+      operation: "projectUser.changeRole",
+      target: {
+        projectId,
+        projectUserId,
+        currentRole: "auditor",
+        nextRole: "operator",
+      },
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    operation: ManagementOperation;
+    target: ProjectUserAuthorizationTarget;
+  }>)("$name は対象 ID を監査 target に含める", ({ operation, target: requestedTarget }) => {
+    const decision = authorizeProjectUserAction({
+      actor: {
+        projectId,
+        role: "owner",
+      },
+      project: {
+        id: projectId,
+        state: "active",
+      },
+      operation,
+      target: requestedTarget,
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: true,
+      operation,
+      target: requestedTarget,
+      reason: "allowed",
+    });
+  });
+
+  test("定義外の Management operation は拒否する", () => {
+    const decision = authorizeProjectUserAction({
+      actor: {
+        projectId,
+        role: "owner",
+      },
+      project: {
+        id: projectId,
+        state: "active",
+      },
+      operation: "unknown.operation" as ManagementOperation,
       target: {
         projectId,
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
-      reason: "project-user-role-missing",
+      operation: "unknown.operation",
+      target: { projectId },
+      reason: "unsupported-operation",
     });
   });
 });

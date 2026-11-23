@@ -4,13 +4,17 @@ import {
   authorizeParticipantAction,
   type ParticipantAuthorizationInput,
   type ParticipantAuthorizationReason,
+  type ParticipantAuthorizationTarget,
   type ParticipantOperation,
 } from "../src/participant.js";
 
 const projectId = "01ARZ3NDEKTSV4RRFFQ69G5FAV" as ProjectId;
 const roomId = "01ARZ3NDEKTSV4RRFFQ69G5FAW" as RoomId;
 const participantId = "01ARZ3NDEKTSV4RRFFQ69G5FAX" as ParticipantId;
+const otherRoomId = "01ARZ3NDEKTSV4RRFFQ69G5FAZ" as RoomId;
+const otherParticipantId = "01ARZ3NDEKTSV4RRFFQ69G5FA0" as ParticipantId;
 const sessionId = "session-a";
+const subject = "user-a";
 
 const grants = {
   "room.create": false,
@@ -24,6 +28,7 @@ const baseMediaInput: ParticipantAuthorizationInput = {
   operation: "media.publish",
   credential: {
     projectId,
+    subject,
     roomName: "room-a",
     grants: {
       ...grants,
@@ -50,9 +55,46 @@ const baseMediaInput: ParticipantAuthorizationInput = {
   participant: {
     id: participantId,
     roomId,
+    externalUserId: subject,
     state: "active",
   },
 };
+
+const baseJoinInput: ParticipantAuthorizationInput = {
+  operation: "room.join",
+  credential: {
+    projectId,
+    subject,
+    roomName: "room-a",
+    grants: {
+      ...grants,
+      "room.join": true,
+    },
+  },
+  project: {
+    id: projectId,
+    state: "active",
+  },
+  room: {
+    state: "active",
+    id: roomId,
+    projectId,
+    name: "room-a",
+  },
+  session: baseMediaInput.session!,
+  participant: baseMediaInput.participant!,
+};
+const { session: _baseJoinSession, ...baseJoinWithoutSession } = baseJoinInput;
+
+function expectedTarget(input: ParticipantAuthorizationInput): ParticipantAuthorizationTarget {
+  return {
+    projectId: input.project.id,
+    roomName: input.room.name,
+    ...(input.room.state === "absent" ? {} : { roomId: input.room.id }),
+    ...(input.session === undefined ? {} : { sessionId: input.session.id }),
+    ...(input.participant === undefined ? {} : { participantId: input.participant.id }),
+  };
+}
 
 describe("参加 JWT の認可", () => {
   test("有効な room.join grant と参加可能な Room なら参加を許可する", () => {
@@ -60,6 +102,7 @@ describe("参加 JWT の認可", () => {
       operation: "room.join",
       credential: {
         projectId,
+        subject,
         roomName: "room-a",
         grants,
       },
@@ -76,11 +119,12 @@ describe("参加 JWT の認可", () => {
       participant: {
         id: participantId,
         roomId,
+        externalUserId: subject,
         state: "active",
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: true,
       operation: "room.join",
       reason: "allowed",
@@ -99,6 +143,7 @@ describe("参加 JWT の認可", () => {
         operation: "room.create",
         credential: {
           projectId,
+          subject,
           roomName: "new-room",
           grants: {
             ...grants,
@@ -120,6 +165,7 @@ describe("参加 JWT の認可", () => {
         operation: "room.join",
         credential: {
           projectId,
+          subject,
           roomName: "new-room",
           grants: {
             ...grants,
@@ -139,13 +185,19 @@ describe("参加 JWT の認可", () => {
       }),
     ];
 
-    expect(decisions).toEqual([
-      expect.objectContaining({ allowed: true, operation: "room.create", reason: "allowed" }),
-      expect.objectContaining({
+    expect(decisions).toStrictEqual([
+      {
+        allowed: true,
+        operation: "room.create",
+        target: { projectId, roomName: "new-room" },
+        reason: "allowed",
+      },
+      {
         allowed: false,
         operation: "room.join",
+        target: { projectId, roomName: "new-room" },
         reason: "grant-not-granted",
-      }),
+      },
     ]);
   });
 
@@ -154,6 +206,7 @@ describe("参加 JWT の認可", () => {
       operation: "room.join",
       credential: {
         projectId,
+        subject,
         roomName: "new-room",
         grants: {
           ...grants,
@@ -172,7 +225,7 @@ describe("参加 JWT の認可", () => {
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: true,
       operation: "room.join",
       reason: "allowed",
@@ -183,6 +236,238 @@ describe("参加 JWT の認可", () => {
     });
   });
 
+  test("room.join は Session/Participant を渡さない新規参加を許可する", () => {
+    const decision = authorizeParticipantAction({
+      operation: "room.join",
+      credential: {
+        projectId,
+        subject,
+        roomName: "room-a",
+        grants,
+      },
+      project: {
+        id: projectId,
+        state: "active",
+      },
+      room: {
+        state: "active",
+        id: roomId,
+        projectId,
+        name: "room-a",
+      },
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: true,
+      operation: "room.join",
+      target: {
+        projectId,
+        roomName: "room-a",
+        roomId,
+      },
+      reason: "allowed",
+    });
+  });
+
+  test("room.join は Session だけを渡された場合は拒否する", () => {
+    const { participant: _baseJoinParticipant, ...input } = baseJoinInput;
+    const decision = authorizeParticipantAction(input);
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: "room.join",
+      target: expectedTarget(input),
+      reason: "participant-required",
+    });
+  });
+
+  test.each([
+    {
+      name: "media.publish の Participant が JWT subject と一致しない",
+      input: {
+        ...baseMediaInput,
+        participant: {
+          ...baseMediaInput.participant!,
+          externalUserId: "user-b",
+        },
+      },
+      reason: "subject-mismatch",
+    },
+    {
+      name: "room.join の Participant が JWT subject と一致しない",
+      input: {
+        ...baseJoinInput,
+        participant: {
+          ...baseJoinInput.participant!,
+          externalUserId: "user-b",
+        },
+      },
+      reason: "subject-mismatch",
+    },
+    {
+      name: "JWT subject が空である",
+      input: {
+        ...baseMediaInput,
+        credential: {
+          ...baseMediaInput.credential,
+          subject: "",
+        },
+      },
+      reason: "subject-required",
+    },
+    {
+      name: "Participant の ExternalUser が空である",
+      input: {
+        ...baseMediaInput,
+        participant: {
+          ...baseMediaInput.participant!,
+          externalUserId: "",
+        },
+      },
+      reason: "subject-required",
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    input: ParticipantAuthorizationInput;
+    reason: Exclude<ParticipantAuthorizationReason, "allowed">;
+  }>)("$name 場合は拒否する", ({ input, reason }) => {
+    const decision = authorizeParticipantAction(input);
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: input.operation,
+      target: expectedTarget(input),
+      reason,
+    });
+  });
+
+  test.each([
+    {
+      name: "Session が失効している",
+      input: {
+        ...baseJoinInput,
+        session: {
+          ...baseJoinInput.session!,
+          state: "revoked",
+        },
+      },
+      reason: "session-not-active",
+    },
+    {
+      name: "Session が別 Room のものである",
+      input: {
+        ...baseJoinInput,
+        session: {
+          ...baseJoinInput.session!,
+          roomId: otherRoomId,
+        },
+      },
+      reason: "session-target-mismatch",
+    },
+    {
+      name: "Session の Participant が一致しない",
+      input: {
+        ...baseJoinInput,
+        session: {
+          ...baseJoinInput.session!,
+          participantId: otherParticipantId,
+        },
+      },
+      reason: "session-target-mismatch",
+    },
+    {
+      name: "Participant が失効している",
+      input: {
+        ...baseJoinInput,
+        participant: {
+          ...baseJoinInput.participant!,
+          state: "revoked",
+        },
+      },
+      reason: "participant-not-active",
+    },
+    {
+      name: "Participant が別 Room のものである",
+      input: {
+        ...baseJoinInput,
+        participant: {
+          ...baseJoinInput.participant!,
+          roomId: otherRoomId,
+        },
+      },
+      reason: "participant-target-mismatch",
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    input: ParticipantAuthorizationInput;
+    reason: Exclude<ParticipantAuthorizationReason, "allowed">;
+  }>)("room.join で $name 場合は拒否する", ({ input, reason }) => {
+    const decision = authorizeParticipantAction(input);
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: "room.join",
+      target: expectedTarget(input),
+      reason,
+    });
+  });
+
+  test.each([
+    {
+      name: "Session",
+      input: {
+        ...baseJoinInput,
+        credential: {
+          ...baseJoinInput.credential,
+          roomName: "new-room",
+          grants: {
+            ...baseJoinInput.credential.grants,
+            "room.create": true,
+          },
+        },
+        room: {
+          state: "absent" as const,
+          projectId,
+          name: "new-room",
+        },
+      },
+      reason: "session-target-mismatch",
+    },
+    {
+      name: "Participant",
+      input: {
+        ...baseJoinWithoutSession,
+        credential: {
+          ...baseJoinInput.credential,
+          roomName: "new-room",
+          grants: {
+            ...baseJoinInput.credential.grants,
+            "room.create": true,
+          },
+        },
+        room: {
+          state: "absent" as const,
+          projectId,
+          name: "new-room",
+        },
+      },
+      reason: "participant-target-mismatch",
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    input: ParticipantAuthorizationInput;
+    reason: Exclude<ParticipantAuthorizationReason, "allowed">;
+  }>)("未作成 Room への room.join で $name を渡す場合は拒否する", ({ input, reason }) => {
+    const decision = authorizeParticipantAction(input);
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: "room.join",
+      target: expectedTarget(input),
+      reason,
+    });
+  });
+
   test.each<ParticipantOperation>(["media.publish", "media.subscribe", "data.send"])(
     "%s は同じ Room の有効な Session と Participant なら許可する",
     (operation) => {
@@ -190,6 +475,7 @@ describe("参加 JWT の認可", () => {
         operation,
         credential: {
           projectId,
+          subject,
           roomName: "room-a",
           grants: {
             ...grants,
@@ -216,11 +502,12 @@ describe("参加 JWT の認可", () => {
         participant: {
           id: participantId,
           roomId,
+          externalUserId: subject,
           state: "active",
         },
       });
 
-      expect(decision).toMatchObject({
+      expect(decision).toStrictEqual({
         allowed: true,
         operation,
         reason: "allowed",
@@ -231,6 +518,30 @@ describe("参加 JWT の認可", () => {
           sessionId,
           participantId,
         },
+      });
+    },
+  );
+
+  test.each(["unknown.operation", "constructor"] as ParticipantOperation[])(
+    "定義外の participant operation %s は拒否する",
+    (operation) => {
+      const decision = authorizeParticipantAction({
+        ...baseMediaInput,
+        operation,
+        credential: {
+          ...baseMediaInput.credential,
+          grants: {
+            ...baseMediaInput.credential.grants,
+            [operation]: true,
+          },
+        },
+      });
+
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: expectedTarget(baseMediaInput),
+        reason: "unsupported-operation",
       });
     },
   );
@@ -388,14 +699,11 @@ describe("参加 JWT の認可", () => {
   }>)("$name 場合は拒否する", ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
       operation: input.operation,
+      target: expectedTarget(input),
       reason,
-      target: {
-        projectId: input.project.id,
-        roomName: input.room.name,
-      },
     });
   });
 
@@ -404,6 +712,7 @@ describe("参加 JWT の認可", () => {
       operation: "room.create",
       credential: {
         projectId,
+        subject,
         roomName: "new-room",
         grants: {
           ...grants,
@@ -421,9 +730,10 @@ describe("参加 JWT の認可", () => {
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
       operation: "room.create",
+      target: { projectId, roomName: "new-room" },
       reason: "grant-not-granted",
     });
   });
@@ -433,6 +743,7 @@ describe("参加 JWT の認可", () => {
       operation: "room.join",
       credential: {
         projectId,
+        subject,
         roomName: "room-a",
         grants: {
           ...grants,
@@ -451,9 +762,10 @@ describe("参加 JWT の認可", () => {
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
       operation: "room.join",
+      target: { projectId, roomName: "room-a", roomId },
       reason: "grant-not-granted",
     });
   });
@@ -473,9 +785,10 @@ describe("参加 JWT の認可", () => {
         },
       });
 
-      expect(decision).toMatchObject({
+      expect(decision).toStrictEqual({
         allowed: false,
         operation,
+        target: expectedTarget(baseMediaInput),
         reason: "grant-not-granted",
       });
     },
@@ -486,6 +799,7 @@ describe("参加 JWT の認可", () => {
       operation: "room.create",
       credential: {
         projectId,
+        subject,
         roomName: "room-a",
         grants: {
           ...grants,
@@ -504,9 +818,10 @@ describe("参加 JWT の認可", () => {
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
       operation: "room.create",
+      target: { projectId, roomName: "room-a", roomId },
       reason: "room-already-exists",
     });
   });
@@ -516,6 +831,7 @@ describe("参加 JWT の認可", () => {
       operation: "room.join",
       credential: {
         projectId,
+        subject,
         roomName: "new-room",
         grants: {
           ...grants,
@@ -534,9 +850,10 @@ describe("参加 JWT の認可", () => {
       },
     });
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
       operation: "room.join",
+      target: { projectId, roomName: "new-room" },
       reason: "room-create-required",
     });
   });
@@ -582,8 +899,10 @@ describe("参加 JWT の認可", () => {
   }>)("$name 場合は拒否する", ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
+      operation: input.operation,
+      target: expectedTarget(input),
       reason,
     });
   });
@@ -595,6 +914,7 @@ describe("参加 JWT の認可", () => {
         operation: "room.create" as const,
         credential: {
           projectId,
+          subject,
           roomName: "new-room",
           grants: {
             ...grants,
@@ -633,6 +953,7 @@ describe("参加 JWT の認可", () => {
         operation: "room.join" as const,
         credential: {
           projectId,
+          subject,
           roomName: "new-room",
           grants: {
             ...grants,
@@ -659,8 +980,10 @@ describe("参加 JWT の認可", () => {
   }>)("$name 場合は拒否する", ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
-    expect(decision).toMatchObject({
+    expect(decision).toStrictEqual({
       allowed: false,
+      operation: input.operation,
+      target: expectedTarget(input),
       reason,
     });
   });
