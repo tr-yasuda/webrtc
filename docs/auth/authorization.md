@@ -123,6 +123,14 @@ Signaling は、参加 JWT の `grants` が許す対象・操作と、Room・Ses
 一つの操作が許可されていても、ほかの操作を自動的に許可しない。
 参加 JWT の権限は `room.create`・`room.join`・`media.publish`・`media.subscribe`・`data.send` とし、管理権限は [Management の ProjectUser ロール](../platform/management.md#projectuser-の権限ロール)に従う。
 
+### 共通の認可判定
+
+認可判定は、検証済みの参加 JWT の `sub` と対象 Participant の ExternalUser が一致することを確認する。Session / Participant が渡された場合は、Project・Room・Participant との対応と現在の状態を確認する。未作成 Room の作成・参加には `room.create` と `room.join` の両方を要求する。
+
+Management API credential の Room 設定変更・削除では Room ID、Session / Participant の強制切断では Session ID / Participant ID を必須とし、Project 全体を対象にした一括操作を許可しない。ProjectUser の追加は Account ID、削除・ロール変更は ProjectUser ID を判定結果の対象に含める。
+
+判定結果は、対象・操作・許可または拒否・理由を含み、監査記録へ渡せる形にする。未知の grant・role・operation・scope は拒否する。
+
 ### 参加者と参加端末の区別
 
 参加者と参加端末を区別する。
