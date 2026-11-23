@@ -18,6 +18,8 @@ fn assert_id_contract<T>(parse: fn(&str) -> Result<T, InvalidDomainId>, as_str: 
         String::new(),
         valid_id[..valid_id.len() - 1].to_owned(),
         format!("{}U", &valid_id[..valid_id.len() - 1]),
+        format!("8{}", "Z".repeat(25)),
+        "ſ".repeat(26),
         format!("bad_{valid_id}"),
     ];
 

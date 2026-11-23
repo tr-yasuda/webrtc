@@ -10,9 +10,13 @@ macro_rules! domain_id {
 
         impl $name {
             pub fn parse(value: &str) -> Result<Self, InvalidDomainId> {
-                let ulid = Ulid::from_string(value).map_err(|_| InvalidDomainId)?;
+                let canonical = value.to_ascii_uppercase();
+                let ulid = Ulid::from_string(&canonical).map_err(|_| InvalidDomainId)?;
+                if ulid.to_string() != canonical {
+                    return Err(InvalidDomainId);
+                }
 
-                Ok(Self(ulid.to_string()))
+                Ok(Self(canonical))
             }
 
             pub fn as_str(&self) -> &str {

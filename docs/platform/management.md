@@ -81,7 +81,7 @@ Management は要求ごとに、credential の有効性・対象 Project の利�
 
 ### Room 作成契約
 
-Room は `room.create` 権限を持つ参加 JWT で未作成 Room に最初の参加が行われたときに作成する。参加 JWT の `room` は Project 内で一意な `Room.name` を指す。`room.create` は `room.join` を自動的に許可せず、作成者も `room.join` 権限を持つ場合だけ参加できる。Management API による Room 作成は初期提供では行わない。既存 Room への参加には、対象 Room が存在し、失効・終了状態でないことを Signaling が確認する。
+Room は、未作成 Room への初回参加で `room.create` と `room.join` の両方を持つ参加 JWT があるときに作成する。参加 JWT の `room` は Project 内で一意な `Room.name` を指す。`room.create` は `room.join` を自動的に許可せず、`room.create` 単独では Room を作成も参加も確定しない。Management API による Room 作成は初期提供では行わない。既存 Room への参加には、対象 Room が存在し、失効・終了状態でないことを Signaling が確認する。
 
 同じ `ProjectId` と `Room.name` へ複数の初回参加が並行した場合は、Room 作成・SFU 割り当て・参加登録を一意に確定する。最後の参加端末が退出したときは通信資源だけ解放し、Room と履歴は明示削除まで保持する。
 

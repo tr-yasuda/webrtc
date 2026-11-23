@@ -1,4 +1,4 @@
-import { isValid } from "ulid";
+import { ulidToUUID } from "ulid";
 
 type BrandedDomainId<T extends string> = string & {
   readonly __domainId: T;
@@ -81,9 +81,13 @@ export type DomainIdParseResult<T> =
     };
 
 function parseDomainId<T extends string>(value: string): DomainIdParseResult<T> {
-  if (!isValid(value)) return { ok: false, error: "invalid-domain-id" };
-
   const canonicalUlid = value.toUpperCase();
+  try {
+    ulidToUUID(canonicalUlid);
+  } catch {
+    return { ok: false, error: "invalid-domain-id" };
+  }
+
   return { ok: true, id: canonicalUlid as T };
 }
 

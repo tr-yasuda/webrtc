@@ -37,6 +37,14 @@ describe("共通ドメイン ID 契約", () => {
       ok: false,
       error: "invalid-domain-id",
     });
+    expect(parseId(`8${"Z".repeat(25)}`)).toStrictEqual({
+      ok: false,
+      error: "invalid-domain-id",
+    });
+    expect(parseId("ſ".repeat(26))).toStrictEqual({
+      ok: false,
+      error: "invalid-domain-id",
+    });
     expect(parseId(validUlid.toLowerCase())).toStrictEqual({ ok: true, id: validUlid });
   });
 });

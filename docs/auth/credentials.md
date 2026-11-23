@@ -44,8 +44,8 @@ TURN、ICE、内部サービス、管理操作の資格情報として無条件�
 
 | キー | 許可する操作 |
 |---|---|
-| `room.create` | 未作成 Room を最初の参加時に作成する |
-| `room.join` | 対象 Room へ参加する |
+| `room.create` | `room.join` と同時に指定された未作成 Room を最初の参加時に作成する。`room.join` を自動的に許可しない |
+| `room.join` | 対象 Room へ参加する。対象 Room が未作成なら `room.create` も必要とする |
 | `media.publish` | 自分の音声・カメラ映像・画面共有を発行する |
 | `media.subscribe` | 同じ Room で発行済みの音声・映像を購読する |
 | `data.send` | 同じ Room の DataChannel へデータを送信する |

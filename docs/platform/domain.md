@@ -8,7 +8,7 @@ TypeScript は `@webrtc/domain`、Rust は `webrtc-domain` を使う。両者の
 
 ## Member と Participant
 
-`Participant` は[全体構成](overview.md#用語)で定義する参加者を表す。`Member` は `Participant` の別名であり、Management API・Signaling・Client SDK で別の対象を指す語として使わない。`MemberId` も `ParticipantId` の別名とし、同じ参加者 ID を指す。
+`Participant` は[用語](overview.md#用語)で定義する参加者を表す。`Member` は `Participant` の別名であり、Management API・Signaling・Client SDK で別の対象を指す語として使わない。`MemberId` も `ParticipantId` の別名とし、同じ参加者 ID を指す。
 
 `ParticipantDevice` は同じ参加者が使う参加端末を表し、[ルームと参加端末のライフサイクル](rooms.md#ルーム参加者権限)の用語に一致する。`Participant` と `ParticipantDevice` は別々に識別する。
 
@@ -26,9 +26,15 @@ TypeScript は `@webrtc/domain`、Rust は `webrtc-domain` を使う。両者の
 | `Participant` / `Member` | ルームに参加する利用者 |
 | `ParticipantDevice` | Participant がルームに参加するためのブラウザー側主体 |
 | `ConnectionState` | 接続確立・維持・失敗・終了を表す共通の粗い状態 |
-| `ResourceState` | 資源の予約・使用・解放と解放結果不明を表す状態 |
+| `ResourceState` | 資源の予約・使用・解放と、確保・解放の結果不明を表す状態 |
 
-`Project`・`Account`・`ProjectUser`・`Application`・`ApplicationSigningKey`・`ManagementApiCredential`・`Room`・`Participant` / `Member`・`ParticipantDevice` は `name` を持つ。`name` はドメイン上の名前であり、人間用の表示だけを目的としない。`Room.name` は Project 内で一意の作成前識別名とし、参加 JWT の `room` 対象に使う。作成後の正本 ID は `RoomId` とし、Signaling は既存 Room の照合に `ProjectId` と `Room.name` を使う。`Room.name` 以外の `name` は表示・監査・管理のための名前であり、重複を許す。どの `name` も認可・操作対象の正本を ID の代わりに置き換えない。`name` の入力上限・不正値の扱い・表示方法は Management API と管理 UI の仕様で定める。
+## 名前
+
+`Project`・`Account`・`ProjectUser`・`Application`・`ApplicationSigningKey`・`ManagementApiCredential`・`Room`・`Participant` / `Member`・`ParticipantDevice` は `name` を持つ。`name` はドメイン上の名前であり、人間用の表示だけを目的としない。
+
+`Room.name` は Project 内で一意な Room の識別名であり、Room の作成前から参加 JWT の `room` 対象と既存 Room の照合に使う。作成後の正本 ID は `RoomId` とし、Signaling は `ProjectId` と `Room.name` で既存 Room を照合する。`Room.name` の入力上限・不正値の扱いは参加 JWT と Signaling の仕様で定める。
+
+`Room.name` 以外の `name` は表示・監査・管理のための名前であり、重複を許す。それらの入力上限・不正値の扱い・表示方法は Management API と管理 UI の仕様で定める。どの `name` も、認可・操作対象の確認・監査の正本を ID の代わりに置き換えない。
 
 ## 関連付け
 
@@ -44,13 +50,9 @@ TypeScript は `@webrtc/domain`、Rust は `webrtc-domain` を使う。両者の
 
 ## ID 形式
 
-共通 ID は文字列とし、業務名や設定値から推測できる値を使わない不透明な識別子とする。各 ID は次の形式だけを受け入れる。
+共通 ID は文字列とし、業務名や設定値から推測できる値を使わない不透明な識別子とする。各 ID は 26 文字の ULID だけを受け入れる。
 
-```text
-<26 文字の ULID>
-```
-
-ULID は 26 文字ちょうどの Crockford Base32 とし、正規表現は `[0-9A-HJKMNP-TV-Z]` で表す。TypeScript と Rust の両パーサーは、この文字の大文字・小文字を受け入れ、解析後に大文字へ正規化して保持する。`I`・`L`・`O`・`U` は不正値として扱う。形式の異なる ID は不正値として扱う。
+ULID は 128 bit を 26 文字の Crockford Base32 で表す。正本表記は大文字とし、先頭 1 文字は `[0-7]`、残り 25 文字は `[0-9A-HJKMNP-TV-Z]` とする。パーサーは小文字入力を受け付け、解析後に大文字へ正規化して保持する。先頭が `8`〜`Z` の値、`I`・`L`・`O`・`U`、Crockford Base32 以外の文字、長さが 26 文字でない値は拒否する。
 
 ID を生成する実装は ULID を使う。共通型は生成処理を持たず、境界で受け取った ID の形式だけを検証する。TypeScript の branded type と Rust の newtype は、値の形式が同じでも型を混用できないように区別する。
 

@@ -96,7 +96,7 @@ Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢�
 | TURN / SFU host | TypeScript / Compute Engine | D-Plane Worker の起動・資源管理・結果報告。DB には接続しない |
 | D-Plane Worker | Rust | STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel の通信処理 |
 
-上表の Project・ProjectUser・Application・ApplicationSigningKey・ManagementApiCredential・Room・Participant・ParticipantDevice に対応する共通型と ID 形式は、[共通ドメイン型と ID 契約](domain.md)に従う。`Member` は `Participant` の別名として使う。
+このプラットフォームで扱う Project・ProjectUser・Application・ApplicationSigningKey・ManagementApiCredential・Room・Participant・ParticipantDevice の共通型と ID 形式は、[共通ドメイン型と ID 契約](domain.md)に従う。`Member` は `Participant` の別名として使う。
 
 Client SDK は Signaling に参加 JWT を提示し、Signaling が権限を確認して必要な処理を D-Plane に指示する。管理 UI と顧客サーバーは Management API を利用し、Signaling 状態を変更する操作は [Management と Signaling の通信](management.md#management-と-signaling-の通信)に従う。
 
