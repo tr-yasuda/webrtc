@@ -53,9 +53,11 @@ D-Plane から状態通知や処理結果が届いたら、送信元、対象資
 
 ## 方式選定
 
-Management と Signaling の公開 HTTP サーバーには Fastify を使用する。Management は WebSocket を扱わず、Signaling は `@fastify/websocket` を使用する。
+Management と Signaling の公開 HTTP サーバーには Fastify を使用する。Management は WebSocket を扱わず、Signaling は `@fastify/websocket` を使用する。Node host の Signaling 向け制御 API にも Fastify を使用できる。この API は内部向けで、Fastify はメディアパケットを扱わない。
 
-Management から Signaling へ状態を変更させる指示には Pub/Sub コマンドバスを使い、結果も Pub/Sub の結果イベントで返す。Signaling への鍵配布にはサービス間認証を行った Management 内部 API を使う。読み取り専用照会には、サービス間認証を行った Signaling 内部照会 API を使う。サービス間認証の方式・識別情報の形式・Rust Worker の実行方式は、用途ごとに選定する。
+Management から Signaling へ状態を変更させる指示には Pub/Sub コマンドバスを使い、結果も Pub/Sub の結果イベントで返す。Signaling への鍵配布にはサービス間認証を行った Management 内部 API を使う。読み取り専用照会には、サービス間認証を行った Signaling 内部照会 API を使う。サービス間認証の方式・識別情報の形式は、用途ごとに選定する。
+
+D-Plane の実行形態は [D-Plane のプロセスモデルと IPC 境界](../platform/dplane.md)に従う。
 
 サービス認証の選定では、実行環境に適した相互認証と、サービスごとの操作制限を行う方式を比較する。
 
@@ -63,7 +65,8 @@ Management から Signaling へ状態を変更させる指示には Pub/Sub コ�
 
 認証連携、認可、資格情報の検証・更新・失効の制御は、TypeScript の Management・Signaling として実装する。
 各プロトコルでの認証と権限の適用は、それぞれのコンポーネントが担う。
-論理的な責務の分離と、実行プロセスの分離は同一視しない。
+認証・認可の論理的な責務の分離と、実行プロセスの分離は同一視しない。
+D-Plane は独立プロセスとし、その制御チャネルの認証は [D-Plane のプロセスモデルと IPC 境界](../platform/dplane.md#ipc-契約)に従う。
 
 監査と資源管理では、必要な操作記録、処理量・保持状態の制限、結果不明からの照合を実装する。
 
