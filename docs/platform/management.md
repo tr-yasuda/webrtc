@@ -38,7 +38,11 @@ ProjectUser は初期提供で次の 4 ロールを持つ。
 | Operator | Project・Room・Session・Participant・利用量の閲覧。Room の設定変更と削除、Participant / Session 単位の強制切断。ProjectUser・Application・鍵・監査の管理・閲覧は不可 |
 | Auditor | Project・Room・Session・Participant・利用量・監査の読み取りのみ |
 
-Project は最低 1 人の Owner を持つ。Admin は自分またはほかの Admin・Operator・Auditor に権限を付与できるが、Owner を付与・変更できない。Owner の除外・ロール変更は、操作完了後も Project が有効な Owner を持つ場合だけ許可する。Owner がいなくなる操作は拒否し、一部だけ適用した状態を作らない。権限を失った ProjectUser には、その後の API・通知・監査取得を拒否する。
+ロールの付与・変更と権限を失った後の扱いには、次の条件を適用する。
+
+- Project は最低 1 人の Owner を持つ。Owner の除外・ロール変更は、操作完了後も Project が有効な Owner を持つ場合だけ許可する。Owner がいなくなる操作は拒否し、一部だけ適用した状態を作らない。
+- Admin は自分またはほかの Admin・Operator・Auditor に権限を付与できるが、Owner を付与・変更できない。
+- 権限を失った ProjectUser には、その後の API・通知・監査取得を拒否する。
 
 ## データの所有権
 
@@ -69,15 +73,17 @@ Management API は Management UI と顧客サーバーの両方が利用する�
 | 利用量取得 | Project・Application・Room・ExternalUser・Session を次元にした集計の取得 |
 | 監査取得 | 管理操作・鍵操作・強制切断・結果の監査記録の取得 |
 
+強制切断は Participant / Session 単位のみとし、Project 全体を一括切断する操作は提供しない。強制切断を行ったときは、対象・理由・実行者・結果を監査し、Signaling の入退出履歴に kick イベントを記録する。
+
+### Management API credential
+
 Management API credential は Management API 専用とし、参加 JWT の署名鍵として流用しない。参加 JWT の署名鍵は顧客アプリサーバーが JWT に署名するためだけに使う。
 
-Management API credential の秘密値も Cloud KMS で暗号化して保存し、作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却する。ApplicationSigningKey とは別の鍵として払い出し、ローテーション・失効を管理する。通常の取得・再表示では秘密値を返さない。
+Management API credential の秘密値は、ApplicationSigningKey の秘密値と同様に Cloud KMS で暗号化して保存し、作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却する。ApplicationSigningKey とは別の鍵として払い出し、ローテーション・失効を管理する。通常の取得・再表示では秘密値を返さない。
 
 Management API credential は Project に束ね、明示的に付与した操作 scope だけを許可する。初期提供で指定できる scope は、Room 管理・Session / Participant 管理・利用量取得・監査取得である。Project 削除、ProjectUser 管理、Application・ApplicationSigningKey・Management API credential の管理は顧客サーバー用 credential に許可しない。
 
 Management は要求ごとに、credential の有効性・対象 Project の利用可否・要求対象が scope 内であることを確認する。credential は発行者の ProjectUser ロールを自動的に引き継がない。credential を作成した ProjectUser が権限を失っても、credential 自体は自動失効しない。Project の削除・利用停止と credential の失効・期限切れでは、以後の要求を拒否する。
-
-強制切断は Participant / Session 単位のみとし、Project 全体を一括切断する操作は提供しない。強制切断を行ったときは、対象・理由・実行者・結果を監査し、Signaling の入退出履歴に kick イベントを記録する。
 
 ### Room 作成契約
 
@@ -91,11 +97,11 @@ Application は複数の有効な ApplicationSigningKey を持てる。参加 JW
 
 ApplicationSigningKey の作成時には、Zoom と同じ有効期限選択肢 `Never / 30 days / 90 days / 180 days / 1 year` を提供する。初期値は `90 days` を推奨する。`Never` は自動失効を行わないだけで、失効できないことを意味しない。どの選択肢でも手動ローテーションと失効は必ず使用できる。有効期限は新しい参加 JWT の拒否にだけ影響し、既存接続の停止には使用しない。
 
-鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。秘密値の 32 byte 生成と padding なし base64url 表現は、[資格情報仕様](../auth/credentials.md#参加-jwt-の発行更新失効) に従う。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。
-
-Signaling の鍵キャッシュ TTL は 1〜5 分程度を推奨する。この TTL は失効反映の上限の目安である。キャッシュ無効化コマンドの完了条件や、再取得失敗時の新規参加拒否条件を置き換えない。
-
 鍵失効は新しい参加 JWT の拒否のための操作であり、既存接続の切断は別の強制切断操作とする。ローテーション中は新旧鍵を併用し、旧鍵は明示的に失効した時点で新しい JWT 検証に使わない。
+
+鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。秘密値の 32 byte 生成と padding なし base64url 表現は、[資格情報仕様](../auth/credentials.md#参加-jwt-の発行更新失効) に従う。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。
+
+Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。Signaling の鍵キャッシュ TTL は 1〜5 分程度を推奨する。この TTL は失効反映の上限の目安である。キャッシュ無効化コマンドの完了条件や、再取得失敗時の新規参加拒否条件を置き換えない。
 
 ## Management と Signaling の通信
 
@@ -117,9 +123,11 @@ Management から Signaling へ状態を変更させる操作には、Pub/Sub �
 - 対象限定コマンド: 対象 Session・Participant・Room を持つインスタンスだけが実行する。
 - 全インスタンスコマンド: 鍵キャッシュのように、全 Signaling インスタンスへ反映する必要がある。
 
-対象限定コマンドは、対象 Session・Participant・Room を保持するインスタンスだけ実行する。実行結果は Signaling schema に正本として記録し、結果イベントを Pub/Sub で Management へ返す。Management は結果イベントで管理コマンド状態を更新する。結果イベントが期限内に届かない場合は結果不明とし、失敗や完了として扱わない。照会用コマンドで現在状態を再確認し、必要な場合のみ新しい `commandId` で操作し直す。
+対象限定コマンドを実行したインスタンスは、実行結果を Signaling schema に正本として記録し、結果イベントを Pub/Sub で Management へ返す。Management は結果イベントで管理コマンド状態を更新する。結果イベントが期限内に届かない場合は結果不明とし、失敗や完了として扱わない。照会用コマンドで現在状態を再確認し、必要な場合のみ新しい `commandId` で操作し直す。
 
-全インスタンスコマンドでは、対象 ApplicationSigningKey をキャッシュしている可能性がある全インスタンスが、対象 `projectId`・`applicationId`・`kid` のキャッシュを無効化する。各インスタンスは `instanceId` 付きの結果イベントを返し、Signaling schema に `commandId` ごとのインスタンス別結果を正本として記録する。Management は、コマンド発行時に購読していた全インスタンスが成功または該当キャッシュなしを期限内に報告した場合だけ反映完了とする。報告が欠けた場合は結果不明とし、期限前は同じ `commandId` で再送し、期限後は新しい `commandId` で再発行できる。反映完了または安全な再取得条件が確認できるまで、失効済み鍵を完了済みとして扱わない。
+全インスタンスコマンドでは、対象 ApplicationSigningKey をキャッシュしている可能性がある全インスタンスが、対象 `projectId`・`applicationId`・`kid` のキャッシュを無効化する。各インスタンスは `instanceId` 付きの結果イベントを返し、Signaling schema に `commandId` ごとのインスタンス別結果を正本として記録する。Management は、コマンド発行時に購読していた全インスタンスが成功または該当キャッシュなしを期限内に報告した場合だけ反映完了とする。
+
+全インスタンスコマンドで報告が欠けた場合は結果不明とし、期限前は同じ `commandId` で再送し、期限後は新しい `commandId` で再発行できる。反映完了または安全な再取得条件が確認できるまで、失効済み鍵を完了済みとして扱わない。
 
 読み取り専用の Room・Session・Participant・利用量照会は、サービス間認証を行った Signaling の内部照会 API を利用できる。Management はその結果をキャッシュしても、取得時刻・対象範囲・有効期限を明示し、Signaling の正本を上書きしない。
 
