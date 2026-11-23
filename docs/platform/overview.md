@@ -10,7 +10,9 @@
 - 音声・カメラ映像・画面共有は PubSub 形式で転送する。
 - 参加者は購読対象を変更できる。
 - SFU を増設し、プラットフォーム全体の収容人数を増やせる構成にする。
-- STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel のプロトコル処理と SFU の中核は、TypeScript host から呼び出す Rust Worker として実装する。
+- STUN のメッセージ処理は共用ライブラリとして Rust で実装する。
+- TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel のプロトコル処理と SFU の中核は Rust で実装し、TURN プロセスと SFU Worker として実行する。
+- TURN プロセスと SFU Worker は、TypeScript の Node host が制御する独立したプロセスとする。
 - Management、Signaling、Client SDK、管理 UI は TypeScript で実装する。
 - 既存の WebRTC スタックや SFU 製品のラップはしない。
 - 暗号など、安全性のために既存実装を利用する部分は各コンポーネントの仕様で定める。
@@ -57,6 +59,10 @@
 | PubSub | 発行と購読を分け、SFU が購読関係に従って転送する方式 |
 | C-Plane | 参加・権限・ルーム配置などを制御する部分 |
 | D-Plane | 音声・映像・データの通信を処理する部分 |
+| Node host | TURN / SFU host 上で D-Plane プロセスを起動・停止・監視し、UDS で制御する TypeScript プロセス |
+| TURN プロセス | Node host が制御する TURN の Rust プロセス。待受ポートと Allocation を管理する |
+| Worker | Node host が制御する SFU の Rust プロセス。複数の Room を収容する |
+| Router | Worker 内で Room の実行時状態を管理する単位。C-Plane の Room とは区別する |
 | drain | SFU への新しいルーム割り当てを停止し、担当中のルームを継続・移行させて退役に進む運用状態 |
 
 同じ概念には本節の名称を使い、対象が異なる「チャネル」「Association」「SDK」を単独の略称では記載しない。
@@ -84,20 +90,21 @@ React Native、Python、Go などの SDK は将来の拡張候補とし、今回
 
 ## 全体構成
 
-サーバーを C-Plane と D-Plane に分ける。論理的な責務を分離し、独立して増設できる構成とする。実行プロセスの分離は必須としない。
+サーバーを C-Plane と D-Plane に分ける。論理的な責務を分離し、独立して増設できる構成とする。D-Plane は独立した Rust プロセスとして実行し、TypeScript の Node host が起動・停止・監視と制御を担う。
 
-公開サーバーとリクエスト受付は TypeScript host が担い、Rust をサーバー公開プロセスとして使用しない。Management と Signaling の TypeScript 公開サーバーには Fastify を使用する。Rust Worker の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
+TURN と SFU が公開する UDP / TCP メディアポートは D-Plane が所有する。公開 HTTP / WebSocket API は TypeScript host が担い、Management と Signaling には Fastify を使用する。Node host は UDS で D-Plane を制御し、メディアパケットを処理しない。D-Plane のプロセスモデル、容量予約、再起動時の照合、IPC 契約は [D-Plane のプロセスモデルと IPC 境界](dplane.md)に従う。
 
 | 部分 | 実装言語 | 責務 |
 |---|---|---|
 | Management | TypeScript / Cloud Run | Project・ProjectUser・Application・ApplicationSigningKey・管理 API・監査・管理コマンド状態 |
 | Signaling | TypeScript / Cloud Run | Room・Member・Publication・Subscription・Session、参加 JWT 検証、発行・購読の制御、SFU 割り当て、資源計上の正本 |
-| TURN / SFU host | TypeScript / Compute Engine | D-Plane Worker の起動・資源管理・結果報告。DB には接続しない |
-| D-Plane Worker | Rust | STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel の通信処理 |
+| TURN / SFU host | TypeScript / Compute Engine | Node host。D-Plane の起動・停止・監視、Room 配置、容量予約、結果報告。DB には接続しない |
+| TURN プロセス | Rust / Compute Engine | TURN の待受、Allocation、Permission、Channel Binding、中継 |
+| SFU Worker | Rust / Compute Engine | STUN、ICE / WebRTC Transport、SFU、SCTP / DataChannel の通信処理。複数の Room を収容する |
 
 このプラットフォームで扱う Project・ProjectUser・Application・ApplicationSigningKey・ManagementApiCredential・Room・Participant・ParticipantDevice の共通型と ID 形式は、[共通ドメイン型と ID 契約](domain.md)に従う。`Member` は `Participant` の別名として使う。
 
-Client SDK は Signaling に参加 JWT を提示し、Signaling が権限を確認して必要な処理を D-Plane に指示する。管理 UI と顧客サーバーは Management API を利用し、Signaling 状態を変更する操作は [Management と Signaling の通信](management.md#management-と-signaling-の通信)に従う。
+Client SDK は Signaling に参加 JWT を提示し、Signaling が権限を確認して必要な処理を Node host に指示する。Node host が UDS で D-Plane を制御する。管理 UI と顧客サーバーは Management API を利用し、Signaling 状態を変更する操作は [Management と Signaling の通信](management.md#management-と-signaling-の通信)に従う。
 
 音声・映像・データの送受信では、Browser SDK を利用するブラウザーは C-Plane を経由せずに、割り当てられた SFU と通信する。SFU に直接到達できない場合は TURN を経由する。
 
@@ -106,9 +113,11 @@ flowchart LR
     UI[管理 UI] --> M[Management API]
     M -->|Pub/Sub コマンド| S[Signaling]
     SDK[ブラウザー / Browser SDK] -->|参加 JWT| S
-    S -->|通信処理の指示| D[D-Plane / SFU]
+    S -->|制御 API| H[Node host]
+    H -->|UDS / 監視| D[D-Plane / SFU]
+    H -->|UDS / 監視| T[TURN]
     SDK <-->|音声・映像・データ| D
-    SDK <-->|中継が必要な場合| T[TURN]
+    SDK <-->|中継が必要な場合| T
     T <--> D
 ```
 

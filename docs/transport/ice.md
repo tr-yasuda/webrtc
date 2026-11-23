@@ -64,8 +64,7 @@ ICE の状態遷移、並行する ICE 接続確認、役割競合、経路の�
 ## 自作範囲・既存実装の利用
 
 ICE / WebRTC Transport のプロトコル処理は Rust で実装する。
-Rust の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
-Rust で実装しても、独立プロセスでの実行は必須としない。
+D-Plane の実行形態は [D-Plane のプロセスモデルと IPC 境界](../platform/dplane.md)に従う。ICE / WebRTC Transport は、Node host が制御する独立した Rust Worker プロセスで実行する。
 
 | 自作する部分 | 内容 |
 |---|---|
@@ -92,7 +91,7 @@ ICE や SRTP/SRTCP の解析・検証・状態管理を、完成済みのプロ�
 既存実装の内部状態・バッファ・タイマーも、全体の資源管理に含める。
 ライブラリ自身の制限または組み込み側の制御によって、本仕様の上限を保証する。
 
-採用する実装、バージョン、設定、実行方式を記録する。
+採用する実装、バージョン、設定、プロセス構成を記録する。
 実際の組み込み構成で、相互接続性、暗号状態の管理、資源上限、障害時の動作を確認する。
 セキュリティ修正を追跡し、更新できる構成とする。
 
@@ -120,7 +119,7 @@ TURN を使用する場合は、[用途別の中継許可](../turn/destinations.
 
 初回の ICE 接続確認で対象経路の送信同意を取得するまでは、RFC の条件に従い、同意の確立に必要な ICE 接続確認とその応答だけを送信する。DTLS ハンドシェイク、SRTP/SRTCP、DataChannel などの通常データは、同意を取得し、現在の認可と通信段階に応じた相手認証・暗号条件を満たしてから送信する。
 
-信頼する ICE エージェントは、対象経路に STUN Binding Request を送り、対応する認証済みの成功応答で送信同意を取得・更新する。Consent Freshness の確認用 Request ごとに新しい Transaction ID を生成・管理し、同じ要求は再送しない。C-Plane / D-Plane のプロセス配置や Wasm・Native Addon・独立 Worker などの実行方式を問わず、信頼できないアプリケーションや Signaling からこの Transaction ID を取得・指定・操作できないようにする。
+信頼する ICE エージェントは、対象経路に STUN Binding Request を送り、対応する認証済みの成功応答で送信同意を取得・更新する。Consent Freshness の確認用 Request ごとに新しい Transaction ID を生成・管理し、同じ要求は再送しない。C-Plane / D-Plane のプロセス構成にかかわらず、信頼できないアプリケーションや Signaling からこの Transaction ID を取得・指定・操作できないようにする。
 
 確認間隔、ランダム化、応答待ち、期限切れ時のトランザクション破棄は、[RFC 7675 §5](https://www.rfc-editor.org/rfc/rfc7675.html#section-5)に従う。Signaling の通知や単なるパケット受信だけでは同意を更新しない。
 
@@ -160,7 +159,7 @@ Consent Freshness の状態遷移、期限切れ、明示的な撤回、ICE rest
 | TURN の用途別許可 | ICE 接続確認前に必要な Permission を作成できる。暫定許可では承認された確認用通信に限定し、通常データを転送しない。Peer-Reflexive Candidate や経路変更でも Permission とポート制限を迂回しない |
 | 初回の送信同意 | 対象経路の送信同意を取得する前に、DTLS ハンドシェイク、SRTP/SRTCP、DataChannel のデータを送信しない。取得後も現在の認可と通信段階の暗号条件を確認する |
 | 送信同意の確認要求 | 要求ごとに新しい Transaction ID を生成し、同じ確認要求を再送しない。確認間隔・ランダム化・応答待ちを RFC に従って処理する |
-| Transaction ID の保護 | 信頼できないアプリケーションや Signaling が、送信同意用 Transaction ID を取得・指定・操作できない。採用した実行方式でもこの境界を維持する |
+| Transaction ID の保護 | 信頼できないアプリケーションや Signaling が、送信同意用 Transaction ID を取得・指定・操作できない。D-Plane のプロセス構成でもこの境界を維持する |
 | 送信同意の期限切れ | 30 秒間、有効な応答がなければ対象 5-tuple への通常送信を停止する。未完了の確認トランザクションを破棄し、遅延応答で送信を再開しない |
 | 送信同意の撤回・再取得 | 有効な認証済み撤回で通常送信を直ちに停止する。再取得には新しいセッションまたは ICE restart を必要とし、同じ資格情報を対象 5-tuple で再利用しない |
 | ICE restart・経路変更 | 新しい username fragment と password を使い、旧世代の結果を混入させない。旧経路で送信を継続する間も Consent Freshness を行い、未検証の新経路へ切り替えない |
@@ -186,5 +185,5 @@ Consent Freshness の状態遷移、期限切れ、明示的な撤回、ICE rest
 Chrome・Firefox・Safari と実際の Browser SDK で相互接続を確認する。
 ICE Lite、各 DTLS バージョン、各 SRTP プロファイルなど、ブラウザーだけで確認できない条件は検証用クライアントで確認し、その範囲を区別する。
 
-結果には、ブラウザー・Browser SDK・サーバー・ライブラリのバージョン、実行方式、ネットワーク・NAT の構成、ICE 候補と選択経路、暗号条件、期限・資源上限、検証範囲と観測結果を記録する。
+結果には、ブラウザー・Browser SDK・サーバー・ライブラリのバージョン、D-Plane のプロセス構成、ネットワーク・NAT の構成、ICE 候補と選択経路、暗号条件、期限・資源上限、検証範囲と観測結果を記録する。
 記録に秘密情報を含めない。
