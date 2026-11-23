@@ -33,7 +33,7 @@ TURN、ICE、内部サービス、管理操作の資格情報として無条件�
 | payload | `iat` / `exp` | 発行時刻と有効期限。`exp` は発行時刻から最大 24 時間とする |
 | payload | `jti` | 省略可能。監査・重複排除に使う場合だけ含める |
 | payload | `project` | 対象 Project 識別子 |
-| payload | `room` | 対象 Room 識別子 |
+| payload | `room` | 対象 Room の Project 内一意名（`Room.name`） |
 | payload | `grants` | 許可する操作のオブジェクト |
 
 `exp` が発行時刻から 24 時間を超える参加 JWT は、Signaling が受け入れない。この上限の範囲で、参加 JWT の TTL は 5 分程度を推奨する。SDK の発行ヘルパーが既定値を持つ場合は 5 分程度とし、顧客アプリケーションは用途に応じてさらに短い値へ変更できる。
@@ -44,8 +44,8 @@ TURN、ICE、内部サービス、管理操作の資格情報として無条件�
 
 | キー | 許可する操作 |
 |---|---|
-| `room.create` | 未作成 Room を最初の参加時に作成する |
-| `room.join` | 対象 Room へ参加する |
+| `room.create` | `room.join` と同時に指定された未作成 Room を最初の参加時に作成する。`room.join` を自動的に許可しない |
+| `room.join` | 対象 Room へ参加する。対象 Room が未作成なら `room.create` も必要とする |
 | `media.publish` | 自分の音声・カメラ映像・画面共有を発行する |
 | `media.subscribe` | 同じ Room で発行済みの音声・映像を購読する |
 | `data.send` | 同じ Room の DataChannel へデータを送信する |
@@ -64,7 +64,9 @@ Signaling は未知の grant と未サポートの grant を黙って無視せ�
 
 発行時に参加端末を指定する場合は、トークンと対象端末の対応も検証する。参加処理で端末を登録する場合、既存の別の参加端末の引き継ぎには [Signaling の再接続条件](../signaling/session.md#再接続)を適用し、トークンや参加端末識別情報の所持だけでは許可しない。
 
-Signaling は署名に加え、`kid` で選んだ有効鍵、`iss`・`aud`・`project`・`room`・`grants`・`exp` と、現在の Room・Session・失効状態を確認する。鍵が失効済みの場合、新しい参加 JWT を受け入れない。
+Signaling は署名に加え、`kid` で選んだ有効鍵、`iss`・`aud`・`project`・`room`・`grants`・`exp` と、現在の Room・Session・失効状態を確認する。`room` は `Room.name` を指し、Signaling は `ProjectId` と `Room.name` で既存 Room を照合する。対象 Room が未作成の場合は、`room.create` と `room.join` の両方を持つ参加 JWT だけが最初の参加と同じ処理で Room を作成する。鍵が失効済みの場合、新しい参加 JWT を受け入れない。
+
+ApplicationSigningKey の秘密値は、暗号学的に安全な乱数で 32 byte を生成する。Management・顧客アプリサーバー・Signaling 間での表現は、padding なし base64url の 43 文字とする。顧客アプリサーバーと Signaling は、この表現を受け取った後に 32 byte へ decode し、HS256 の鍵として使う。base64url 文字列・decode 結果・JWT 本文・署名をログ・監査・診断へ出力しない。
 
 参加 JWT を Browser SDK へ渡す方法は、ブラウザーの WebSocket API の制約を考慮し、Signaling 接続の認証方法と合わせて選定する。
 受け渡しは、保護された通信と、認証した利用者との対応を確認できる方法で行う。

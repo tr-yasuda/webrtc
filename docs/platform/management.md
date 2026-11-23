@@ -21,8 +21,11 @@
 | ExternalUser | 顧客アプリケーションが参加 JWT の `sub` で指定する通話利用者の識別子。PaaS の Account とは別物 |
 | Application | Project に属し、顧客アプリサーバーが参加 JWT に署名するための鍵を保有する顧客アプリケーション |
 | ApplicationSigningKey | Application が参加 JWT に HS256 署名を行うための鍵。複数保有・ローテーション・失効を管理する |
+| ManagementApiCredential | Management API 専用の顧客サーバー用認証情報 |
 | Management API | Management UI と顧客サーバーが利用する公開管理 API |
-| Signaling 状態 | Room・Member・Publication・Subscription・Session・SFU 割り当て・失効・資源計上の正本 |
+| Signaling 状態 | Room・Participant（Member）・Publication・Subscription・Session・SFU 割り当て・失効・資源計上の正本 |
+
+Project・Account・ProjectUser・Application・ApplicationSigningKey・ManagementApiCredential・Room・Participant・ParticipantDevice に対応する共通型と ID 形式は、[共通ドメイン型と ID 契約](domain.md)に従う。`Member` は `Participant` の別名として使う。
 
 ## ProjectUser の権限ロール
 
@@ -84,9 +87,9 @@ Management は要求ごとに、credential の有効性・対象 Project の利�
 
 ### Room 作成契約
 
-Room は `room.create` 権限を持つ参加 JWT で未作成 Room に最初の参加が行われたときに作成する。`room.create` は `room.join` を自動的に許可せず、作成者も `room.join` 権限を持つ場合だけ参加できる。Management API による Room 作成は初期提供では行わない。既存 Room への参加には、対象 Room が存在し、失効・終了状態でないことを Signaling が確認する。
+Room は、未作成 Room への初回参加で `room.create` と `room.join` の両方を持つ参加 JWT があるときに作成する。参加 JWT の `room` は Project 内で一意な `Room.name` を指す。`room.create` は `room.join` を自動的に許可せず、`room.create` 単独では Room を作成も参加も確定しない。Management API による Room 作成は初期提供では行わない。既存 Room への参加には、対象 Room が存在し、失効・終了状態でないことを Signaling が確認する。
 
-同じ Room へ複数の初回参加が並行した場合は、Room 作成・SFU 割り当て・参加登録を一意に確定する。最後の参加端末が退出したときは通信資源だけ解放し、Room と履歴は明示削除まで保持する。
+同じ `ProjectId` と `Room.name` へ複数の初回参加が並行した場合は、Room 作成・SFU 割り当て・参加登録を一意に確定する。最後の参加端末が退出したときは通信資源だけ解放し、Room と履歴は明示削除まで保持する。
 
 ### ApplicationSigningKey
 
@@ -96,7 +99,7 @@ ApplicationSigningKey の作成時には、Zoom と同じ有効期限選択肢 `
 
 鍵失効は新しい参加 JWT の拒否のための操作であり、既存接続の切断は別の強制切断操作とする。ローテーション中は新旧鍵を併用し、旧鍵は明示的に失効した時点で新しい JWT 検証に使わない。
 
-鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。
+鍵の秘密値は暗号学的に安全な乱数で生成し、HS256 に必要な長さとして最低 256 bit を確保する。作成権限のある Owner / Admin へ作成直後の応答で一度だけ返却し、通常の取得・再表示では返さない。秘密値の 32 byte 生成と padding なし base64url 表現は、[資格情報仕様](../auth/credentials.md#参加-jwt-の発行更新失効) に従う。Management は Cloud KMS で暗号化した `secret_ciphertext` を保存し、平文を DB に保存しない。
 
 Signaling は Management の内部鍵配布 API から有効鍵を取得してメモリキャッシュし、JWT 検証ごとに KMS や DB に問い合わせない。鍵を作成・失効したときは、キャッシュ無効化コマンドを Signaling へ通知する。Signaling の鍵キャッシュ TTL は 1〜5 分程度を推奨する。この TTL は失効反映の上限の目安である。キャッシュ無効化コマンドの完了条件や、再取得失敗時の新規参加拒否条件を置き換えない。
 

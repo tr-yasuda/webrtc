@@ -95,6 +95,8 @@ React Native、Python、Go などの SDK は将来の拡張候補とし、今回
 | TURN / SFU host | TypeScript / Compute Engine | D-Plane Worker の起動・資源管理・結果報告。DB には接続しない |
 | D-Plane Worker | Rust | STUN、TURN、ICE / WebRTC Transport、SFU、SCTP / DataChannel の通信処理 |
 
+このプラットフォームで扱う Project・ProjectUser・Application・ApplicationSigningKey・ManagementApiCredential・Room・Participant・ParticipantDevice の共通型と ID 形式は、[共通ドメイン型と ID 契約](domain.md)に従う。`Member` は `Participant` の別名として使う。
+
 Client SDK は Signaling に参加 JWT を提示し、Signaling が権限を確認して必要な処理を D-Plane に指示する。管理 UI と顧客サーバーは Management API を利用し、Signaling 状態を変更する操作は [Management と Signaling の通信](management.md#management-と-signaling-の通信)に従う。
 
 音声・映像・データの送受信では、Browser SDK を利用するブラウザーは C-Plane を経由せずに、割り当てられた SFU と通信する。SFU に直接到達できない場合は TURN を経由する。
