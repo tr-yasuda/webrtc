@@ -1,4 +1,3 @@
-import type { ParticipantId, ProjectId, RoomId } from "@webrtc/domain";
 import { describe, expect, test } from "vitest";
 import type { ManagementOperation } from "../src/management-operation.js";
 import {
@@ -8,11 +7,7 @@ import {
   type ManagementCredentialAuthorizationTarget,
   type ManagementCredentialScope,
 } from "../src/management-credential.js";
-
-const projectId = "01ARZ3NDEKTSV4RRFFQ69G5FAV" as ProjectId;
-const roomId = "01ARZ3NDEKTSV4RRFFQ69G5FAW" as RoomId;
-const participantId = "01ARZ3NDEKTSV4RRFFQ69G5FAX" as ParticipantId;
-const sessionId = "session-a";
+import { otherProjectId, participantId, projectId, roomId, sessionId } from "./fixtures.js";
 const allScopes: readonly ManagementCredentialScope[] = [
   "room.manage",
   "session.manage",
@@ -371,7 +366,7 @@ describe("Management API credential の認可", () => {
         ...baseInput,
         credential: {
           ...baseInput.credential,
-          projectId: "01ARZ3NDEKTSV4RRFFQ69G5FAY" as ProjectId,
+          projectId: otherProjectId,
         },
       },
       reason: "credential-target-mismatch",
@@ -382,7 +377,7 @@ describe("Management API credential の認可", () => {
         ...baseInput,
         target: {
           ...baseInput.target,
-          projectId: "01ARZ3NDEKTSV4RRFFQ69G5FAY" as ProjectId,
+          projectId: otherProjectId,
         },
       },
       reason: "credential-target-mismatch",

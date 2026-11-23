@@ -1,4 +1,3 @@
-import type { ParticipantId, ProjectId, RoomId } from "@webrtc/domain";
 import { describe, expect, test } from "vitest";
 import {
   authorizeParticipantAction,
@@ -7,14 +6,17 @@ import {
   type ParticipantAuthorizationTarget,
   type ParticipantOperation,
 } from "../src/participant.js";
-
-const projectId = "01ARZ3NDEKTSV4RRFFQ69G5FAV" as ProjectId;
-const roomId = "01ARZ3NDEKTSV4RRFFQ69G5FAW" as RoomId;
-const participantId = "01ARZ3NDEKTSV4RRFFQ69G5FAX" as ParticipantId;
-const otherRoomId = "01ARZ3NDEKTSV4RRFFQ69G5FAZ" as RoomId;
-const otherParticipantId = "01ARZ3NDEKTSV4RRFFQ69G5FA0" as ParticipantId;
-const sessionId = "session-a";
-const subject = "user-a";
+import {
+  otherParticipantId,
+  otherProjectId,
+  otherRoomId,
+  otherSubject,
+  participantId,
+  projectId,
+  roomId,
+  sessionId,
+  subject,
+} from "./fixtures.js";
 
 const grants = {
   "room.create": false,
@@ -288,7 +290,7 @@ describe("参加 JWT の認可", () => {
         ...baseMediaInput,
         participant: {
           ...baseMediaInput.participant!,
-          externalUserId: "user-b",
+          externalUserId: otherSubject,
         },
       },
       reason: "subject-mismatch",
@@ -299,7 +301,7 @@ describe("参加 JWT の認可", () => {
         ...baseJoinInput,
         participant: {
           ...baseJoinInput.participant!,
-          externalUserId: "user-b",
+          externalUserId: otherSubject,
         },
       },
       reason: "subject-mismatch",
@@ -578,7 +580,7 @@ describe("参加 JWT の認可", () => {
         ...baseMediaInput,
         project: {
           ...baseMediaInput.project,
-          id: "01ARZ3NDEKTSV4RRFFQ69G5FAY" as ProjectId,
+          id: otherProjectId,
         },
       },
       reason: "credential-target-mismatch",
@@ -600,7 +602,7 @@ describe("参加 JWT の認可", () => {
         ...baseMediaInput,
         room: {
           ...baseMediaInput.room,
-          projectId: "01ARZ3NDEKTSV4RRFFQ69G5FAY" as ProjectId,
+          projectId: otherProjectId,
         },
       },
       reason: "credential-target-mismatch",
@@ -654,7 +656,7 @@ describe("参加 JWT の認可", () => {
         ...baseMediaInput,
         session: {
           ...baseMediaInput.session!,
-          projectId: "01ARZ3NDEKTSV4RRFFQ69G5FAY" as ProjectId,
+          projectId: otherProjectId,
         },
       },
       reason: "session-target-mismatch",
@@ -665,7 +667,7 @@ describe("参加 JWT の認可", () => {
         ...baseMediaInput,
         session: {
           ...baseMediaInput.session!,
-          roomId: "01ARZ3NDEKTSV4RRFFQ69G5FAZ" as RoomId,
+          roomId: otherRoomId,
         },
       },
       reason: "session-target-mismatch",
@@ -676,7 +678,7 @@ describe("参加 JWT の認可", () => {
         ...baseMediaInput,
         session: {
           ...baseMediaInput.session!,
-          participantId: "01ARZ3NDEKTSV4RRFFQ69G5FA0" as ParticipantId,
+          participantId: otherParticipantId,
         },
       },
       reason: "session-target-mismatch",
@@ -687,7 +689,7 @@ describe("参加 JWT の認可", () => {
         ...baseMediaInput,
         participant: {
           ...baseMediaInput.participant!,
-          roomId: "01ARZ3NDEKTSV4RRFFQ69G5FAZ" as RoomId,
+          roomId: otherRoomId,
         },
       },
       reason: "participant-target-mismatch",

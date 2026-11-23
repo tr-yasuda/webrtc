@@ -1,4 +1,3 @@
-import type { AccountId, ProjectId, ProjectUserId } from "@webrtc/domain";
 import { describe, expect, test } from "vitest";
 import type { ManagementOperation, ProjectUserRole } from "../src/management-operation.js";
 import {
@@ -6,10 +5,7 @@ import {
   type ProjectUserAuthorizationReason,
   type ProjectUserAuthorizationTarget,
 } from "../src/project-user.js";
-
-const projectId = "01ARZ3NDEKTSV4RRFFQ69G5FAV" as ProjectId;
-const accountId = "01ARZ3NDEKTSV4RRFFQ69G5FAW" as AccountId;
-const projectUserId = "01ARZ3NDEKTSV4RRFFQ69G5FAX" as ProjectUserId;
+import { accountId, otherProjectId, projectId, projectUserId } from "./fixtures.js";
 
 function targetFor(operation: ManagementOperation): ProjectUserAuthorizationTarget {
   switch (operation) {
@@ -319,7 +315,7 @@ describe("ProjectUser ロールの認可", () => {
       name: "ProjectUser の Project が対象 Project と一致しない",
       input: {
         actor: {
-          projectId: "01ARZ3NDEKTSV4RRFFQ69G5FAY" as ProjectId,
+          projectId: otherProjectId,
           role: "owner" as const,
         },
         project: {
@@ -346,7 +342,7 @@ describe("ProjectUser ロールの認可", () => {
         },
         operation: "room.read" as const,
         target: {
-          projectId: "01ARZ3NDEKTSV4RRFFQ69G5FAY" as ProjectId,
+          projectId: otherProjectId,
           resourceId: "room-a",
         },
       },
