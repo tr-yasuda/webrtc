@@ -10,7 +10,7 @@ import {
   parseProjectId,
   parseProjectUserId,
   parseRoomId,
-} from "../src/index.js";
+} from "../src/id.js";
 
 const idParsers = [
   { idType: "ProjectId", parseId: parseProjectId },
