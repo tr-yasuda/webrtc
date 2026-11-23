@@ -67,3 +67,22 @@ Chrome・Firefox・Safari 間の送受信を確認する。
 DTLS 1.2 と 1.3 は、それぞれ対応する接続相手との試験を行う。
 
 SFU 移行の試験では、暗号化を維持して切り替えられることと、退役期限で自動再接続することを確認し、移行中の音声・映像の中断時間と DataChannel の欠落・重複を測定する。各測定値は、コンポーネントごとの受け入れ条件で合否を判断する。
+
+## D-Plane のプロセス・IPC・復旧
+
+D-Plane の詳細な受け入れ条件は、[D-Plane のプロセスモデルと IPC 境界](dplane.md#受け入れ条件)に従う。統合試験では、少なくとも次を確認する。
+
+| 試験対象 | 確認する結果 |
+|---|---|
+| プロセスの独立 | Node host の終了で TURN プロセスと SFU Worker が道連れにならず、停止後のプロセスが残らない |
+| Node host 再起動 | 生存する Worker のメディアが継続し、新しい Node host がスナップショットとイベント境界から制御を引き継ぐ。古い制御接続のコマンドを実行しない |
+| TURN の常駐 | Node host 再起動後も TURN リスナーと既存 Allocation が継続し、Allocation は Allocate 時にだけ確保される |
+| TURN の Orphaned | 制御接続が切れたら新規 Allocate を拒否し、既存 Allocation は期限まで継続する。orphan timeout で停止する |
+| 同一 epoch の再接続 | 同じ `controllerId` の IPC 再接続を受け付け、古い `controlSessionId` のコマンドを拒否する |
+| Worker 再起動 | 影響 Room が再配置され、クライアントが再接続する。ICE / DTLS の状態を復元済みとして扱わない |
+| Signaling 再起動 | DB にない Room を即座に閉じず、`assignmentVersion`、`commandId`、所有状態の照合後に孤児を確定する。Quarantine 中は既存メディアを継続し、新規参加と Transport 作成を拒否する |
+| Orphaned の認可 | 既知の認可期限が orphan timeout より早い場合はその時点で停止し、期限到達で全メディアを停止する |
+| Worker の idle と縮退 | Room 0 かつ予約 0 で 30 秒後に停止し、新規 Room で停止をキャンセルする。Worker 数を 0 にできる |
+| 容量予約の競合 | 予約済み容量を含む空き枠 1 に対する同時 Room 作成で、確保が 1 件だけになる |
+| 統計の欠測 | バッファ溢れで集計を黙って破棄せず、圧縮または欠測期間を記録する。Signaling は欠測を 0 として扱わない |
+| IPC の境界 | メディアパケットと DataChannel 本文が IPC に流れず、UDS が公開ネットワークに露出しない |

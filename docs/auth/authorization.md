@@ -271,7 +271,7 @@ JWT はトークン形式、OAuth 2.0 は認可の仕組み、OpenID Connect は
 
 Management UI の OpenID Connect 連携、Signaling の参加 JWT 検証、Management の権限・鍵管理は TypeScript で実装する。
 各プロトコルでの認証と権限の適用は、それぞれのコンポーネントが担う。
-論理的な責務の分離と、実行プロセスの分離は同一視しない。
+認証・認可の論理的な責務の分離と、実行プロセスの分離は同一視しない。
 
 | 実装する部分 | 責務 |
 |---|---|

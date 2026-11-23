@@ -92,8 +92,7 @@ RTX や書き換えによって新たに暗号化する場合は、WebRTC Transp
 バイト列や数値の読み書きへの利用は、自作する RTP/RTCP の解析・検証・状態管理を置き換えない範囲とする。
 メディア本文のデコード・再エンコードは行わない。
 
-C-Plane と D-Plane の分離は論理的な責務の分離とし、別プロセスでの実行を必須としない。
-Rust の実行方式は Wasm、Native Addon、独立 Worker を選択肢として残し、後続の技術選定で決定する。
+D-Plane の実行形態は [D-Plane のプロセスモデルと IPC 境界](../platform/dplane.md)に従う。SFU のメディア転送は、Node host が制御する独立した Rust Worker プロセスで実行する。
 
 採用する既存実装のバージョン、設定、依存する機能を記録する。
 実装と検証は、[実装・検証の共通方針](../platform/verification.md#実装検証の共通方針)に従う。
