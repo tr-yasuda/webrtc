@@ -26,7 +26,8 @@ export type DomainIdParseResult<T> =
     };
 
 function parseDomainId<T extends string>(value: string): DomainIdParseResult<T> {
-  const canonicalUlid = value.toUpperCase();
+  // 非 ASCII を大文字化すると ULID でない入力を受理するため、ASCII の小文字だけを変換する。
+  const canonicalUlid = value.replace(/[a-z]/g, (character) => character.toUpperCase());
   try {
     ulidToUUID(canonicalUlid);
   } catch {
