@@ -1,4 +1,4 @@
-import Conformance.Enumerate
+import Conformance.ValidationCases
 
 open Lean
 open Authorization

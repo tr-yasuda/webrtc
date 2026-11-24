@@ -1,6 +1,6 @@
 # 有限モデル照合
 
-`proofs/Conformance/Main.lean` が抽象入力の全有限ケース、validatorの不正入力ケース、期待結果をJSONLで出力する。`scripts/run-authorization-conformance.mjs` はvalidatorの成否と失敗理由を全件比較し、validatorが成功したケースだけ認可判断を比較する。
+`proofs/Conformance/Enumerate.lean` が抽象入力の全有限ケースを、`proofs/Conformance/ValidationCases.lean` がvalidatorの不正入力ケースを定義し、`Main.lean` が期待結果をJSONLで出力する。`scripts/run-authorization-conformance.mjs` はvalidatorの成否と失敗理由を全件比較し、validatorが成功したケースだけ認可判断を比較する。
 
 実行方法:
 

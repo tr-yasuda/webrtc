@@ -292,7 +292,7 @@ Leanの有限モデルは、生の文字列や暗号処理ではなく、判定�
 
 ### 列挙と比較
 
-Leanの `Conformance/Enumerate.lean` が抽象入力の全組み合わせとvalidatorの不正入力ケースを列挙し、canonical JSONLを出力する。TypeScriptの `test/conformance/` が全件を読み、validatorの成否と失敗理由を比較する。validatorが成功したケースだけ判定関数の結果を比較する。
+Leanの `Conformance/Enumerate.lean` が抽象入力の全組み合わせとJSON整形を、`Conformance/ValidationCases.lean` がvalidatorの不正入力ケースを定義する。TypeScriptの `test/conformance/` が全件を読み、validatorの成否と失敗理由を比較する。validatorが成功したケースだけ判定関数の結果を比較する。
 
 入力キー順、targetの項目順、reasonの表記を固定する。出力が大きい場合はoperation・role・scope単位のbucketに分け、bucketごとに `cmp` する。全件照合を維持する。スクリプトは系統別のケース数、認可判断の比較件数、validator失敗件数を固定値と照合し、空のJSONLやケース欠落を失敗させる。
 

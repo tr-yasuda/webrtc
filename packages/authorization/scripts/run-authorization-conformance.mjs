@@ -36,19 +36,27 @@ const sessionId = "session-a";
 const subject = "subject-a";
 const otherSubject = "subject-b";
 
+function participantExternalUserId(subjectClass, credentialSubject) {
+  switch (subjectClass) {
+    case "empty":
+      return "";
+    case "match":
+      return credentialSubject;
+    case "mismatch":
+    default:
+      return credentialSubject === subject ? otherSubject : subject;
+  }
+}
+
 function participantInput(input) {
   const project = input.targetMatch ? projectId : otherProjectId;
   const roomName = input.targetMatch ? "room-a" : "room-b";
   const credentialSubject =
     input.subjectClass === "empty" ? "" : input.subjectClass === "match" ? subject : otherSubject;
-  const participantExternalUser =
-    input.participantSubjectClass === "empty"
-      ? ""
-      : input.participantSubjectClass === "match"
-        ? credentialSubject
-        : credentialSubject === subject
-          ? otherSubject
-          : subject;
+  const participantExternalUser = participantExternalUserId(
+    input.participantSubjectClass,
+    credentialSubject,
+  );
 
   return {
     operation: input.operation,
@@ -159,29 +167,34 @@ function managementCredentialInput(input) {
     },
     project: { id: projectId, state: input.projectState },
     operation: input.operation,
-    target: {
-      projectId: input.targetProjectMatch ? projectId : otherProjectId,
-      ...(input.targetIdPresent
-        ? input.operation === "room.update" || input.operation === "room.delete"
-          ? { roomId }
-          : input.operation === "session.disconnect"
-            ? { sessionId }
-            : input.operation === "participant.disconnect"
-              ? { participantId }
-              : { resourceId: "resource-a" }
-        : {}),
-    },
+    target: managementCredentialTarget(input),
     now: 1_000,
   };
 }
 
-function targetKeys(target) {
-  return Object.keys(target).toSorted();
+function managementCredentialTarget(input) {
+  const target = {
+    projectId: input.targetProjectMatch ? projectId : otherProjectId,
+  };
+  if (!input.targetIdPresent) {
+    return target;
+  }
+  switch (input.operation) {
+    case "room.update":
+    case "room.delete":
+      return { ...target, roomId };
+    case "session.disconnect":
+      return { ...target, sessionId };
+    case "participant.disconnect":
+      return { ...target, participantId };
+    default:
+      return { ...target, resourceId: "resource-a" };
+  }
 }
 
 function compareDecision(label, expected, actual) {
   const expectedKeys = expected.targetKeys.toSorted();
-  const actualKeys = targetKeys(actual.target);
+  const actualKeys = Object.keys(actual.target).toSorted();
   if (
     expected.allowed !== actual.allowed ||
     expected.reason !== actual.reason ||
@@ -211,44 +224,23 @@ function compareValidation(kind, expected, actual) {
   return null;
 }
 
-function buildAuthorizationInput(kind, input) {
-  switch (kind) {
-    case "participant":
-      return participantInput(input);
-    case "project-user":
-      return projectUserInput(input);
-    case "management-credential":
-      return managementCredentialInput(input);
-    default:
-      throw new Error(`unknown conformance kind: ${kind}`);
-  }
-}
-
-function validateInput(kind, input) {
-  switch (kind) {
-    case "participant":
-      return validateParticipantAuthorizationInput(input);
-    case "project-user":
-      return validateProjectUserAuthorizationInput(input);
-    case "management-credential":
-      return validateManagementCredentialAuthorizationInput(input);
-    default:
-      throw new Error(`unknown conformance kind: ${kind}`);
-  }
-}
-
-function authorizeInput(kind, input) {
-  switch (kind) {
-    case "participant":
-      return authorizeParticipantAction(input);
-    case "project-user":
-      return authorizeProjectUserAction(input);
-    case "management-credential":
-      return authorizeManagementCredentialAction(input);
-    default:
-      throw new Error(`unknown conformance kind: ${kind}`);
-  }
-}
+const conformanceByKind = {
+  participant: {
+    buildAuthorizationInput: participantInput,
+    validate: validateParticipantAuthorizationInput,
+    authorize: authorizeParticipantAction,
+  },
+  "project-user": {
+    buildAuthorizationInput: projectUserInput,
+    validate: validateProjectUserAuthorizationInput,
+    authorize: authorizeProjectUserAction,
+  },
+  "management-credential": {
+    buildAuthorizationInput: managementCredentialInput,
+    validate: validateManagementCredentialAuthorizationInput,
+    authorize: authorizeManagementCredentialAction,
+  },
+};
 
 async function* readLines(file) {
   const stream = createReadStream(file, { encoding: "utf8" });
@@ -277,7 +269,7 @@ async function main() {
   }
 
   const counts = Object.fromEntries(
-    Object.keys(expectedCounts).map((kind) => [
+    Object.keys(conformanceByKind).map((kind) => [
       kind,
       { cases: 0, decisions: 0, validationFailures: 0 },
     ]),
@@ -290,7 +282,7 @@ async function main() {
       continue;
     }
     const entry = JSON.parse(line);
-    if (!(entry.kind in counts)) {
+    if (!Object.hasOwn(conformanceByKind, entry.kind)) {
       unknownKinds.push(entry.kind);
       continue;
     }
@@ -299,11 +291,12 @@ async function main() {
       continue;
     }
     counts[entry.kind].cases += 1;
+    const subjectConformance = conformanceByKind[entry.kind];
     const raw =
       entry.caseType === "authorization"
-        ? buildAuthorizationInput(entry.kind, entry.input)
+        ? subjectConformance.buildAuthorizationInput(entry.input)
         : entry.input;
-    const validation = validateInput(entry.kind, raw);
+    const validation = subjectConformance.validate(raw);
     const validationMismatch = compareValidation(entry.kind, entry.validation, validation);
     if (validationMismatch !== null && mismatches.length < 10) {
       mismatches.push({ ...validationMismatch, caseType: entry.caseType, input: entry.input });
@@ -313,7 +306,7 @@ async function main() {
       continue;
     }
     counts[entry.kind].decisions += 1;
-    const actual = authorizeInput(entry.kind, validation.value);
+    const actual = subjectConformance.authorize(validation.value);
     const decisionMismatch = compareDecision(entry.kind, entry.decision, actual);
     if (decisionMismatch !== null && mismatches.length < 10) {
       mismatches.push({ ...decisionMismatch, caseType: entry.caseType, input: entry.input });
