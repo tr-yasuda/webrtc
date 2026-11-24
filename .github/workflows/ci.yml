@@ -102,12 +102,6 @@ jobs:
       - name: Show authorization traceability matrix
         run: cat packages/authorization/.cache/authorization-traceability.md
 
-      - name: Run authorization mutation testing
-        run: pnpm --filter @webrtc/authorization mutation
-
-      - name: Check authorization surviving mutations
-        run: pnpm --filter @webrtc/authorization mutation:check
-
       - name: Check Rust formatting
         run: moon run rust:format
 
@@ -125,3 +119,37 @@ jobs:
 
       - name: Model-check Browser SDK notifications
         run: moon run :check-models
+
+  authorization-mutation:
+    name: Authorization Mutation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.3'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Lean
+        uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1.7.1
+        with:
+          lake-package-directory: packages/authorization/proofs
+          auto-config: false
+          use-github-cache: false
+          use-mathlib-cache: false
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run authorization mutation testing
+        run: pnpm --filter @webrtc/authorization mutation
+
+      - name: Check authorization surviving mutations
+        run: pnpm --filter @webrtc/authorization mutation:check
