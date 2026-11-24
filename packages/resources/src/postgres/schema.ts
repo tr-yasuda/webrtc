@@ -71,7 +71,14 @@ export const rateLimitEntry = pgTable(
     lastUsedAt: bigint("last_used_at", { mode: "number" }).notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
   },
-  (table) => [primaryKey({ columns: [table.tableKey, table.entryKey] })],
+  (table) => [
+    primaryKey({ columns: [table.tableKey, table.entryKey] }),
+    index("rate_limit_entry_expiry_idx").on(
+      table.tableKey,
+      table.lastUsedAt,
+      table.windowStartedAt,
+    ),
+  ],
 );
 
 export const rateLimitGlobal = pgTable("rate_limit_global", {
@@ -79,6 +86,8 @@ export const rateLimitGlobal = pgTable("rate_limit_global", {
   windowStartedAt: bigint("window_started_at", { mode: "number" }).notNull(),
   count: bigint("count", { mode: "number" }).notNull(),
   bytes: bigint("bytes", { mode: "number" }).notNull(),
+  entries: bigint("entries", { mode: "number" }).notNull().default(0),
+  entryBytes: bigint("entry_bytes", { mode: "number" }).notNull().default(0),
 });
 
 export const workerBoot = pgTable(

@@ -1,4 +1,4 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { Pool } from "pg";
 import {
@@ -21,7 +21,11 @@ interface GlobalRow {
   readonly windowStartedAt: number;
   readonly count: number;
   readonly bytes: number;
+  readonly entries: number;
+  readonly entryBytes: number;
 }
+
+const SWEEP_BATCH_SIZE = 100;
 
 function retryAfterMs(windowStartedAt: number, windowMs: number, now: number): number {
   return Math.max(0, windowStartedAt + windowMs - now);
@@ -73,13 +77,21 @@ export class PostgresRateLimitTable implements RateLimitTable {
 
       let entry = await this.lockEntry(tx, key);
       if (entry === undefined) {
-        await this.sweepExpired(tx, now);
-        const usage = await this.readUsage(tx);
-        if (usage.entries >= this.options.maxEntries) {
+        const sizeBytes = entrySize(key, this.options.entryOverheadBytes);
+        let capacity = {
+          entries: resetGlobal.entries,
+          entryBytes: resetGlobal.entryBytes,
+        };
+        if (
+          capacity.entries >= this.options.maxEntries ||
+          capacity.entryBytes + sizeBytes > this.options.maxBytes
+        ) {
+          capacity = await this.sweepExpiredBatch(tx, now);
+        }
+        if (capacity.entries >= this.options.maxEntries) {
           return { allowed: false, reason: "entry-limit" };
         }
-        const sizeBytes = entrySize(key, this.options.entryOverheadBytes);
-        if (usage.bytes + sizeBytes > this.options.maxBytes) {
+        if (capacity.entryBytes + sizeBytes > this.options.maxBytes) {
           return { allowed: false, reason: "byte-limit" };
         }
         await tx.insert(schema.rateLimitEntry).values({
@@ -91,6 +103,13 @@ export class PostgresRateLimitTable implements RateLimitTable {
           lastUsedAt: now,
           sizeBytes,
         });
+        await tx
+          .update(schema.rateLimitGlobal)
+          .set({
+            entries: capacity.entries + 1,
+            entryBytes: capacity.entryBytes + sizeBytes,
+          })
+          .where(eq(schema.rateLimitGlobal.tableKey, this.tableKey));
         entry = {
           tableKey: this.tableKey,
           entryKey: key,
@@ -141,22 +160,25 @@ export class PostgresRateLimitTable implements RateLimitTable {
 
   public async sweep(now: number): Promise<void> {
     await this.db.transaction(async (tx) => {
-      await this.sweepExpired(tx, now);
+      for (;;) {
+        const capacity = await this.sweepExpiredBatch(tx, now);
+        if (capacity.deleted === 0) {
+          return;
+        }
+      }
     });
   }
 
   public async getUsage(): Promise<RateLimitUsage> {
-    const [usage] = await this.db
+    const [global] = await this.db
       .select({
-        entries: count(),
-        bytes: sql<number>`coalesce(sum(${schema.rateLimitEntry.sizeBytes}), 0)`,
+        entries: schema.rateLimitGlobal.entries,
+        entryBytes: schema.rateLimitGlobal.entryBytes,
       })
-      .from(schema.rateLimitEntry)
-      .where(eq(schema.rateLimitEntry.tableKey, this.tableKey));
-    return {
-      entries: Number(usage?.entries ?? 0),
-      bytes: Number(usage?.bytes ?? 0),
-    };
+      .from(schema.rateLimitGlobal)
+      .where(eq(schema.rateLimitGlobal.tableKey, this.tableKey))
+      .limit(1);
+    return { entries: global?.entries ?? 0, bytes: global?.entryBytes ?? 0 };
   }
 
   private async lockGlobal(tx: ResourcesTransaction, now: number): Promise<GlobalRow> {
@@ -189,7 +211,7 @@ export class PostgresRateLimitTable implements RateLimitTable {
     if (now < global.windowStartedAt + this.options.windowMs) {
       return global;
     }
-    const reset = { windowStartedAt: now, count: 0, bytes: 0 };
+    const reset = { ...global, windowStartedAt: now, count: 0, bytes: 0 };
     await tx
       .update(schema.rateLimitGlobal)
       .set(reset)
@@ -214,32 +236,51 @@ export class PostgresRateLimitTable implements RateLimitTable {
     return row;
   }
 
-  private async readUsage(
+  private async sweepExpiredBatch(
     tx: ResourcesTransaction,
-  ): Promise<{ readonly entries: number; readonly bytes: number }> {
-    const [usage] = await tx
+    now: number,
+  ): Promise<{ readonly entries: number; readonly entryBytes: number; readonly deleted: number }> {
+    const deleted = await tx.execute(sql`
+      WITH expired AS (
+        SELECT entry_key
+        FROM rate_limit_entry
+        WHERE table_key = ${this.tableKey}
+          AND last_used_at + ${this.options.idleTtlMs} <= ${now}
+          AND window_started_at + ${this.options.windowMs} <= ${now}
+        ORDER BY last_used_at
+        LIMIT ${SWEEP_BATCH_SIZE}
+        FOR UPDATE SKIP LOCKED
+      )
+      DELETE FROM rate_limit_entry e
+      USING expired
+      WHERE e.table_key = ${this.tableKey}
+        AND e.entry_key = expired.entry_key
+      RETURNING e.size_bytes
+    `);
+    const rows = deleted.rows as { size_bytes: string | number }[];
+    const deletedBytes = rows.reduce((total, row) => total + Number(row.size_bytes), 0);
+    if (rows.length > 0) {
+      await tx
+        .update(schema.rateLimitGlobal)
+        .set({
+          entries: sql`greatest(${schema.rateLimitGlobal.entries} - ${rows.length}, 0)`,
+          entryBytes: sql`greatest(${schema.rateLimitGlobal.entryBytes} - ${deletedBytes}, 0)`,
+        })
+        .where(eq(schema.rateLimitGlobal.tableKey, this.tableKey));
+    }
+    const [global] = await tx
       .select({
-        entries: count(),
-        bytes: sql<number>`coalesce(sum(${schema.rateLimitEntry.sizeBytes}), 0)`,
+        entries: schema.rateLimitGlobal.entries,
+        entryBytes: schema.rateLimitGlobal.entryBytes,
       })
-      .from(schema.rateLimitEntry)
-      .where(eq(schema.rateLimitEntry.tableKey, this.tableKey));
+      .from(schema.rateLimitGlobal)
+      .where(eq(schema.rateLimitGlobal.tableKey, this.tableKey))
+      .limit(1);
     return {
-      entries: Number(usage?.entries ?? 0),
-      bytes: Number(usage?.bytes ?? 0),
+      entries: global?.entries ?? 0,
+      entryBytes: global?.entryBytes ?? 0,
+      deleted: rows.length,
     };
-  }
-
-  private async sweepExpired(tx: ResourcesTransaction, now: number): Promise<void> {
-    await tx
-      .delete(schema.rateLimitEntry)
-      .where(
-        and(
-          eq(schema.rateLimitEntry.tableKey, this.tableKey),
-          sql`${schema.rateLimitEntry.lastUsedAt} + ${this.options.idleTtlMs} <= ${now}`,
-          sql`${schema.rateLimitEntry.windowStartedAt} + ${this.options.windowMs} <= ${now}`,
-        ),
-      );
   }
 
   private async updateEntry(

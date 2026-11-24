@@ -119,7 +119,20 @@ fn plan_allocated(
         reservation.state,
         ResourceState::InUse | ResourceState::ReleasePending | ResourceState::Isolated
     ) {
-        return ignore(IgnoreReason::Duplicate);
+        if reservation.resource_id.is_some()
+            && reservation.worker_id.is_some()
+            && reservation.boot_id.is_some()
+        {
+            return ignore(IgnoreReason::Duplicate);
+        }
+        let mut next = transition_reservation(reservation, reservation.state, now);
+        next.resource_id = Some(resource_id.clone());
+        next.worker_id = Some(worker_id.clone());
+        next.boot_id = Some(boot_id.clone());
+        return PlannedTransition::Apply {
+            next,
+            release_quota: false,
+        };
     }
     if !matches!(
         reservation.state,
@@ -198,18 +211,26 @@ fn plan_release_failed(
     if let Some(correlation) = check_correlation(reservation, resource_id, worker_id, boot_id) {
         return correlation;
     }
-    if reservation.state == ResourceState::InUse {
+    if reservation.state == ResourceState::InUse
+        && reservation.resource_id.is_some()
+        && reservation.worker_id.is_some()
+        && reservation.boot_id.is_some()
+    {
         return ignore(IgnoreReason::Duplicate);
     }
     if !matches!(
         reservation.state,
-        ResourceState::ReleasePending | ResourceState::ResultUnknown
+        ResourceState::InUse | ResourceState::ReleasePending | ResourceState::ResultUnknown
     ) {
         return reject(TransitionRejectionReason::InvalidTransition);
     }
 
+    let mut next = transition_reservation(reservation, ResourceState::InUse, now);
+    next.resource_id = Some(resource_id.clone());
+    next.worker_id = Some(worker_id.clone());
+    next.boot_id = Some(boot_id.clone());
     PlannedTransition::Apply {
-        next: transition_reservation(reservation, ResourceState::InUse, now),
+        next,
         release_quota: false,
     }
 }

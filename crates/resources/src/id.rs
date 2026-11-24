@@ -28,7 +28,9 @@ macro_rules! opaque_id {
         impl $name {
             pub fn parse(value: impl Into<String>) -> Result<Self, InvalidOpaqueId> {
                 let value = value.into();
-                if value.is_empty() || value.len() > MAX_OPAQUE_ID_LENGTH || value.trim().is_empty()
+                if value.is_empty()
+                    || value.chars().count() > MAX_OPAQUE_ID_LENGTH
+                    || value.trim().is_empty()
                 {
                     return Err(InvalidOpaqueId {
                         type_name: stringify!($name),

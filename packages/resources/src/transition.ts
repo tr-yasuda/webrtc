@@ -106,7 +106,22 @@ function planAllocated(
     reservation.state === "release-pending" ||
     reservation.state === "isolated"
   ) {
-    return ignore("duplicate");
+    if (
+      reservation.resourceId !== undefined &&
+      reservation.workerId !== undefined &&
+      reservation.bootId !== undefined
+    ) {
+      return ignore("duplicate");
+    }
+    return {
+      kind: "apply",
+      next: transitionReservation(reservation, reservation.state, now, {
+        resourceId: event.resourceId,
+        workerId: event.workerId,
+        bootId: event.bootId,
+      }),
+      releaseQuota: false,
+    };
   }
   if (reservation.state !== "reserved" && reservation.state !== "result-unknown") {
     return reject("invalid-transition");
@@ -179,16 +194,29 @@ function planReleaseFailed(
   if (correlation !== undefined) {
     return correlation;
   }
-  if (reservation.state === "in-use") {
+  if (
+    reservation.state === "in-use" &&
+    reservation.resourceId !== undefined &&
+    reservation.workerId !== undefined &&
+    reservation.bootId !== undefined
+  ) {
     return ignore("duplicate");
   }
-  if (reservation.state !== "release-pending" && reservation.state !== "result-unknown") {
+  if (
+    reservation.state !== "in-use" &&
+    reservation.state !== "release-pending" &&
+    reservation.state !== "result-unknown"
+  ) {
     return reject("invalid-transition");
   }
 
   return {
     kind: "apply",
-    next: transitionReservation(reservation, "in-use", now),
+    next: transitionReservation(reservation, "in-use", now, {
+      resourceId: event.resourceId,
+      workerId: event.workerId,
+      bootId: event.bootId,
+    }),
     releaseQuota: false,
   };
 }

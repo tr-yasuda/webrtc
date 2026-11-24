@@ -1274,6 +1274,99 @@ fn 照合対象の上限を超える確保通知は容量超過で拒否する()
 }
 
 #[test]
+fn 遅延確保と解放失敗は相関情報を補完して照合対象にする() {
+    let mut store = store(2, 10);
+    let delayed = reserved(store.reserve(&claim(1, None), operation("reserve-delayed"), 0));
+    let failed = reserved(store.reserve(&claim(1, None), operation("reserve-failed"), 0));
+    for (reservation, operation_id) in [(&delayed, "unknown-delayed"), (&failed, "unknown-failed")]
+    {
+        store.apply_event(
+            ResourceEvent::OutcomeUnknown {
+                reservation_id: reservation.id.clone(),
+                operation_id: operation(operation_id),
+                at: 1,
+            },
+            1,
+        );
+    }
+    store.apply_event(
+        ResourceEvent::ReleaseRequested {
+            reservation_id: delayed.id.clone(),
+            operation_id: operation("release-delayed"),
+            at: 2,
+        },
+        2,
+    );
+    let delayed_applied = store.apply_event(
+        ResourceEvent::Allocated {
+            reservation_id: delayed.id.clone(),
+            resource_id: resource("resource-delayed"),
+            worker_id: worker(),
+            boot_id: boot(),
+            operation_id: operation("allocate-delayed"),
+            at: 3,
+        },
+        3,
+    );
+    let ApplyEventResult::Transition(TransitionResult::Applied(delayed_applied)) = delayed_applied
+    else {
+        panic!("delayed allocation was not applied");
+    };
+    assert_eq!(delayed_applied.state, ResourceState::ReleasePending);
+    assert_eq!(
+        delayed_applied.resource_id,
+        Some(resource("resource-delayed"))
+    );
+
+    let failed_applied = store.apply_event(
+        ResourceEvent::ReleaseFailed {
+            reservation_id: failed.id.clone(),
+            resource_id: resource("resource-failed"),
+            worker_id: worker(),
+            boot_id: boot(),
+            operation_id: operation("release-failed"),
+            at: 3,
+        },
+        3,
+    );
+    let ApplyEventResult::Transition(TransitionResult::Applied(failed_applied)) = failed_applied
+    else {
+        panic!("release failure was not applied");
+    };
+    assert_eq!(failed_applied.state, ResourceState::InUse);
+    assert_eq!(
+        failed_applied.resource_id,
+        Some(resource("resource-failed"))
+    );
+
+    let job = store
+        .start_reconciliation(
+            &ResourceEvent::WorkerStopped {
+                worker_id: worker(),
+                boot_id: boot(),
+                confirmed_resource_ids: Vec::new(),
+                operation_id: operation("worker-stopped-correlation"),
+                at: 4,
+            },
+            4,
+        )
+        .expect("reconciliation job");
+    assert_eq!(job.target_count, 2);
+    let batch = store
+        .continue_reconciliation(
+            &job.id,
+            ReconciliationBatchOptions {
+                cursor: 0,
+                limit: None,
+            },
+            4,
+        )
+        .expect("reconciliation batch");
+    assert!(batch.isolated.contains(&delayed.id));
+    assert!(batch.isolated.contains(&failed.id));
+}
+
+#[test]
 fn バイト上限を下回った状態ではゼロサイズの予約も拒否する() {
     let mut store = store(2, 10);
     reserved(store.reserve(&claim(10, None), operation("reserve-1"), 0));

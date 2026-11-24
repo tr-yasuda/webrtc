@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
 
 use crate::contract::ResourceStoreError;
 
@@ -70,6 +71,29 @@ struct RateLimitEntry {
     bytes: u64,
     last_used_at: u64,
     size_bytes: u64,
+    expires_at: u64,
+    generation: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExpiryRecord {
+    key: String,
+    expires_at: u64,
+    generation: u64,
+}
+
+impl Ord for ExpiryRecord {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.expires_at
+            .cmp(&other.expires_at)
+            .then_with(|| self.key.cmp(&other.key))
+    }
+}
+
+impl PartialOrd for ExpiryRecord {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 pub struct InMemoryRateLimitTable {
@@ -79,6 +103,7 @@ pub struct InMemoryRateLimitTable {
     global_count: u64,
     global_bytes: u64,
     entry_bytes: u64,
+    expiry_heap: BinaryHeap<Reverse<ExpiryRecord>>,
 }
 
 impl InMemoryRateLimitTable {
@@ -104,6 +129,7 @@ impl InMemoryRateLimitTable {
             global_count: 0,
             global_bytes: 0,
             entry_bytes: 0,
+            expiry_heap: BinaryHeap::new(),
         })
     }
 
@@ -162,11 +188,14 @@ impl InMemoryRateLimitTable {
                     bytes: 0,
                     last_used_at: now,
                     size_bytes,
+                    expires_at: 0,
+                    generation: 0,
                 }
             }
         };
 
         entry.last_used_at = now;
+        self.refresh_expiry(key, &mut entry);
         if entry.count >= self.options.max_requests_per_key
             || cost_bytes > self.options.max_bytes_per_key.saturating_sub(entry.bytes)
         {
@@ -189,18 +218,24 @@ impl InMemoryRateLimitTable {
     }
 
     pub fn sweep(&mut self, now: u64) {
-        let idle_ttl_ms = self.options.idle_ttl_ms;
-        let window_ms = self.options.window_ms;
-        let mut removed_bytes = 0;
-        self.entries.retain(|_, entry| {
-            let expired = now >= entry.last_used_at + idle_ttl_ms
-                && now >= entry.window_started_at + window_ms;
-            if expired {
-                removed_bytes += entry.size_bytes;
+        loop {
+            let Some(Reverse(record)) = self.expiry_heap.peek() else {
+                return;
+            };
+            if record.expires_at > now {
+                return;
             }
-            !expired
-        });
-        self.entry_bytes = self.entry_bytes.saturating_sub(removed_bytes);
+            let record = self.expiry_heap.pop().expect("expiry record was peeked").0;
+            let Some(entry) = self.entries.get(&record.key) else {
+                continue;
+            };
+            if entry.generation != record.generation || entry.expires_at != record.expires_at {
+                continue;
+            }
+            let removed_bytes = entry.size_bytes;
+            self.entries.remove(&record.key);
+            self.entry_bytes = self.entry_bytes.saturating_sub(removed_bytes);
+        }
     }
 
     pub fn get_usage(&self) -> RateLimitUsage {
@@ -220,6 +255,17 @@ impl InMemoryRateLimitTable {
                 now
             }
         }
+    }
+
+    fn refresh_expiry(&mut self, key: &str, entry: &mut RateLimitEntry) {
+        entry.generation += 1;
+        entry.expires_at = (entry.last_used_at + self.options.idle_ttl_ms)
+            .max(entry.window_started_at + self.options.window_ms);
+        self.expiry_heap.push(Reverse(ExpiryRecord {
+            key: key.to_owned(),
+            expires_at: entry.expires_at,
+            generation: entry.generation,
+        }));
     }
 }
 

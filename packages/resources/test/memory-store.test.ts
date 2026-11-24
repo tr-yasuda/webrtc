@@ -1123,6 +1123,122 @@ describe("インメモリ資源管理の受け入れ条件", () => {
     expect(await store.getQuotaUsage(serverScope)).toMatchObject({ usedCount: 0 });
   });
 
+  test("解放待ちへの遅延確保は状態を維持して相関情報を補完する", async () => {
+    const reserved = await reserve(store, "reserve-delayed-allocation");
+    if (reserved.status !== "reserved") {
+      throw new Error("reservation failed");
+    }
+    await store.applyEvent(
+      {
+        type: "outcome-unknown",
+        reservationId: reserved.reservation.id,
+        operationId: operation("unknown-delayed-allocation"),
+        at: 1,
+      },
+      1,
+    );
+    await store.applyEvent(
+      {
+        type: "release-requested",
+        reservationId: reserved.reservation.id,
+        operationId: operation("release-delayed-allocation"),
+        at: 2,
+      },
+      2,
+    );
+
+    const applied = await store.applyEvent(
+      {
+        type: "allocated",
+        reservationId: reserved.reservation.id,
+        resourceId: asResourceId("resource-delayed-allocation"),
+        workerId,
+        bootId,
+        operationId: operation("allocate-delayed-allocation"),
+        at: 3,
+      },
+      3,
+    );
+    expect(applied).toMatchObject({
+      status: "applied",
+      reservation: {
+        state: "release-pending",
+        resourceId: "resource-delayed-allocation",
+        workerId,
+        bootId,
+      },
+    });
+
+    const job = await store.startReconciliation(
+      {
+        type: "worker-stopped",
+        workerId,
+        bootId,
+        confirmedResourceIds: [],
+        operationId: operation("worker-stopped-delayed-allocation"),
+        at: 4,
+      },
+      4,
+    );
+    expect(job.targetCount).toBe(1);
+    expect(await store.continueReconciliation(job.id, { cursor: 0 }, 4)).toMatchObject({
+      isolated: [reserved.reservation.id],
+    });
+  });
+
+  test("解放失敗への遅延通知は相関情報を補完して照合対象にする", async () => {
+    const reserved = await reserve(store, "reserve-release-failed");
+    if (reserved.status !== "reserved") {
+      throw new Error("reservation failed");
+    }
+    await store.applyEvent(
+      {
+        type: "outcome-unknown",
+        reservationId: reserved.reservation.id,
+        operationId: operation("unknown-release-failed"),
+        at: 1,
+      },
+      1,
+    );
+    const applied = await store.applyEvent(
+      {
+        type: "release-failed",
+        reservationId: reserved.reservation.id,
+        resourceId: asResourceId("resource-release-failed"),
+        workerId,
+        bootId,
+        operationId: operation("release-failed-late"),
+        at: 2,
+      },
+      2,
+    );
+    expect(applied).toMatchObject({
+      status: "applied",
+      reservation: {
+        state: "in-use",
+        resourceId: "resource-release-failed",
+        workerId,
+        bootId,
+      },
+    });
+
+    const job = await store.startReconciliation(
+      {
+        type: "worker-stopped",
+        workerId,
+        bootId,
+        confirmedResourceIds: [],
+        operationId: operation("worker-stopped-release-failed"),
+        at: 3,
+      },
+      3,
+    );
+    expect(job.targetCount).toBe(1);
+    expect(await store.continueReconciliation(job.id, { cursor: 0 }, 3)).toMatchObject({
+      isolated: [reserved.reservation.id],
+    });
+  });
+
   test("使用中のスコープは削除せず、解放後に削除できる", async () => {
     const roomScope: QuotaScope = { kind: "room", key: "room-a" };
     const roomStore = createInMemoryResourceStore({ reservationTtlMs: 1_000 });

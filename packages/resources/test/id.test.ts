@@ -32,6 +32,8 @@ describe("資源 ID 契約", () => {
       expect(() => parse("")).toThrow();
       expect(() => parse("   ")).toThrow();
       expect(() => parse("a".repeat(129))).toThrow();
+      expect(parse("あ".repeat(128))).toBe("あ".repeat(128));
+      expect(() => parse("あ".repeat(129))).toThrow();
     },
   );
 });

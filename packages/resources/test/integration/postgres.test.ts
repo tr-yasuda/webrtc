@@ -1243,6 +1243,88 @@ describe("PostgreSQL 照合・隔離・quota 削除", () => {
     ).rejects.toBeInstanceOf(ReconciliationCapacityError);
   });
 
+  test("遅延確保と解放失敗の相関情報を補完して照合対象にする", async () => {
+    const store = await createStore(2, 10);
+    const delayed = await store.reserve(claim(), operation("reserve-delayed-correlation"), 0);
+    const failed = await store.reserve(claim(), operation("reserve-failed-correlation"), 0);
+    if (delayed.status !== "reserved" || failed.status !== "reserved") {
+      throw new Error("reservation failed");
+    }
+    for (const [reservation, operationId] of [
+      [delayed.reservation, "unknown-delayed-correlation"],
+      [failed.reservation, "unknown-failed-correlation"],
+    ] as const) {
+      await store.applyEvent(
+        {
+          type: "outcome-unknown",
+          reservationId: reservation.id,
+          operationId: operation(operationId),
+          at: 1,
+        },
+        1,
+      );
+    }
+    await store.applyEvent(
+      {
+        type: "release-requested",
+        reservationId: delayed.reservation.id,
+        operationId: operation("release-delayed-correlation"),
+        at: 2,
+      },
+      2,
+    );
+    expect(
+      await store.applyEvent(
+        {
+          type: "allocated",
+          reservationId: delayed.reservation.id,
+          resourceId: asResourceId("resource-delayed-correlation"),
+          workerId,
+          bootId,
+          operationId: operation("allocate-delayed-correlation"),
+          at: 3,
+        },
+        3,
+      ),
+    ).toMatchObject({
+      status: "applied",
+      reservation: { state: "release-pending", resourceId: "resource-delayed-correlation" },
+    });
+    expect(
+      await store.applyEvent(
+        {
+          type: "release-failed",
+          reservationId: failed.reservation.id,
+          resourceId: asResourceId("resource-failed-correlation"),
+          workerId,
+          bootId,
+          operationId: operation("release-failed-correlation"),
+          at: 3,
+        },
+        3,
+      ),
+    ).toMatchObject({
+      status: "applied",
+      reservation: { state: "in-use", resourceId: "resource-failed-correlation" },
+    });
+
+    const job = await store.startReconciliation(
+      {
+        type: "worker-stopped",
+        workerId,
+        bootId,
+        confirmedResourceIds: [],
+        operationId: operation("worker-stopped-correlation"),
+        at: 4,
+      },
+      4,
+    );
+    expect(job.targetCount).toBe(2);
+    expect(await store.continueReconciliation(job.id, { cursor: 0 }, 4)).toMatchObject({
+      isolated: expect.arrayContaining([delayed.reservation.id, failed.reservation.id]),
+    });
+  });
+
   test("照合対象の上限を超える確保通知は容量超過で拒否する", async () => {
     const store = createPostgresResourceStore({
       pool,

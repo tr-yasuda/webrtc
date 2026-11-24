@@ -316,13 +316,24 @@ impl InMemoryResourceStore {
             ));
         }
 
-        if let ResourceEvent::Allocated {
-            reservation_id,
-            resource_id,
-            worker_id,
-            boot_id,
-            ..
-        } = &event
+        let correlation = match &event {
+            ResourceEvent::Allocated {
+                reservation_id,
+                resource_id,
+                worker_id,
+                boot_id,
+                ..
+            }
+            | ResourceEvent::ReleaseFailed {
+                reservation_id,
+                resource_id,
+                worker_id,
+                boot_id,
+                ..
+            } => Some((reservation_id, resource_id, worker_id, boot_id)),
+            _ => None,
+        };
+        if let Some((reservation_id, resource_id, worker_id, boot_id)) = correlation
             && let Some(reservation) = self.reservations.get(reservation_id)
             && matches!(
                 plan_transition(reservation, &event, now, &self.options),
@@ -354,10 +365,10 @@ impl InMemoryResourceStore {
             },
             _ => {
                 let result = self.apply_transition(&event, now);
-                if let (
-                    ResourceEvent::Allocated { .. },
-                    ApplyEventResult::Transition(TransitionResult::Applied(next)),
-                ) = (&event, &result)
+                if matches!(
+                    &event,
+                    ResourceEvent::Allocated { .. } | ResourceEvent::ReleaseFailed { .. }
+                ) && let ApplyEventResult::Transition(TransitionResult::Applied(next)) = &result
                 {
                     self.append_reconciliation_target(next, now)
                         .expect("reconciliation target capacity was checked before allocation");

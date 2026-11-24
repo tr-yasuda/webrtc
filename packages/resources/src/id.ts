@@ -14,7 +14,8 @@ export type ReconciliationJobId = OpaqueId<"ReconciliationJobId">;
 const MAX_OPAQUE_ID_LENGTH = 128;
 
 function parseOpaqueId<T extends string>(value: string, type: T): OpaqueId<T> {
-  if (value.length === 0 || value.length > MAX_OPAQUE_ID_LENGTH || value.trim().length === 0) {
+  const length = Array.from(value).length;
+  if (length === 0 || length > MAX_OPAQUE_ID_LENGTH || value.trim().length === 0) {
     throw new Error(`${type} must be 1-${MAX_OPAQUE_ID_LENGTH} non-whitespace characters`);
   }
 

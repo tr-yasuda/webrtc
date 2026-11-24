@@ -596,8 +596,8 @@ export class PostgresResourceStore implements ResourceStore {
           reason: plan.reason,
         } satisfies TransitionResult);
       }
-      if (event.type === "allocated") {
-        const targetCapacityAvailable = await this.checkAllocatedReconciliationTargetCapacity(
+      if (event.type === "allocated" || event.type === "release-failed") {
+        const targetCapacityAvailable = await this.checkReconciliationTargetCapacity(
           tx,
           event.reservationId,
           event.workerId,
@@ -631,7 +631,7 @@ export class PostgresResourceStore implements ResourceStore {
         sizeBytes: plan.next.sizeBytes,
         scopes: plan.next.scopes,
       });
-      if (event.type === "allocated") {
+      if (event.type === "allocated" || event.type === "release-failed") {
         await this.appendReconciliationTarget(tx, plan.next, now);
       }
       return completeOperation(tx, event.operationId, {
@@ -1475,7 +1475,7 @@ export class PostgresResourceStore implements ResourceStore {
     };
   }
 
-  private async checkAllocatedReconciliationTargetCapacity(
+  private async checkReconciliationTargetCapacity(
     tx: ResourcesTransaction,
     reservationId: ReservationId,
     workerId: WorkerId,

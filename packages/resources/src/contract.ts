@@ -489,7 +489,10 @@ export function compareQuotaScopes(left: QuotaScope, right: QuotaScope): number 
     return kindDifference;
   }
 
-  return left.key.localeCompare(right.key);
+  if (left.key === right.key) {
+    return 0;
+  }
+  return left.key < right.key ? -1 : 1;
 }
 
 export function validateResourceClaim(

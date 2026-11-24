@@ -283,7 +283,7 @@ export class InMemoryResourceStore implements ResourceStore {
       return { status: "rejected", reason: "capacity-exhausted" };
     }
 
-    if (event.type === "allocated") {
+    if (event.type === "allocated" || event.type === "release-failed") {
       const reservation = this.reservations.get(event.reservationId);
       if (reservation !== undefined) {
         const plan = planTransition(reservation, event, now, this.options);
@@ -322,7 +322,10 @@ export class InMemoryResourceStore implements ResourceStore {
             job: await this.startReconciliation(event, now),
           } satisfies ApplyEventResult)
         : this.applyTransition(event, now);
-    if (event.type === "allocated" && result.status === "applied") {
+    if (
+      (event.type === "allocated" || event.type === "release-failed") &&
+      result.status === "applied"
+    ) {
       this.appendReconciliationTarget(result.reservation, now);
     }
     this.operations.set(event.operationId, {

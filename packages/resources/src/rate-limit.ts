@@ -12,6 +12,76 @@ interface RateLimitEntry {
   bytes: number;
   lastUsedAt: number;
   readonly sizeBytes: number;
+  expiresAt: number;
+  generation: number;
+}
+
+interface ExpiryRecord {
+  readonly key: string;
+  readonly expiresAt: number;
+  readonly generation: number;
+}
+
+class ExpiryHeap {
+  private readonly items: ExpiryRecord[] = [];
+
+  public peek(): ExpiryRecord | undefined {
+    return this.items[0];
+  }
+
+  public push(record: ExpiryRecord): void {
+    this.items.push(record);
+    let index = this.items.length - 1;
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2);
+      if (!isEarlierExpiry(this.items[index]!, this.items[parent]!)) {
+        break;
+      }
+      [this.items[index], this.items[parent]] = [this.items[parent]!, this.items[index]!];
+      index = parent;
+    }
+  }
+
+  public pop(): ExpiryRecord | undefined {
+    const first = this.items[0];
+    const last = this.items.pop();
+    if (first === undefined || last === undefined || this.items.length === 0) {
+      return first;
+    }
+    this.items[0] = last;
+    let index = 0;
+    for (;;) {
+      const left = index * 2 + 1;
+      const right = left + 1;
+      let smallest = index;
+      if (left < this.items.length && isEarlierExpiry(this.items[left]!, this.items[smallest]!)) {
+        smallest = left;
+      }
+      if (right < this.items.length && isEarlierExpiry(this.items[right]!, this.items[smallest]!)) {
+        smallest = right;
+      }
+      if (smallest === index) {
+        return first;
+      }
+      [this.items[index], this.items[smallest]] = [this.items[smallest]!, this.items[index]!];
+      index = smallest;
+    }
+  }
+}
+
+function isEarlierExpiry(left: ExpiryRecord, right: ExpiryRecord): boolean {
+  return (
+    left.expiresAt < right.expiresAt || (left.expiresAt === right.expiresAt && left.key < right.key)
+  );
+}
+
+function entryExpiry(
+  lastUsedAt: number,
+  windowStartedAt: number,
+  idleTtlMs: number,
+  windowMs: number,
+): number {
+  return Math.max(lastUsedAt + idleTtlMs, windowStartedAt + windowMs);
 }
 
 function retryAfterMs(windowStartedAt: number, windowMs: number, now: number): number {
@@ -29,6 +99,7 @@ export class InMemoryRateLimitTable implements RateLimitTable {
   private globalCount = 0;
   private globalBytes = 0;
   private entryBytes = 0;
+  private readonly expiryHeap = new ExpiryHeap();
 
   public constructor(options: RateLimitOptions) {
     validateRateLimitOptions(options);
@@ -76,9 +147,12 @@ export class InMemoryRateLimitTable implements RateLimitTable {
         bytes: 0,
         lastUsedAt: now,
         sizeBytes,
+        expiresAt: 0,
+        generation: 0,
       };
       this.entries.set(key, entry);
       this.entryBytes += sizeBytes;
+      this.refreshExpiry(key, entry);
     } else if (now >= entry.windowStartedAt + this.options.windowMs) {
       entry.windowStartedAt = now;
       entry.count = 0;
@@ -86,6 +160,7 @@ export class InMemoryRateLimitTable implements RateLimitTable {
     }
 
     entry.lastUsedAt = now;
+    this.refreshExpiry(key, entry);
     if (
       entry.count + 1 > this.options.maxRequestsPerKey ||
       entry.bytes + costBytes > this.options.maxBytesPerKey
@@ -114,14 +189,38 @@ export class InMemoryRateLimitTable implements RateLimitTable {
   }
 
   private sweepNow(now: number): void {
-    for (const [key, entry] of this.entries) {
-      const idleExpired = now >= entry.lastUsedAt + this.options.idleTtlMs;
-      const windowExpired = now >= entry.windowStartedAt + this.options.windowMs;
-      if (idleExpired && windowExpired) {
-        this.entries.delete(key);
-        this.entryBytes -= entry.sizeBytes;
+    for (;;) {
+      const record = this.expiryHeap.peek();
+      if (record === undefined || record.expiresAt > now) {
+        return;
       }
+      this.expiryHeap.pop();
+      const entry = this.entries.get(record.key);
+      if (
+        entry === undefined ||
+        entry.generation !== record.generation ||
+        entry.expiresAt !== record.expiresAt
+      ) {
+        continue;
+      }
+      this.entries.delete(record.key);
+      this.entryBytes -= entry.sizeBytes;
     }
+  }
+
+  private refreshExpiry(key: string, entry: RateLimitEntry): void {
+    entry.generation += 1;
+    entry.expiresAt = entryExpiry(
+      entry.lastUsedAt,
+      entry.windowStartedAt,
+      this.options.idleTtlMs,
+      this.options.windowMs,
+    );
+    this.expiryHeap.push({
+      key,
+      expiresAt: entry.expiresAt,
+      generation: entry.generation,
+    });
   }
 
   private resetGlobalWindow(now: number): number {

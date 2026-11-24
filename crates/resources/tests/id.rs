@@ -14,6 +14,14 @@ macro_rules! assert_id_contract {
         assert!($name::parse("").is_err());
         assert!($name::parse("   ").is_err());
         assert!($name::parse("a".repeat(MAX_OPAQUE_ID_LENGTH + 1)).is_err());
+        let non_ascii = "あ".repeat(MAX_OPAQUE_ID_LENGTH);
+        assert_eq!(
+            $name::parse(non_ascii.clone())
+                .expect("non-ascii maximum length id")
+                .as_str(),
+            non_ascii
+        );
+        assert!($name::parse("あ".repeat(MAX_OPAQUE_ID_LENGTH + 1)).is_err());
     }};
 }
 
