@@ -4,28 +4,34 @@ import {
   authorizeManagementCredentialAction,
   type ManagementCredentialAuthorizationInput,
   type ManagementCredentialScope,
-} from "../src/management-credential.js";
+} from "../../src/management-credential.js";
 import {
   allCredentialOperations,
   allManagementCredentialScopes,
   credentialRequiredScopesByOperation,
-} from "./policy-expectations.js";
+} from "../policy.js";
 import {
   managementCredentialBaseline,
   managementCredentialBaselineCaseArbitrary,
+} from "./management-credential/baseline.js";
+import {
   managementCredentialCaseArbitrary,
-  managementCredentialHasRequiredTargetId,
   managementCredentialMultiFaultCaseArbitrary,
-  managementCredentialMutations,
-  managementCredentialProjectUserOnlyOperations,
-  managementCredentialScopeAllows,
   managementCredentialSingleFaultCaseArbitrary,
+  managementCredentialValidCaseArbitrary,
+} from "./management-credential/cases.js";
+import {
+  managementCredentialMutations,
   managementCredentialUnknownOperationArbitrary,
   managementCredentialUnknownScopeArbitrary,
-  managementCredentialValidCaseArbitrary,
+} from "./management-credential/mutations.js";
+import {
+  managementCredentialHasRequiredTargetId,
+  managementCredentialProjectUserOnlyOperations,
+  managementCredentialScopeAllows,
   managementCredentialViolations,
-} from "./pbt/management-credential-pbt.js";
-import { fixedIdPool, idPoolArbitrary, pbtParameters, pbtTestTimeout } from "./pbt-support.js";
+} from "./management-credential/oracle.js";
+import { fixedIdPool, idPoolArbitrary, pbtParameters, pbtTestTimeout } from "./support.js";
 
 const baselineCases = allCredentialOperations.flatMap((operation) =>
   (credentialRequiredScopesByOperation[operation] ?? []).map((scope) => ({ operation, scope })),
@@ -217,7 +223,7 @@ describe("Management API credential の Property-based Testing", () => {
     ],
     pbtParameters(),
   )(
-    "credential の許可は明示 scope だけで決まり、ProjectUser ロールを継承しない",
+    "credential の許可は明示 scope だけで決まる",
     (operation, scope, ids) => {
       const input = managementCredentialBaseline(operation, scope, ids);
       const decision = authorizeManagementCredentialAction(input);
@@ -260,9 +266,6 @@ describe("Management API credential の Property-based Testing", () => {
       numRuns: 5_000,
       seed: 42,
     });
-    const mutationById = new Map(
-      managementCredentialMutations.map((mutation) => [mutation.id, mutation]),
-    );
 
     expect(new Set(samples.map((sample) => sample.operation))).toStrictEqual(
       new Set(allCredentialOperations),
@@ -270,11 +273,9 @@ describe("Management API credential の Property-based Testing", () => {
     expect(new Set(samples.map((sample) => sample.scope))).toStrictEqual(
       new Set(allManagementCredentialScopes),
     );
-    expect(
-      new Set(
-        samples.flatMap((sample) => sample.mutations).map((id) => mutationById.get(id)?.category),
-      ),
-    ).toStrictEqual(new Set(managementCredentialMutations.map((mutation) => mutation.category)));
+    expect(new Set(samples.flatMap((sample) => sample.mutations))).toStrictEqual(
+      new Set(managementCredentialMutations.map((mutation) => mutation.id)),
+    );
   });
 });
 

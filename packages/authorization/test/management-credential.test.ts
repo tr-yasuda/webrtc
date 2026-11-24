@@ -12,7 +12,7 @@ import {
   allManagementCredentialScopes,
   allManagementOperations,
   expectedCredentialScopeOperations,
-} from "./policy-expectations.js";
+} from "./policy.js";
 
 const baseInput: ManagementCredentialAuthorizationInput = {
   credential: {

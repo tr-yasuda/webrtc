@@ -1,36 +1,40 @@
 import { test as pbtTest, fc } from "@fast-check/vitest";
 import { describe, expect, test as baseTest } from "vitest";
-import { isProjectUserRole } from "../src/management-operation.js";
+import { isProjectUserRole } from "../../src/management-operation.js";
 import {
   authorizeProjectUserAction,
   type ProjectUserAuthorizationInput,
   type ProjectUserAuthorizationTarget,
-} from "../src/project-user.js";
+} from "../../src/project-user.js";
 import {
   allManagementOperations,
   allProjectUserRoles,
   expectedProjectUserAllowedOperations,
-} from "./policy-expectations.js";
+} from "../policy.js";
+import { projectUserBaseline, projectUserBaselineCaseArbitrary } from "./project-user/baseline.js";
 import {
-  projectUserBaseline,
-  projectUserBaselineCaseArbitrary,
   projectUserCaseArbitrary,
-  projectUserHasRequiredTargetId,
-  projectUserManagesOwner,
-  projectUserMutations,
   projectUserMultiFaultCaseArbitrary,
   projectUserSingleFaultCaseArbitrary,
-  projectUserUnknownRoleArbitrary,
   projectUserValidCaseArbitrary,
+} from "./project-user/cases.js";
+import {
+  projectUserMutations,
+  projectUserUnknownOperationArbitrary,
+  projectUserUnknownRoleArbitrary,
+} from "./project-user/mutations.js";
+import {
+  projectUserHasRequiredTargetId,
+  projectUserManagesOwner,
   projectUserViolations,
-} from "./pbt/project-user-pbt.js";
+} from "./project-user/oracle.js";
 import {
   fixedIdPool,
   idPoolArbitrary,
   type IdPool,
   pbtParameters,
   pbtTestTimeout,
-} from "./pbt-support.js";
+} from "./support.js";
 
 const baselineCases = allManagementOperations.flatMap((operation) =>
   allProjectUserRoles
@@ -183,6 +187,25 @@ describe("ProjectUser ロールの Property-based Testing", () => {
   );
 
   pbtTest.prop(
+    [projectUserBaselineCaseArbitrary(), projectUserUnknownOperationArbitrary()],
+    pbtParameters(),
+  )(
+    "未知の operation は固定候補でも任意文字列でも拒否される",
+    (base, operation) => {
+      const input = { ...base.input, operation };
+      const decision = authorizeProjectUserAction(input);
+
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: input.target,
+        reason: "unsupported-operation",
+      });
+    },
+    pbtTestTimeout(),
+  );
+
+  pbtTest.prop(
     [
       fc.constantFrom("projectUser.add", "projectUser.remove", "projectUser.changeRole"),
       fc.boolean(),
@@ -216,7 +239,6 @@ describe("ProjectUser ロールの Property-based Testing", () => {
       numRuns: 5_000,
       seed: 42,
     });
-    const mutationById = new Map(projectUserMutations.map((mutation) => [mutation.id, mutation]));
 
     expect(new Set(samples.map((sample) => sample.operation))).toStrictEqual(
       new Set(allManagementOperations),
@@ -224,11 +246,9 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     expect(new Set(samples.map((sample) => sample.role))).toStrictEqual(
       new Set(allProjectUserRoles),
     );
-    expect(
-      new Set(
-        samples.flatMap((sample) => sample.mutations).map((id) => mutationById.get(id)?.category),
-      ),
-    ).toStrictEqual(new Set(projectUserMutations.map((mutation) => mutation.category)));
+    expect(new Set(samples.flatMap((sample) => sample.mutations))).toStrictEqual(
+      new Set(projectUserMutations.map((mutation) => mutation.id)),
+    );
   });
 });
 

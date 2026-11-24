@@ -13,7 +13,7 @@ import {
   roomId as fixtureRoomId,
   sessionId as fixtureSessionId,
   subject as fixtureSubject,
-} from "./fixtures.js";
+} from "../fixtures.js";
 
 export const DEFAULT_PBT_RUNS = 10_000;
 export const DEFAULT_PBT_TIMEOUT_MS = 10_000;

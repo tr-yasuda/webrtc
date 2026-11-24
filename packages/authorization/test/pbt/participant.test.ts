@@ -3,23 +3,26 @@ import { describe, expect, test as baseTest } from "vitest";
 import {
   authorizeParticipantAction,
   type ParticipantAuthorizationInput,
-} from "../src/participant.js";
-import { allParticipantOperations } from "./policy-expectations.js";
+} from "../../src/participant.js";
+import { allParticipantOperations } from "../policy.js";
 import {
   allParticipantBaselineVariants,
   participantBaseline,
   participantBaselineCaseArbitrary,
   participantBaselineVariants,
+} from "./participant/baseline.js";
+import {
   participantCaseArbitrary,
-  participantExpectedTarget,
-  participantMutations,
   participantMultiFaultCaseArbitrary,
   participantSingleFaultCaseArbitrary,
-  participantUnknownOperationArbitrary,
   participantValidCaseArbitrary,
-  participantViolations,
-} from "./pbt/participant-pbt.js";
-import { fixedIdPool, pbtParameters, pbtTestTimeout } from "./pbt-support.js";
+} from "./participant/cases.js";
+import {
+  participantMutations,
+  participantUnknownOperationArbitrary,
+} from "./participant/mutations.js";
+import { participantExpectedTarget, participantViolations } from "./participant/oracle.js";
+import { fixedIdPool, pbtParameters, pbtTestTimeout } from "./support.js";
 
 const baselineCases = allParticipantOperations.flatMap((operation) =>
   participantBaselineVariants(operation).map((variant) => ({ operation, variant })),
@@ -179,7 +182,6 @@ describe("参加 JWT の Property-based Testing", () => {
       numRuns: 5_000,
       seed: 42,
     });
-    const mutationById = new Map(participantMutations.map((mutation) => [mutation.id, mutation]));
 
     expect(new Set(samples.map((sample) => sample.operation))).toStrictEqual(
       new Set(allParticipantOperations),
@@ -187,11 +189,9 @@ describe("参加 JWT の Property-based Testing", () => {
     expect(new Set(samples.map((sample) => sample.variant))).toStrictEqual(
       new Set(allParticipantBaselineVariants),
     );
-    expect(
-      new Set(
-        samples.flatMap((sample) => sample.mutations).map((id) => mutationById.get(id)?.category),
-      ),
-    ).toStrictEqual(new Set(participantMutations.map((mutation) => mutation.category)));
+    expect(new Set(samples.flatMap((sample) => sample.mutations))).toStrictEqual(
+      new Set(participantMutations.map((mutation) => mutation.id)),
+    );
   });
 });
 

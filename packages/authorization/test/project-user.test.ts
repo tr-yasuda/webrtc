@@ -18,7 +18,7 @@ import {
   allManagementOperations,
   allProjectUserRoles,
   expectedProjectUserAllowedOperations,
-} from "./policy-expectations.js";
+} from "./policy.js";
 
 function targetFor(operation: ManagementOperation): ProjectUserAuthorizationTarget {
   switch (operation) {

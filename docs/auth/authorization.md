@@ -383,7 +383,9 @@ Management UI の OpenID Connect では、標準のプロトコル処理に既�
 TypeScript の認可判定には、`fast-check` と `@fast-check/vitest` を使った PBT を適用する。
 ライブラリの取得元、バージョン、ライセンス、依存、インストールスクリプトの有無、実行内容はサプライチェーン条件に従って記録する。
 今回の認可パッケージでは `fast-check@4.11.0` と `@fast-check/vitest@0.5.0` を開発依存に追加する。
-取得元は registry.npmjs.org、ライセンスは MIT、実行時依存は `pure-rand@8.4.2` のみで、いずれもインストールスクリプトを持たない。
+取得元は registry.npmjs.org、ライセンスは MIT。
+`fast-check` の実行時依存は `pure-rand@8.4.2` のみで、`@fast-check/vitest` は `fast-check` を依存に、Vitest 5 を peer 依存に持つ。
+いずれもインストールスクリプトを持たない。
 Vitest 5 との組み合わせで `test.prop` を実行する。
 
 PBT は、生成した入力に対して次を確認する。
@@ -392,7 +394,7 @@ PBT は、生成した入力に対して次を確認する。
 - 許可された入力では、Project が active、credential が有効、grant・role・scope が許可範囲内、subject と Participant が一致、必要な target ID が存在する、などの許可条件がすべて成立する。
 - 許可条件のいずれかが崩れた入力は拒否される。
 - 監査対象に必要な ID が含まれ、拒否理由が違反条件に対応する。
-- Admin は Owner を付与・変更・除外できず、Management API credential は ProjectUser ロールを継承しない。
+- Admin は Owner を付与・変更・除外できず、Management API credential は明示 scope だけで許可され、ProjectUser 専用操作を許可しない。
 - 未知の role・operation・scope と、grant が真でない入力は許可されない。
 - 失敗時に seed と shrink 後の反例が出力され、`PBT_SEED` と `PBT_PATH` で再現できる。
 
@@ -417,7 +419,7 @@ PBT が保証するのは生成した入力に対する実装とテスト側オ�
 有限認可モデルの Lean 証明と TypeScript 実装の全件照合は、別の検証として維持し、PBT で置き換えない。
 状態遷移と競合は TLA+ の範囲に残す。
 
-ローカル計測では、3つの PBT ファイルのテスト（分布テストを除く）が 100 件/性質で 0.56 秒、500 件で 0.65 秒、1,000 件で 0.74 秒、10,000 件で 2.49 秒だった。
+ローカル計測では、3つの PBT ファイルのテスト（分布テストを除く）が 100 件/性質で 0.52 秒、500 件で 0.67 秒、1,000 件で 0.78 秒、10,000 件で 2.53 秒だった。
 CI の性質テストは 10,000 件/性質、テスト単位のタイムアウト 10 秒で実行する。
 実行件数とタイムアウトは `PBT_RUNS` と `PBT_TIMEOUT_MS` で上書きできる。
 代表的な認可バグを本番実装へ一時的に導入し、PBT 単独で検出できることを確認する。
