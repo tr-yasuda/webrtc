@@ -64,8 +64,11 @@ tasks:
     script: 'node scripts/check-authorization-traceability.mjs'
     deps:
       - 'authorization:test'
+      - 'authorization:conformance'
+      - '~:check-authorization-policy'
     inputs:
       - 'docs/auth/authorization-spec/**'
+      - 'packages/authorization/scripts/run-authorization-conformance.mjs'
       - 'packages/authorization/**/*.lean'
       - 'packages/authorization/test/**'
       - 'scripts/check-authorization-traceability.mjs'

@@ -7,6 +7,7 @@ const proofsRoot = path.join(packageRoot, "proofs");
 const cacheRoot = path.join(packageRoot, ".cache");
 const vitestReportPath = path.join(cacheRoot, "vitest-authorization.json");
 const mutationReportPath = path.join(cacheRoot, "authorization-policy-mutations.json");
+const conformanceManifestPath = path.join(cacheRoot, "authorization-conformance.json");
 const conformanceScriptPath = path.join(packageRoot, "scripts/run-authorization-conformance.mjs");
 
 const policy = loadPolicy();
@@ -69,10 +70,12 @@ function collectVitestTests() {
       const name = assertion.fullName ?? assertion.title ?? "";
       const specIds = extractSpecIds(name);
       if (specIds.length === 0) continue;
+      const file = path.relative(repoRoot, fileResult.name ?? "");
       tests.push({
-        file: path.relative(repoRoot, fileResult.name ?? ""),
+        file,
         name,
         status: assertion.status,
+        method: file.split(path.sep).includes("pbt") ? "property_test" : "typescript_test",
         specIds,
       });
     }
@@ -86,6 +89,11 @@ function collectMutationResults() {
   return report.results ?? [];
 }
 
+function collectConformanceManifest() {
+  if (!fs.existsSync(conformanceManifestPath)) return null;
+  return JSON.parse(fs.readFileSync(conformanceManifestPath, "utf8"));
+}
+
 function unique(values) {
   return [...new Set(values)];
 }
@@ -93,6 +101,7 @@ function unique(values) {
 const leanFindings = collectLeanProofs();
 const vitestTests = collectVitestTests();
 const mutationResults = collectMutationResults();
+const conformanceManifest = collectConformanceManifest();
 
 for (const finding of leanFindings) {
   for (const id of finding.specIds) {
@@ -138,23 +147,43 @@ function mutationResultsFor(id) {
 
 const matrix = [];
 for (const rule of policy.specRules) {
+  const allTests = vitestTestsFor(rule.id);
+  const passedTests = allTests.filter((test) => test.status === "passed");
   const coverage = {
     lean_theorem: leanTheoremsFor(rule.id),
-    vitest_test: vitestTestsFor(rule.id),
+    vitest_test: passedTests,
+    typescript_test: passedTests.filter((test) => test.method === "typescript_test"),
+    property_test: passedTests.filter((test) => test.method === "property_test"),
     mutation: mutationResultsFor(rule.id),
   };
   for (const method of rule.verification) {
     if (method === "lean_proof" && coverage.lean_theorem.length === 0) {
       errors.push(`lean_proof の定理がありません: ${rule.id}`);
     }
-    if (
-      (method === "typescript_test" || method === "property_test") &&
-      coverage.vitest_test.length === 0
-    ) {
+    if (method === "typescript_test" && coverage.typescript_test.length === 0) {
       errors.push(`${method} のテストがありません: ${rule.id}`);
     }
-    if (method === "conformance" && !fs.existsSync(conformanceScriptPath)) {
-      errors.push(`conformance スクリプトがありません: ${rule.id}`);
+    if (method === "property_test" && coverage.property_test.length === 0) {
+      errors.push(`${method} のテストがありません: ${rule.id}`);
+    }
+    if (method === "conformance") {
+      if (!fs.existsSync(conformanceScriptPath)) {
+        errors.push(`conformance スクリプトがありません: ${rule.id}`);
+      }
+      if (conformanceManifest === null) {
+        errors.push(`conformance manifest がありません: ${rule.id}`);
+      } else {
+        for (const group of rule.cases ?? []) {
+          const result = conformanceManifest.groups?.[group];
+          if (result === undefined || result.cases === 0) {
+            errors.push(`conformance manifest に caseGroup がありません: ${rule.id} / ${group}`);
+            continue;
+          }
+          if (!result.specIds.includes(rule.id)) {
+            errors.push(`conformance manifest の specId が一致しません: ${rule.id} / ${group}`);
+          }
+        }
+      }
     }
     if (method === "mutation") {
       if (coverage.mutation.length === 0) {
@@ -173,6 +202,8 @@ for (const rule of policy.specRules) {
     verification: rule.verification,
     leanTheorems: unique(coverage.lean_theorem.map((finding) => finding.theorem)).toSorted(),
     vitestTests: unique(coverage.vitest_test.map((test) => test.name)).toSorted(),
+    typescriptTests: unique(coverage.typescript_test.map((test) => test.name)).toSorted(),
+    propertyTests: unique(coverage.property_test.map((test) => test.name)).toSorted(),
     caseGroups: (rule.cases ?? []).toSorted(),
     mutations: coverage.mutation,
   });
@@ -204,5 +235,5 @@ const markdown = [
 ];
 fs.writeFileSync(path.join(cacheRoot, "authorization-traceability.md"), markdown.join("\n"));
 console.log(
-  `認可仕様 Traceability を生成しました: ${matrix.length} 仕様、${leanFindings.length} 定理、${vitestTests.length} テスト`,
+  `認可仕様 Traceability を生成しました: ${matrix.length} 仕様、${leanFindings.length} 定理、${vitestTests.filter((test) => test.status === "passed").length} テスト`,
 );

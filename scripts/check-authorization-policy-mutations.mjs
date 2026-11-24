@@ -48,8 +48,9 @@ function securityInvariants(candidate) {
   }
   const roomCreate = participantOperations.find((operation) => operation.id === "room.create");
   if (roomCreate !== undefined) {
-    if (!(roomCreate.requiresGrant ?? []).includes("room.join")) {
-      violations.push("room.create に room.join grant の要求がありません");
+    const required = new Set(roomCreate.requiresGrant ?? []);
+    if (required.size !== 1 || !required.has("room.join")) {
+      violations.push("room.create の必須 grant が room.join だけではありません");
     }
     if (roomCreate.requiresExistingRoom !== false) {
       violations.push("room.create が既存 Room を要求しています");
@@ -57,8 +58,9 @@ function securityInvariants(candidate) {
   }
   const roomJoin = participantOperations.find((operation) => operation.id === "room.join");
   if (roomJoin !== undefined) {
-    if (!(roomJoin.requiresGrantWhenRoomAbsent ?? []).includes("room.create")) {
-      violations.push("未作成 Room への room.join に room.create grant の要求がありません");
+    const required = new Set(roomJoin.requiresGrantWhenRoomAbsent ?? []);
+    if (required.size !== 1 || !required.has("room.create")) {
+      violations.push("未作成 Room への room.join の必須 grant が room.create だけではありません");
     }
     if (roomJoin.requiresExistingRoom !== true) {
       violations.push("room.join の既存 Room 条件がありません");
@@ -185,6 +187,13 @@ const mutations = [
     specId: "AUTH-PART-02",
     apply(candidate) {
       candidate.participantOperations[0].requiresGrant = [];
+    },
+  },
+  {
+    id: "room-create-extra-grant-added",
+    specId: "AUTH-PART-02",
+    apply(candidate) {
+      candidate.participantOperations[0].requiresGrant.push("data.send");
     },
   },
   {

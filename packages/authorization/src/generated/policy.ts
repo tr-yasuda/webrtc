@@ -60,6 +60,41 @@ export const participantGrantNames = [
   "media.subscribe",
   "data.send",
 ] as const;
+export type ParticipantGrantName = (typeof participantGrantNames)[number];
+export const participantGrantByOperation: Record<ParticipantOperation, ParticipantGrantName> = {
+  "room.create": "room.create",
+  "room.join": "room.join",
+  "media.publish": "media.publish",
+  "media.subscribe": "media.subscribe",
+  "data.send": "data.send",
+};
+export const participantRequiredGrants: Record<
+  ParticipantOperation,
+  readonly ParticipantGrantName[]
+> = {
+  "room.create": ["room.join"],
+  "room.join": [],
+  "media.publish": [],
+  "media.subscribe": [],
+  "data.send": [],
+};
+export const participantRequiredGrantsWhenRoomAbsent: Record<
+  ParticipantOperation,
+  readonly ParticipantGrantName[]
+> = {
+  "room.create": [],
+  "room.join": ["room.create"],
+  "media.publish": [],
+  "media.subscribe": [],
+  "data.send": [],
+};
+export const participantRequiresExistingRoom: Record<ParticipantOperation, boolean> = {
+  "room.create": false,
+  "room.join": true,
+  "media.publish": true,
+  "media.subscribe": true,
+  "data.send": true,
+};
 export const operationScope: Partial<Record<ManagementOperation, ManagementCredentialScope>> = {
   "room.read": "room.manage",
   "room.update": "room.manage",

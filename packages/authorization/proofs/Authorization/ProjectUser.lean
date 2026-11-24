@@ -45,11 +45,15 @@ def projectUserRules : List ProjectUserRule := [
     fails := fun input => adminManagesOwner input }
 ]
 
+def firstProjectUserViolationFrom
+    (rules : List ProjectUserRule) (input : ProjectUserInput) : Option String :=
+  match rules with
+  | [] => none
+  | rule :: rest =>
+      if rule.fails input then some rule.reason else firstProjectUserViolationFrom rest input
+
 def firstProjectUserViolation (input : ProjectUserInput) : Option String :=
-  let rec go : List ProjectUserRule -> Option String
-    | [] => none
-    | rule :: rest => if rule.fails input then some rule.reason else go rest
-  go projectUserRules
+  firstProjectUserViolationFrom projectUserRules input
 
 def projectUserTargetKeys (input : ProjectUserInput) : List String :=
   match input.operation with

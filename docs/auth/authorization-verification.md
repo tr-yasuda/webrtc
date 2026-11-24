@@ -45,7 +45,7 @@
 
 生成物は並び順・整形・改行を固定し、生成時刻などの非決定的な値を含めない。生成元の SHA-256 とスキーマバージョンをヘッダーに記録する。生成物を手で編集しない。
 
-TypeScript では `contracts/identifiers.ts`、`project-user/role-matrix.ts`、`management-credential/scope-matrix.ts`、対象 ID のルールが生成値を使う。Lean では `Authorization/Types.lean` などが `Authorization/GeneratedPolicy.lean` を import する。
+TypeScript では `contracts/identifiers.ts`、`project-user/role-matrix.ts`、`management-credential/scope-matrix.ts`、対象 ID のルール、参加 JWT の grant・Room 要件が生成値を使う。Lean では `Authorization/Types.lean` などが `Authorization/GeneratedPolicy.lean` を import する。
 
 ## 仕様データの検証
 
@@ -85,7 +85,7 @@ Lean モデルは `packages/authorization/proofs/Authorization` に置く。
 
 有限ケースは operation、状態、対象一致、role、対象 ID の有無、変更前後の role、grant の全組合せ、scope の全組合せ、失効・期限クラスを含む。conformance は次の件数を検査する。
 
-- Participant: 215,046 ケース（判定 215,040、入力検証失敗 6）
+- Participant: 218,503 ケース（判定 218,496、入力検証失敗 7）
 - ProjectUser: 38,010 ケース（判定 38,000、入力検証失敗 10）
 - Management API credential: 29,192 ケース（判定 19,456、入力検証失敗 9,736）
 
@@ -96,9 +96,11 @@ Lean の定理には `@[auth_spec "AUTH-..."]` を付け、仕様 ID と対応�
 Traceability は二層で管理する。
 
 1. `pnpm --filter @webrtc/authorization check:traceability` が README のルール ID、仕様見出し、テストファイル、Lean/TLA の対応を生成・検査する。
-2. `node scripts/check-authorization-traceability.mjs` が JSON の `AUTH-*` 仕様 ID、Lean 定理属性、Vitest の JSON レポート、conformance スクリプト、仕様 mutation 結果から対応行列を生成する。
+2. `node scripts/check-authorization-traceability.mjs` が JSON の `AUTH-*` 仕様 ID、Lean 定理属性、Vitest の JSON レポート、conformance 実行 manifest、仕様 mutation 結果から対応行列を生成する。
 
 Vitest は `test/auth-spec.ts` の `authSpecName` で個別テスト・property 単位に ID を付与できる。Traceability は未知 ID、参照切れ、必要な検証手法の欠落を CI で検出する。手動の対応表は持たない。
+
+検証実績には `status=passed` のテストだけを使い、`test/pbt/` 配下のテストを `property_test`、それ以外を `typescript_test` として区別する。conformance は実行時に group 別件数と仕様 ID を含む manifest を生成し、各仕様が要求する case group の存在を照合する。
 
 CI が検査するのは機械的な対応関係までとする。仕様 JSON と規範文章の意味的な一致、定理・テストが実際に条件を確認しているかは人間がレビューする。
 
@@ -108,7 +110,7 @@ StrykerJS は `packages/authorization/stryker.config.mjs` で認可判断を実�
 
 - Stryker の全件実行: 597 mutant、Mutation Score 100.00、1 分 58 秒
 - 生存 mutation と no coverage は 0
-- 仕様データ mutation: 10 件を独立したセキュリティ不変条件で検出
+- 仕様データ mutation: 11 件を独立したセキュリティ不変条件で検出
 - Lean モデル mutation: Owner の許可削除、Admin の変更後 Owner チェック削除、ProjectUser 除外操作への credential scope 追加を検出
 
 `scripts/check-authorization-stryker-report.mjs` は、未処理の生存 mutation、no coverage、timeout を失敗にする。等価 mutation を除外する場合は `packages/authorization/mutation-exclusions.json` に個別根拠を記録し、使われていない除外も失敗にする。現在の除外は 0 件。

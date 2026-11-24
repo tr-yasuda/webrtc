@@ -35,12 +35,18 @@ def managementCredentialRules : List ManagementCredentialRule := [
     fails := fun input => !hasRequiredScope input }
 ]
 
+def firstManagementCredentialViolationFrom
+    (rules : List ManagementCredentialRule)
+    (input : ManagementCredentialInput) : Option String :=
+  match rules with
+  | [] => none
+  | rule :: rest =>
+      if rule.fails input then some rule.reason
+      else firstManagementCredentialViolationFrom rest input
+
 def firstManagementCredentialViolation
     (input : ManagementCredentialInput) : Option String :=
-  let rec go : List ManagementCredentialRule -> Option String
-    | [] => none
-    | rule :: rest => if rule.fails input then some rule.reason else go rest
-  go managementCredentialRules
+  firstManagementCredentialViolationFrom managementCredentialRules input
 
 def managementCredentialTargetKeys
     (input : ManagementCredentialInput) : List String :=

@@ -338,6 +338,7 @@ LeanモデルはTypeScript実装から独立して手書きし、抽象入力に
 | `validation_rejects_unknown_grant` | 未知のgrantを拒否する |
 | `validation_rejects_non_boolean_grant` | 非booleanのgrantを拒否する |
 | `role_inclusion_conditional` / `role_non_inclusion` | ロールの条件付き包含と非包含 |
+| `owner_allows_every_management_operation` | Ownerは全ManagementOperationを許可される |
 | `scope_partition` | scopeの排他・網羅 |
 | `owner_admin_boundary` | AdminがOwnerを操作できない |
 
@@ -345,7 +346,7 @@ ProjectUserのロール包含は、操作名の集合だけでなく、対象rol
 
 最後のOwnerは認可モデルではなく、ドメイン不変条件のモデルで証明する。
 
-有限モデルは `proofs/Conformance/Main.lean` が全件をJSONLで出力し、`scripts/run-authorization-conformance.mjs` がTypeScript実装と比較する。現在は Participant 215,046、ProjectUser 38,010、Management API credential 29,192 の合計 282,248 ケースを照合する。うち認可判断を比較するのは 272,496 ケース、validator失敗を比較するのは 9,752 ケースで、サンプリングしない。
+有限モデルは `proofs/Conformance/Main.lean` が全件をJSONLで出力し、`scripts/run-authorization-conformance.mjs` がTypeScript実装と比較する。現在は Participant 218,503、ProjectUser 38,010、Management API credential 29,192 の合計 285,705 ケースを照合する。うち認可判断を比較するのは 275,952 ケース、validator失敗を比較するのは 9,753 ケースで、サンプリングしない。
 
 ## 認可とドメイン不変条件の境界
 
@@ -470,7 +471,7 @@ Phase 3をPhase 4/5より先に置く。実装を直してからLeanモデルを
 | 0 | 完了 | この文書、62ルールの `traceability.md` |
 | 1 | 完了 | `tsconfig.test.json`、`vitest.config.ts`、coverageしきい値 |
 | 2 | 完了 | 3つの巨大テストをルール群別の29テストファイルへ分割 |
-| 3 | 完了 | Lean 4.36のモデルと定理、PBT、282,248件の全有限照合 |
+| 3 | 完了 | Lean 4.36のモデルと定理、PBT、285,705件の全有限照合 |
 | 4 | 完了 | 未知grant、canonical target、最後のOwnerの責務分離、仕様更新、TLA+ |
 | 5 | 完了 | `contracts/`、`rules/`、判定順序、canonical target |
 | 6 | 完了 | Stryker 597 mutant、認可判断 100.00% |
@@ -482,7 +483,7 @@ Phase 3をPhase 4/5より先に置く。実装を直してからLeanモデルを
 - Stryker 10.1.1 と `@stryker-mutator/vitest-runner` 10.1.1 は Vitest 5.1.1 で動作する。TypeScript 7では `disableTypeChecks` と `inPlace` が必要。
 - `@vitest/coverage-v8` 5.1.1 は Vitest 5.1.1 に対応する。
 - `fast-check` 4.11.0 でPBTを実行できる。
-- Lean 4.36.0で `check-authorization-proofs` が成功し、`test:conformance` が Participant 215,046、ProjectUser 38,010、Management API credential 29,192 の合計282,248ケースを照合する。認可判断は272,496件、validator失敗は9,752件を比較する。
+- Lean 4.36.0で `check-authorization-proofs` が成功し、`test:conformance` が Participant 218,503、ProjectUser 38,010、Management API credential 29,192 の合計285,705ケースを照合する。認可判断は275,952件、validator失敗は9,753件を比較する。
 - `traceability.md` は62ルールを追跡し、CIで差分を検出する。
 - coverageはStatements 100%、Lines 100%、Functions 100%、Branches 98.37%。
 - `moon run :check-models` で Browser SDK と `ProjectOwner.tla` のモデル検査が成功する。

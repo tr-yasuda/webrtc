@@ -105,6 +105,54 @@ structure ParticipantGrants where
   dataSend : Bool
 deriving DecidableEq, Repr, BEq
 
+inductive ParticipantGrant where
+  | roomCreate
+  | roomJoin
+  | mediaPublish
+  | mediaSubscribe
+  | dataSend
+deriving DecidableEq, Repr, BEq
+
+def participantGrantNames : List ParticipantGrant := [.roomCreate, .roomJoin, .mediaPublish, .mediaSubscribe, .dataSend]
+
+def grantEnabled (grants : ParticipantGrants) : ParticipantGrant -> Bool
+  | .roomCreate => grants.roomCreate
+  | .roomJoin => grants.roomJoin
+  | .mediaPublish => grants.mediaPublish
+  | .mediaSubscribe => grants.mediaSubscribe
+  | .dataSend => grants.dataSend
+
+def participantGrantFor : ParticipantOperation -> ParticipantGrant
+  | .roomCreate => .roomCreate
+  | .roomJoin => .roomJoin
+  | .mediaPublish => .mediaPublish
+  | .mediaSubscribe => .mediaSubscribe
+  | .dataSend => .dataSend
+
+def participantRequiredGrants : ParticipantOperation -> List ParticipantGrant
+  | .roomCreate => [.roomJoin]
+  | .roomJoin => []
+  | .mediaPublish => []
+  | .mediaSubscribe => []
+  | .dataSend => []
+
+def participantRequiredGrantsWhenRoomAbsent : ParticipantOperation -> List ParticipantGrant
+  | .roomCreate => []
+  | .roomJoin => [.roomCreate]
+  | .mediaPublish => []
+  | .mediaSubscribe => []
+  | .dataSend => []
+
+def participantRequiresExistingRoom : ParticipantOperation -> Bool
+  | .roomCreate => false
+  | .roomJoin => true
+  | .mediaPublish => true
+  | .mediaSubscribe => true
+  | .dataSend => true
+
+def allGrantsEnabled (grants : ParticipantGrants) (required : List ParticipantGrant) : Bool :=
+  required.all (grantEnabled grants)
+
 def allGrants : List ParticipantGrants :=
   [false, true].flatMap fun roomCreate =>
   [false, true].flatMap fun roomJoin =>

@@ -53,13 +53,55 @@ for (let index = 0; index < lines.length; index += 1) {
 
 const proofRoot = path.join(repoRoot, "packages/authorization/proofs");
 
-const expectedTheorems = new Set(
-  fs
-    .readFileSync(path.join(proofRoot, "Authorization/Theorems.lean"), "utf8")
-    .split(/\r?\n/u)
-    .map((line) => line.match(/^\s*theorem\s+([^\s(:]+)/u)?.[1])
-    .filter(Boolean),
-);
+function walk(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name);
+    return entry.isDirectory() ? walk(entryPath) : [entryPath];
+  });
+}
+
+function collectAttributedTheorems() {
+  const findings = [];
+  for (const leanFile of walk(proofRoot).filter((file) => file.endsWith(".lean"))) {
+    const fileLines = fs.readFileSync(leanFile, "utf8").split(/\r?\n/u);
+    const namespaces = [];
+    let pending = [];
+    for (const line of fileLines) {
+      const namespace = line.match(/^\s*namespace\s+(\S+)/u);
+      if (namespace !== null) {
+        namespaces.push(namespace[1]);
+        pending = [];
+        continue;
+      }
+      const namespaceEnd = line.match(/^\s*end\s+(\S+)\s*$/u);
+      if (namespaceEnd !== null) {
+        if (namespaces.at(-1) === namespaceEnd[1]) namespaces.pop();
+        pending = [];
+        continue;
+      }
+      const attribute = line.match(/@\[([^\]]*)\]/u);
+      if (attribute !== null) {
+        pending = [...attribute[1].matchAll(/auth_spec\s+"([^"]+)"/gu)].map((match) => match[1]);
+        continue;
+      }
+      const theorem = line.match(/^\s*theorem\s+([^\s(:]+)/u);
+      if (theorem !== null) {
+        findings.push({
+          file: path.relative(repoRoot, leanFile),
+          name: [...namespaces, theorem[1]].join("."),
+          specIds: pending,
+        });
+        pending = [];
+        continue;
+      }
+      if (line.trim() !== "" && !line.trim().startsWith("--")) pending = [];
+    }
+  }
+  return findings;
+}
+
+const attributedTheorems = collectAttributedTheorems();
+const expectedTheorems = new Set(attributedTheorems.map((finding) => finding.name));
 
 const axiomsFile = path.join(proofRoot, "Axioms.lean");
 const actualTheorems = new Set(

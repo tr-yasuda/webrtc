@@ -365,6 +365,30 @@ export function generateTypeScript(policy) {
     `export const participantGrantNames = ${JSON.stringify(
       grants.map((grant) => grant.id),
     )} as const;`,
+    "export type ParticipantGrantName = (typeof participantGrantNames)[number];",
+    `export const participantGrantByOperation: Record<ParticipantOperation, ParticipantGrantName> = {`,
+    ...participantOperations.map(
+      (operation) => `  ${JSON.stringify(operation.id)}: ${JSON.stringify(operation.grant)},`,
+    ),
+    "};",
+    `export const participantRequiredGrants: Record<ParticipantOperation, readonly ParticipantGrantName[]> = {`,
+    ...participantOperations.map(
+      (operation) =>
+        `  ${JSON.stringify(operation.id)}: ${JSON.stringify(operation.requiresGrant ?? [])},`,
+    ),
+    "};",
+    `export const participantRequiredGrantsWhenRoomAbsent: Record<ParticipantOperation, readonly ParticipantGrantName[]> = {`,
+    ...participantOperations.map(
+      (operation) =>
+        `  ${JSON.stringify(operation.id)}: ${JSON.stringify(operation.requiresGrantWhenRoomAbsent ?? [])},`,
+    ),
+    "};",
+    `export const participantRequiresExistingRoom: Record<ParticipantOperation, boolean> = {`,
+    ...participantOperations.map(
+      (operation) =>
+        `  ${JSON.stringify(operation.id)}: ${JSON.stringify(operation.requiresExistingRoom ?? false)},`,
+    ),
+    "};",
     "export const operationScope: Partial<Record<ManagementOperation, ManagementCredentialScope>> = {",
     ...[...operationScopes.entries()].map(
       ([operation, requiredScopes]) =>
@@ -651,6 +675,31 @@ export function generateLean(policy) {
   const grants = policy.grants.map((grant) => grant.id);
   const operationScopes = scopeMap(policy);
   const grantFields = grants.map((grant) => `  ${toCamel(grant)} : Bool`).join("\n");
+  const participantGrantConstructors = grants.map((grant) => `  | ${toCamel(grant)}`).join("\n");
+  const participantGrantEnabled = grants
+    .map((grant) => `  | .${toCamel(grant)} => grants.${toCamel(grant)}`)
+    .join("\n");
+  const participantGrantFor = policy.participantOperations
+    .map((operation) => `  | .${toCamel(operation.id)} => .${toCamel(operation.grant)}`)
+    .join("\n");
+  const participantRequiredGrants = policy.participantOperations
+    .map(
+      (operation) =>
+        `  | .${toCamel(operation.id)} => ${leanConstructorList(operation.requiresGrant ?? [])}`,
+    )
+    .join("\n");
+  const participantRequiredGrantsWhenRoomAbsent = policy.participantOperations
+    .map(
+      (operation) =>
+        `  | .${toCamel(operation.id)} => ${leanConstructorList(operation.requiresGrantWhenRoomAbsent ?? [])}`,
+    )
+    .join("\n");
+  const participantRequiresExistingRoom = policy.participantOperations
+    .map(
+      (operation) =>
+        `  | .${toCamel(operation.id)} => ${operation.requiresExistingRoom ? "true" : "false"}`,
+    )
+    .join("\n");
   const roleConstructors = roles.map((role) => `  | ${toCamel(role)}`).join("\n");
   const operationConstructors = operations
     .map((operation) => `  | ${toCamel(operation)}`)
@@ -753,6 +802,30 @@ deriving DecidableEq, Repr, BEq
 structure ParticipantGrants where
 ${grantFields}
 deriving DecidableEq, Repr, BEq
+
+inductive ParticipantGrant where
+${participantGrantConstructors}
+deriving DecidableEq, Repr, BEq
+
+def participantGrantNames : List ParticipantGrant := ${leanConstructorList(grants)}
+
+def grantEnabled (grants : ParticipantGrants) : ParticipantGrant -> Bool
+${participantGrantEnabled}
+
+def participantGrantFor : ParticipantOperation -> ParticipantGrant
+${participantGrantFor}
+
+def participantRequiredGrants : ParticipantOperation -> List ParticipantGrant
+${participantRequiredGrants}
+
+def participantRequiredGrantsWhenRoomAbsent : ParticipantOperation -> List ParticipantGrant
+${participantRequiredGrantsWhenRoomAbsent}
+
+def participantRequiresExistingRoom : ParticipantOperation -> Bool
+${participantRequiresExistingRoom}
+
+def allGrantsEnabled (grants : ParticipantGrants) (required : List ParticipantGrant) : Bool :=
+  required.all (grantEnabled grants)
 
 def allGrants : List ParticipantGrants :=
 ${allGrants.join("\n")}

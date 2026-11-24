@@ -97,6 +97,9 @@ def roleInclusionCheck : Bool :=
     (!roleAllows .operator operation || roleAllows .admin operation) &&
     (!roleAllows .auditor operation || roleAllows .admin operation)
 
+def ownerAllowsEveryManagementOperationCheck : Bool :=
+  managementOperations.all fun operation => roleAllows .owner operation
+
 def roleNonInclusionCheck : Bool :=
   managementOperations.any (fun operation =>
     roleAllows .operator operation && !roleAllows .auditor operation) &&
@@ -216,6 +219,9 @@ theorem project_user_first_failure_all : projectUserFirstFailureCheck = true := 
 theorem project_user_non_interference : projectUserNonInterferenceCheck = true := by native_decide
 @[auth_spec "AUTH-PU-03"]
 theorem owner_admin_boundary : projectUserOwnerBoundaryCheck = true := by native_decide
+@[auth_spec "AUTH-PU-01"]
+theorem owner_allows_every_management_operation :
+    ownerAllowsEveryManagementOperationCheck = true := by native_decide
 @[auth_spec "AUTH-PU-01", auth_spec "AUTH-PU-02"]
 theorem role_inclusion_conditional : roleInclusionCheck = true := by native_decide
 @[auth_spec "AUTH-PU-02"]
