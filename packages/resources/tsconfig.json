@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "types": ["node"],
+    "declaration": true,
+    // Drizzle の列ビルダーは isolatedDeclarations で型を明示できないため、このパッケージでは無効にする。
+    "isolatedDeclarations": false,
+    "noEmit": true,
+    "strict": true,
+    // drizzle-orm は未導入の任意ドライバー型を参照するため、依存先の宣言だけ検査対象から外す。
+    "skipLibCheck": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["test/package.test.ts"]
+}
