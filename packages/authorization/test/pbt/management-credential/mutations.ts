@@ -1,5 +1,4 @@
 import { fc } from "@fast-check/vitest";
-import type { ParticipantId, RoomId } from "@webrtc/domain";
 import {
   type ManagementCredentialAuthorizationReason,
   type ManagementCredentialAuthorizationTarget,
@@ -141,6 +140,16 @@ export const managementCredentialMutations: readonly ManagementCredentialMutatio
   ),
 ];
 
+const managementCredentialValidationMutationIds = new Set(["scope-unknown", "unknown-operation"]);
+
+export const managementCredentialAuthorizationMutations = managementCredentialMutations.filter(
+  (candidate) => !managementCredentialValidationMutationIds.has(candidate.id),
+);
+
+export const managementCredentialValidationMutations = managementCredentialMutations.filter(
+  (candidate) => managementCredentialValidationMutationIds.has(candidate.id),
+);
+
 export function managementCredentialUnknownOperationArbitrary(): fc.Arbitrary<ManagementOperation> {
   return unknownStringArbitrary(allManagementOperations) as fc.Arbitrary<ManagementOperation>;
 }
@@ -172,25 +181,13 @@ function removeRequiredTargetId(
   switch (operation) {
     case "room.update":
     case "room.delete": {
-      const { roomId: _roomId, ...rest } = target as Extract<
-        ManagementCredentialAuthorizationTarget,
-        { roomId: RoomId }
-      >;
-      return rest;
+      return { projectId: target.projectId };
     }
     case "session.disconnect": {
-      const { sessionId: _sessionId, ...rest } = target as Extract<
-        ManagementCredentialAuthorizationTarget,
-        { sessionId: string }
-      >;
-      return rest;
+      return { projectId: target.projectId };
     }
     case "participant.disconnect": {
-      const { participantId: _participantId, ...rest } = target as Extract<
-        ManagementCredentialAuthorizationTarget,
-        { participantId: ParticipantId }
-      >;
-      return rest;
+      return { projectId: target.projectId };
     }
     default:
       return undefined;

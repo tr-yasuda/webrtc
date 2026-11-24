@@ -5,7 +5,7 @@ import type {
 } from "../../../src/management-credential.js";
 import type { ManagementOperation } from "../../../src/management-operation.js";
 import { managementCredentialBaselineCaseArbitrary } from "./baseline.js";
-import { managementCredentialMutations } from "./mutations.js";
+import { managementCredentialAuthorizationMutations } from "./mutations.js";
 import { managementCredentialViolations } from "./oracle.js";
 
 export type ManagementCredentialCase = {
@@ -45,7 +45,7 @@ function managementCredentialCaseWithMutationsArbitrary(
   maxMutations: number,
 ): fc.Arbitrary<ManagementCredentialCase> {
   return managementCredentialBaselineCaseArbitrary().chain((base) => {
-    const applicable = managementCredentialMutations.filter((candidate) => {
+    const applicable = managementCredentialAuthorizationMutations.filter((candidate) => {
       if (minMutations > 1 && candidate.multiFault === false) {
         return false;
       }

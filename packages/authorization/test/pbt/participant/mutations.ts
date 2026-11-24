@@ -440,6 +440,16 @@ export const participantMutations: readonly ParticipantMutation[] = [
   ),
 ];
 
+const participantValidationMutationIds = new Set(["unknown-operation"]);
+
+export const participantAuthorizationMutations = participantMutations.filter(
+  (candidate) => !participantValidationMutationIds.has(candidate.id),
+);
+
+export const participantValidationMutations = participantMutations.filter((candidate) =>
+  participantValidationMutationIds.has(candidate.id),
+);
+
 export function participantUnknownOperationArbitrary(): fc.Arbitrary<ParticipantOperation> {
   return unknownStringArbitrary(allParticipantOperations) as fc.Arbitrary<ParticipantOperation>;
 }

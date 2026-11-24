@@ -40,8 +40,8 @@ ProjectUser は初期提供で次の 4 ロールを持つ。
 
 ロールの付与・変更と権限を失った後の扱いには、次の条件を適用する。
 
-- Project は最低 1 人の Owner を持つ。Owner の除外・ロール変更は、操作完了後も Project が有効な Owner を持つ場合だけ許可する。Owner がいなくなる操作は拒否し、一部だけ適用した状態を作らない。
-- Admin は自分またはほかの Admin・Operator・Auditor に権限を付与できるが、Owner を付与・変更できない。
+- 認可は、操作主体の ProjectUser ロールが対象操作を許可するかを判定する。Admin は自分またはほかの Admin・Operator・Auditor に権限を付与できるが、Owner を付与・変更・除外できない。
+- Project は最低 1 人の Owner を持つ。Owner の除外・降格は、Management のトランザクションが操作後の Owner 集合を確認し、有効な Owner が 1 人以上残る場合だけ確定する。Owner がいなくなる操作は拒否し、一部だけ適用した状態を作らない。この検査は認可判断とは別のドメイン不変条件であり、並行更新はトランザクションで直列化する。
 - 権限を失った ProjectUser には、その後の API・通知・監査取得を拒否する。
 
 ## データの所有権
@@ -154,7 +154,7 @@ Cloud SQL を PITR で復旧した場合は、失効済み ApplicationSigningKey
 
 | 検証方法 | 重点対象 |
 |---|---|
-| TLA+ によるモデル検査 | ProjectUser 権限の遷移、Management API credential の scope 判定、Room 初回作成と並行参加、強制切断コマンドと再接続の競合、失効済み鍵・切断済み Session の復活防止 |
+| TLA+ によるモデル検査 | ProjectUser 権限の遷移、最後の Owner を残す並行更新（[ProjectOwner.tla](../../packages/domain/specs/ProjectOwner.tla)）、Management API credential の scope 判定、Room 初回作成と並行参加、強制切断コマンドと再接続の競合、失効済み鍵・切断済み Session の復活防止 |
 | Lean 4 による証明の評価 | DB schema 所有権の不変条件、ProjectUser ロールの権限包含関係、Management API credential の scope 包含関係、`commandId` の重複排除規則を数学モデルとして表現できるか |
 | Property-based Testing | JWT claim・`grants`・期限の生成パターン、Management API のロール・credential scope・対象の組み合わせ、対象限定コマンドと全インスタンスコマンドの再送・結果欠落の操作列 |
 | 統合試験・障害注入 | Management・Signaling・Pub/Sub・Cloud SQL・IDaaS・KMS の停止・復旧、TURN・SFU の資源計上報告、PITR 後の安全側処理 |
@@ -166,7 +166,8 @@ Cloud SQL を PITR で復旧した場合は、失効済み ApplicationSigningKey
 | 試験対象 | 確認する結果 |
 |---|---|
 | IDaaS ログイン | Management UI が OpenID Connect で Account を認証し、自前パスワード認証を持たない |
-| ProjectUser ロール | Owner・Admin・Operator・Auditor の操作範囲を API・通知・監査取得に適用し、権限喪失後に迂回できない。Owner がいなくなる変更を拒否する |
+| ProjectUser ロール | Owner・Admin・Operator・Auditor の操作範囲を API・通知・監査取得に適用し、権限喪失後に迂回できない。Admin は Owner を付与・変更・除外できない |
+| Owner 不変条件 | 最後の Owner の除外・降格を拒否し、並行更新でも Owner が 0 人にならない。認可判断とドメイン不変条件の結果を監査で区別する |
 | DB 所有権 | Management と Signaling が自分の schema だけにアクセスし、TURN・SFU が DB に接続しない |
 | Room 作成 | `room.create`・`room.join` 権限付き JWT の初回参加だけが未作成 Room を作成し、並行初回参加で Room・SFU 割り当てを重複させない |
 | 管理 API | Management UI と顧客サーバーが同じ Management API 契約を使い、API credential と JWT 署名鍵を流用しない。要求ごとに credential・Project・scope を再評価し、scope 外と Project 停止後の要求を拒否する |

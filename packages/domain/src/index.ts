@@ -36,3 +36,5 @@ export {
   parseRoomId,
 } from "./id.js";
 export type { ConnectionState, ResourceState } from "./state.js";
+export type { ProjectOwnerChange, ProjectOwnerInvariantResult } from "./project-owner.js";
+export { checkProjectOwnerInvariant } from "./project-owner.js";

@@ -4,7 +4,7 @@ import type {
   ParticipantOperation,
 } from "../../../src/participant.js";
 import { participantBaselineCaseArbitrary, type ParticipantBaselineVariant } from "./baseline.js";
-import { participantMutations } from "./mutations.js";
+import { participantAuthorizationMutations } from "./mutations.js";
 import { participantViolations } from "./oracle.js";
 
 export type ParticipantCase = {
@@ -44,7 +44,7 @@ function participantCaseWithMutationsArbitrary(
   maxMutations: number,
 ): fc.Arbitrary<ParticipantCase> {
   return participantBaselineCaseArbitrary().chain((base) => {
-    const applicable = participantMutations.filter((candidate) => {
+    const applicable = participantAuthorizationMutations.filter((candidate) => {
       if (minMutations > 1 && candidate.multiFault === false) {
         return false;
       }

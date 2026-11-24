@@ -9,12 +9,12 @@
   },
   "scripts": {
     "build": "tsdown",
-    "mutation": "stryker run",
-    "mutation:check": "node ../../scripts/check-authorization-stryker-report.mjs",
-    "premutation": "scripts/generate-lean-cases.sh",
-    "pretest": "scripts/generate-lean-cases.sh",
-    "test": "vitest run --reporter=default --reporter=json --outputFile=.cache/vitest-authorization.json",
-    "typecheck": "tsc"
+    "check:traceability": "node scripts/check-traceability.mjs",
+    "mutation": "PBT_RUNS=50 stryker run",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:conformance": "pnpm build && node scripts/run-authorization-conformance.mjs",
+    "typecheck": "tsc -p tsconfig.test.json"
   },
   "dependencies": {
     "@webrtc/domain": "workspace:*"
@@ -24,6 +24,7 @@
     "@stryker-mutator/core": "10.1.1",
     "@stryker-mutator/vitest-runner": "10.1.1",
     "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.1.1",
     "fast-check": "4.11.0",
     "tsdown": "0.23.7",
     "ulid": "3.0.2",

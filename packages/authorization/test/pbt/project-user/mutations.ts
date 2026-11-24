@@ -1,4 +1,3 @@
-import type { AccountId, ParticipantId, ProjectUserId, RoomId } from "@webrtc/domain";
 import { fc } from "@fast-check/vitest";
 import type { ManagementOperation, ProjectUserRole } from "../../../src/management-operation.js";
 import type {
@@ -244,6 +243,21 @@ export const projectUserMutations: readonly ProjectUserMutation[] = [
   ),
 ];
 
+const projectUserValidationMutationIds = new Set([
+  "role-unknown",
+  "current-role-unknown",
+  "next-role-unknown",
+  "unknown-operation",
+]);
+
+export const projectUserAuthorizationMutations = projectUserMutations.filter(
+  (candidate) => !projectUserValidationMutationIds.has(candidate.id),
+);
+
+export const projectUserValidationMutations = projectUserMutations.filter((candidate) =>
+  projectUserValidationMutationIds.has(candidate.id),
+);
+
 export function projectUserUnknownRoleArbitrary(): fc.Arbitrary<ProjectUserRole> {
   return unknownStringArbitrary(allProjectUserRoles) as fc.Arbitrary<ProjectUserRole>;
 }
@@ -269,41 +283,28 @@ function removeRequiredTargetId(
 ): ProjectUserAuthorizationTarget | undefined {
   switch (operation) {
     case "projectUser.add": {
-      const { accountId: _accountId, ...rest } = target as Extract<
-        ProjectUserAuthorizationTarget,
-        { accountId: AccountId }
-      >;
-      return rest;
+      return {
+        projectId: target.projectId,
+        ...(target.nextRole === undefined ? {} : { nextRole: target.nextRole }),
+      };
     }
     case "projectUser.remove":
     case "projectUser.changeRole": {
-      const { projectUserId: _projectUserId, ...rest } = target as Extract<
-        ProjectUserAuthorizationTarget,
-        { projectUserId: ProjectUserId }
-      >;
-      return rest;
+      return {
+        projectId: target.projectId,
+        ...(target.currentRole === undefined ? {} : { currentRole: target.currentRole }),
+        ...(target.nextRole === undefined ? {} : { nextRole: target.nextRole }),
+      };
     }
     case "room.update":
     case "room.delete": {
-      const { roomId: _roomId, ...rest } = target as Extract<
-        ProjectUserAuthorizationTarget,
-        { roomId: RoomId }
-      >;
-      return rest;
+      return { projectId: target.projectId };
     }
     case "session.disconnect": {
-      const { sessionId: _sessionId, ...rest } = target as Extract<
-        ProjectUserAuthorizationTarget,
-        { sessionId: string }
-      >;
-      return rest;
+      return { projectId: target.projectId };
     }
     case "participant.disconnect": {
-      const { participantId: _participantId, ...rest } = target as Extract<
-        ProjectUserAuthorizationTarget,
-        { participantId: ParticipantId }
-      >;
-      return rest;
+      return { projectId: target.projectId };
     }
     default:
       return undefined;

@@ -2,7 +2,6 @@ name: CI
 
 on:
   pull_request:
-  workflow_dispatch:
   push:
     branches: [main]
 
@@ -77,33 +76,26 @@ jobs:
       - name: Lint TypeScript and JavaScript
         run: pnpm run lint
 
-      - name: Check authorization policy and generated files
-        run: scripts/check-authorization-generated.sh
-
-      - name: Check authorization policy semantic diff
-        if: github.event_name == 'pull_request'
-        run: node scripts/policy-diff.mjs --base-ref origin/main
-
-      - name: Check authorization policy mutations
-        run: node scripts/check-authorization-policy-mutations.mjs
-
-      - name: Check proofs with Lean
-        run: moon run :check-proofs
-
-      - name: Check authorization Lean model mutation
-        run: node scripts/check-authorization-lean-mutations.mjs
-
       - name: Type-check, build, and test TypeScript
         run: pnpm test
+
+      - name: Check authorization coverage
+        run: pnpm --filter @webrtc/authorization test:coverage
 
       - name: Run PostgreSQL integration tests
         run: pnpm test:integration
 
-      - name: Check authorization traceability
-        run: node scripts/check-authorization-traceability.mjs
+      - name: Check authorization proofs with Lean
+        run: moon run :check-authorization-proofs
 
-      - name: Show authorization traceability matrix
-        run: cat packages/authorization/.cache/authorization-traceability.md
+      - name: Check authorization conformance
+        run: moon run authorization:conformance
+
+      - name: Check authorization traceability
+        run: moon run authorization:traceability
+
+      - name: Mutation-test authorization decisions
+        run: moon run authorization:mutation
 
       - name: Check Rust formatting
         run: moon run rust:format
@@ -120,39 +112,8 @@ jobs:
       - name: Test Rust
         run: moon run rust:test
 
+      - name: Check STUN proofs with Lean
+        run: moon run :check-proofs
+
       - name: Model-check Browser SDK notifications
         run: moon run :check-models
-
-  authorization-mutation:
-    name: Authorization Mutation
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '24.22.3'
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Lean
-        uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1.7.1
-        with:
-          lake-package-directory: packages/authorization/proofs
-          auto-config: false
-          use-github-cache: false
-          use-mathlib-cache: false
-
-      - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run authorization mutation testing
-        run: pnpm --filter @webrtc/authorization mutation
-
-      - name: Check authorization surviving mutations
-        run: pnpm --filter @webrtc/authorization mutation:check

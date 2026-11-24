@@ -2,7 +2,7 @@ import { fc } from "@fast-check/vitest";
 import type { ManagementOperation, ProjectUserRole } from "../../../src/management-operation.js";
 import type { ProjectUserAuthorizationInput } from "../../../src/project-user.js";
 import { projectUserBaselineCaseArbitrary } from "./baseline.js";
-import { projectUserMutations } from "./mutations.js";
+import { projectUserAuthorizationMutations } from "./mutations.js";
 import { projectUserViolations } from "./oracle.js";
 
 export type ProjectUserCase = {
@@ -42,7 +42,7 @@ function projectUserCaseWithMutationsArbitrary(
   maxMutations: number,
 ): fc.Arbitrary<ProjectUserCase> {
   return projectUserBaselineCaseArbitrary().chain((base) => {
-    const applicable = projectUserMutations.filter((candidate) => {
+    const applicable = projectUserAuthorizationMutations.filter((candidate) => {
       if (minMutations > 1 && candidate.multiFault === false) {
         return false;
       }

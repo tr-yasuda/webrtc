@@ -82,6 +82,17 @@ tasks:
       - 'packages/authorization/mutation-exclusions.json'
       - 'scripts/check-authorization-stryker-report.mjs'
 
+  check-authorization-proofs:
+    toolchains: 'system'
+    script: >-
+      elan run --install "$(cat packages/authorization/proofs/lean-toolchain)"
+      lake -d packages/authorization/proofs build AuthorizationProofs
+    inputs:
+      - 'packages/authorization/proofs/**/*.lean'
+      - 'packages/authorization/proofs/lean-toolchain'
+      - 'packages/authorization/proofs/lakefile.toml'
+      - 'packages/authorization/proofs/lake-manifest.json'
+
   setup-tlc:
     toolchains: 'system'
     command: 'scripts/setup-tlc.sh'
