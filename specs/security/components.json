@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "name": "@webrtc/security",
+      "kind": "pnpm",
+      "status": "tooling",
+      "profiles": [
+        "public-control",
+        "internal-service",
+        "dplane-ipc",
+        "turn",
+        "webrtc-media",
+        "webrtc-data",
+        "stun-binding"
+      ],
+      "outputBoundaries": ["log", "audit", "public-error", "url", "diagnostic", "test-output"],
+      "validationStages": ["pre-parse", "parse", "post-parse", "decompress-reassemble", "execution"],
+      "allowedOutputModules": ["src/output.ts", "src/audit.ts", "src/conformance.ts"],
+      "allowedSecretModules": ["src/secret.ts"]
+    },
+    {
+      "name": "webrtc-security",
+      "kind": "cargo",
+      "status": "tooling",
+      "profiles": [
+        "public-control",
+        "internal-service",
+        "dplane-ipc",
+        "turn",
+        "webrtc-media",
+        "webrtc-data",
+        "stun-binding"
+      ],
+      "outputBoundaries": ["log", "audit", "public-error", "url", "diagnostic", "test-output"],
+      "validationStages": ["pre-parse", "parse", "post-parse", "decompress-reassemble", "execution"],
+      "allowedOutputModules": ["src/output.rs", "src/audit.rs", "src/conformance.rs"],
+      "allowedSecretModules": ["src/secret.rs"]
+    },
+    {
+      "name": "@webrtc/authorization",
+      "kind": "pnpm",
+      "status": "required",
+      "profiles": [],
+      "outputBoundaries": ["audit"],
+      "validationStages": [],
+      "allowedOutputModules": [],
+      "allowedSecretModules": []
+    },
+    {
+      "name": "@webrtc/resources",
+      "kind": "pnpm",
+      "status": "required",
+      "profiles": [],
+      "outputBoundaries": ["audit"],
+      "validationStages": ["parse", "post-parse"],
+      "allowedOutputModules": [],
+      "allowedSecretModules": []
+    },
+    {
+      "name": "@webrtc/domain",
+      "kind": "pnpm",
+      "status": "exempt",
+      "exemptionId": "domain-types-only"
+    },
+    {
+      "name": "@webrtc/browser-sdk",
+      "kind": "pnpm",
+      "status": "exempt",
+      "exemptionId": "browser-sdk-deferred"
+    },
+    {
+      "name": "webrtc-domain",
+      "kind": "cargo",
+      "status": "exempt",
+      "exemptionId": "domain-types-only"
+    },
+    {
+      "name": "webrtc-resources",
+      "kind": "cargo",
+      "status": "exempt",
+      "exemptionId": "rust-resources-data-only"
+    },
+    {
+      "name": "webrtc-stun",
+      "kind": "cargo",
+      "status": "exempt",
+      "exemptionId": "stun-implementation-deferred"
+    }
+  ],
+  "exemptions": [
+    {
+      "id": "domain-types-only",
+      "reason": "共通ドメイン型と ID 契約だけを提供し、出力境界・通信・秘密情報を扱わない。",
+      "owner": "tr-yasuda",
+      "expires": "2027-06-30"
+    },
+    {
+      "id": "browser-sdk-deferred",
+      "reason": "Browser SDK は Phase 6 で実装する。実装時に webrtc-media / webrtc-data / 出力境界の適用宣言を追加する。",
+      "owner": "tr-yasuda",
+      "expires": "2027-03-31"
+    },
+    {
+      "id": "rust-resources-data-only",
+      "reason": "Rust の資源管理はデータ型と状態遷移を提供し、ログ・通信・秘密情報の出力境界を持たない。",
+      "owner": "tr-yasuda",
+      "expires": "2027-06-30"
+    },
+    {
+      "id": "stun-implementation-deferred",
+      "reason": "STUN の実装は #32 以降で追加する。実装時に Rust の入力検証・安全なログ・出力境界の適用宣言を追加する。",
+      "owner": "tr-yasuda",
+      "expires": "2027-03-31"
+    }
+  ]
+}

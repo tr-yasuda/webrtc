@@ -572,6 +572,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "webrtc-security"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "webrtc-stun"
 version = "0.1.0"
 

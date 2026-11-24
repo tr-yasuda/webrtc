@@ -7,6 +7,10 @@
     "format:check": "oxfmt --check",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "security:check": "node scripts/generate-security-contract.mjs --check && node scripts/check-security-components.mjs && node scripts/check-security-boundaries.mjs --self-test && node scripts/check-security-boundaries.mjs",
+    "security:components": "node scripts/check-security-components.mjs",
+    "security:boundaries": "node scripts/check-security-boundaries.mjs",
+    "security:contract:check": "node scripts/generate-security-contract.mjs --check",
     "test": "moon run :test --query \"projectSource~packages/*\"",
     "test:integration": "pnpm --filter @webrtc/resources run test:integration",
     "typecheck": "moon run :typecheck --query \"projectSource~packages/*\""

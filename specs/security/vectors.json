@@ -1,0 +1,380 @@
+{
+  "version": 1,
+  "redaction": [
+    {
+      "id": "redacts-auth-content-and-control-message",
+      "input": {
+        "projectId": "project-1",
+        "token": "SYNTHETIC_AUTH_TOKEN",
+        "nested": {
+          "password": "SYNTHETIC_PASSWORD",
+          "count": 2
+        },
+        "items": [
+          {
+            "sdp": "v=0 SYNTHETIC_SDP",
+            "safe": "visible"
+          }
+        ]
+      },
+      "expected": {
+        "projectId": "project-1",
+        "token": "[REDACTED]",
+        "nested": {
+          "password": "[REDACTED]",
+          "count": 2
+        },
+        "items": [
+          {
+            "sdp": "[REDACTED]",
+            "safe": "visible"
+          }
+        ]
+      }
+    },
+    {
+      "id": "redacts-body-and-key-material",
+      "input": {
+        "body": "SYNTHETIC_BODY",
+        "privateKey": "SYNTHETIC_PRIVATE_KEY",
+        "session": {
+          "sessionKey": "SYNTHETIC_SESSION_KEY",
+          "id": "session-1"
+        }
+      },
+      "expected": {
+        "body": "[REDACTED]",
+        "privateKey": "[REDACTED]",
+        "session": {
+          "sessionKey": "[REDACTED]",
+          "id": "session-1"
+        }
+      }
+    },
+    {
+      "id": "redacts-personal-data-keys",
+      "input": {
+        "email": "person@example.com",
+        "displayName": "Synthetic Person",
+        "ipAddress": "192.0.2.10",
+        "projectId": "project-1"
+      },
+      "expected": {
+        "email": "[REDACTED]",
+        "displayName": "[REDACTED]",
+        "ipAddress": "[REDACTED]",
+        "projectId": "project-1"
+      }
+    }
+  ],
+  "publicErrors": [
+    {
+      "id": "drops-cause-and-raw-message",
+      "input": {
+        "code": "invalid-input",
+        "messageKey": "errors.invalidInput",
+        "retryable": false,
+        "targetIds": ["room-1"],
+        "correlationId": "corr-1",
+        "cause": "SYNTHETIC_SECRET",
+        "rawMessage": "SYNTHETIC_SECRET_DETAIL"
+      },
+      "expected": {
+        "code": "invalid-input",
+        "messageKey": "errors.invalidInput",
+        "retryable": false,
+        "targetIds": ["room-1"],
+        "correlationId": "corr-1"
+      }
+    }
+  ],
+  "fieldPaths": [
+    {
+      "id": "unknown-key-is-replaced",
+      "path": ["room", "SYNTHETIC_SECRET", "name"],
+      "allowedFields": ["room", "name"],
+      "expected": ["room", "[unknown-key]", "name"]
+    },
+    {
+      "id": "array-index-is-preserved",
+      "path": ["items", 0, "name"],
+      "allowedFields": ["items", "name"],
+      "expected": ["items", "0", "name"]
+    }
+  ],
+  "transport": [
+    {
+      "id": "valid-public-control",
+      "manifest": {
+        "component": "@example/control",
+        "contractVersion": 1,
+        "profiles": [
+          {
+            "id": "public-control",
+            "controls": [
+              "tls",
+              "tls-1.2-min",
+              "tls-1.3-preferred",
+              "aead-only",
+              "ecdhe-only",
+              "server-certificate-verification",
+              "no-plaintext-fallback",
+              "no-0-rtt",
+              "no-external-psk"
+            ]
+          }
+        ],
+        "outputBoundaries": ["log", "audit"],
+        "validationStages": ["parse"]
+      },
+      "expected": "valid"
+    },
+    {
+      "id": "public-control-missing-tls",
+      "manifest": {
+        "component": "@example/control",
+        "contractVersion": 1,
+        "profiles": [
+          {
+            "id": "public-control",
+            "controls": [
+              "tls-1.2-min",
+              "tls-1.3-preferred",
+              "aead-only",
+              "ecdhe-only",
+              "server-certificate-verification",
+              "no-plaintext-fallback",
+              "no-0-rtt",
+              "no-external-psk"
+            ]
+          }
+        ],
+        "outputBoundaries": ["log", "audit"],
+        "validationStages": ["parse"]
+      },
+      "expected": {
+        "error": "missing-required-control",
+        "profile": "public-control",
+        "control": "tls"
+      }
+    },
+    {
+      "id": "dplane-ipc-missing-peer-credential",
+      "manifest": {
+        "component": "@example/dplane",
+        "contractVersion": 1,
+        "profiles": [
+          {
+            "id": "dplane-ipc",
+            "controls": [
+              "unix-domain-socket",
+              "runtime-directory",
+              "dedicated-uid-gid",
+              "file-permissions",
+              "no-network-listen",
+              "no-tls-required"
+            ]
+          }
+        ],
+        "outputBoundaries": ["log"],
+        "validationStages": ["parse"]
+      },
+      "expected": {
+        "error": "missing-required-control",
+        "profile": "dplane-ipc",
+        "control": "peer-credentials"
+      }
+    },
+    {
+      "id": "unknown-transport-profile",
+      "manifest": {
+        "component": "@example/control",
+        "contractVersion": 1,
+        "profiles": [
+          {
+            "id": "mtls-everywhere",
+            "controls": ["mtls"]
+          }
+        ],
+        "outputBoundaries": ["log"],
+        "validationStages": ["parse"]
+      },
+      "expected": {
+        "error": "unknown-transport-profile",
+        "profile": "mtls-everywhere"
+      }
+    }
+  ],
+  "audit": [
+    {
+      "id": "valid-authorization-decision",
+      "record": {
+        "id": "audit-1",
+        "kind": "authorization-decision",
+        "occurredAt": 1,
+        "actor": { "kind": "project-user", "id": "user-1" },
+        "operation": "room.delete",
+        "target": { "kind": "room", "id": "room-1" },
+        "decision": "allow",
+        "reason": "allowed",
+        "correlationId": "corr-1"
+      },
+      "expected": "valid"
+    },
+    {
+      "id": "operation-result-cannot-use-authorization-decision",
+      "record": {
+        "id": "audit-2",
+        "kind": "operation-result",
+        "occurredAt": 2,
+        "actor": { "kind": "project-user", "id": "user-1" },
+        "operation": "room.delete",
+        "target": { "kind": "room", "id": "room-1" },
+        "result": "allow",
+        "reason": "allowed",
+        "authorizationDecisionId": "audit-1",
+        "correlationId": "corr-1"
+      },
+      "expected": {
+        "error": "invalid-audit-result",
+        "kind": "operation-result"
+      }
+    },
+    {
+      "id": "unknown-kind-does-not-reflect-input",
+      "record": {
+        "kind": "SYNTHETIC_SECRET_KIND",
+        "id": "audit-x",
+        "occurredAt": 1
+      },
+      "expected": {
+        "error": "unknown-audit-kind"
+      }
+    },
+    {
+      "id": "operation-result-rejects-decision-field",
+      "record": {
+        "id": "audit-5",
+        "kind": "operation-result",
+        "occurredAt": 5,
+        "actor": { "kind": "project-user", "id": "user-1" },
+        "operation": "room.delete",
+        "target": { "kind": "room", "id": "room-1" },
+        "result": "succeeded",
+        "reason": "completed",
+        "authorizationDecisionId": "audit-1",
+        "correlationId": "corr-1",
+        "decision": "allow"
+      },
+      "expected": {
+        "error": "unexpected-audit-field",
+        "kind": "operation-result"
+      }
+    },
+    {
+      "id": "actor-must-be-structured",
+      "record": {
+        "id": "audit-6",
+        "kind": "authorization-decision",
+        "occurredAt": 6,
+        "actor": "SYNTHETIC_SECRET_ACTOR",
+        "operation": "room.delete",
+        "target": { "kind": "room", "id": "room-1" },
+        "decision": "allow",
+        "reason": "allowed",
+        "correlationId": "corr-1"
+      },
+      "expected": {
+        "error": "invalid-audit-field",
+        "kind": "authorization-decision",
+        "field": "actor"
+      }
+    },
+    {
+      "id": "decision-must-not-be-an-array",
+      "record": {
+        "id": "audit-7",
+        "kind": "authorization-decision",
+        "occurredAt": 7,
+        "actor": { "kind": "project-user", "id": "user-1" },
+        "operation": "room.delete",
+        "target": { "kind": "room", "id": "room-1" },
+        "decision": ["allow"],
+        "reason": "allowed",
+        "correlationId": "corr-1"
+      },
+      "expected": {
+        "error": "invalid-audit-decision",
+        "kind": "authorization-decision"
+      }
+    },
+    {
+      "id": "occurred-at-must-be-a-timestamp",
+      "record": {
+        "id": "audit-8",
+        "kind": "authorization-decision",
+        "occurredAt": "SYNTHETIC_SECRET_TIME",
+        "actor": { "kind": "project-user", "id": "user-1" },
+        "operation": "room.delete",
+        "target": { "kind": "room", "id": "room-1" },
+        "decision": "allow",
+        "reason": "allowed",
+        "correlationId": "corr-1"
+      },
+      "expected": {
+        "error": "invalid-audit-field",
+        "kind": "authorization-decision",
+        "field": "occurredAt"
+      }
+    },
+    {
+      "id": "valid-resource-event",
+      "record": {
+        "id": "audit-3",
+        "kind": "resource",
+        "occurredAt": 3,
+        "recordedAt": 3,
+        "operationId": "operation-1",
+        "outcome": "applied",
+        "scopes": []
+      },
+      "expected": "valid"
+    },
+    {
+      "id": "valid-resource-event-without-operation-id",
+      "record": {
+        "id": "audit-4",
+        "kind": "resource",
+        "occurredAt": 4,
+        "recordedAt": 4,
+        "outcome": "completed",
+        "scopes": []
+      },
+      "expected": "valid"
+    }
+  ],
+  "contract": [
+    {
+      "id": "unsupported-version",
+      "input": { "version": 99 },
+      "expected": {
+        "error": "unsupported-contract-version",
+        "version": 99
+      }
+    },
+    {
+      "id": "missing-contract",
+      "input": null,
+      "expected": {
+        "error": "contract-missing"
+      }
+    },
+    {
+      "id": "incomplete-contract",
+      "input": { "version": 1 },
+      "expected": {
+        "error": "invalid-contract"
+      }
+    }
+  ]
+}

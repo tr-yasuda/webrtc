@@ -66,6 +66,8 @@ export {
   MAX_AUDIT_PAGE_SIZE,
   resolveResourceAuditOptions,
 } from "./audit/contract.js";
+export { toResourceAuditRecord } from "./audit/record.js";
+export type { ResourceAuditRecord } from "./audit/record.js";
 export {
   compareQuotaScopes,
   DEFAULT_CLEANUP_BATCH_SIZE,

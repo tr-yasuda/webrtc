@@ -14,6 +14,10 @@ Signaling、D-Plane、その他の内部コンポーネントが要求や通知�
 
 別プロセス間では [共通のセキュリティ条件](../platform/security.md#共通のセキュリティ条件)に従って相互認証と通信の暗号化を行い、相手の識別情報を設定済みの信頼関係と許可範囲に照合する。サービス認証の具体的な方式は [方式選定](#方式選定)で決める。
 
+直接のサービス間通信は `internal-service` プロファイルに従う。相互のサービス認証と暗号化を必須とし、TLS を使う場合は TLS 1.3 を必須とする。mTLS を前提にせず、トークン、証明書、マネージドサービスの認証など、用途に適した方式を方式選定で決める。
+
+Node host と D-Plane の UDS は `dplane-ipc` プロファイルに従う。UDS のファイル権限と peer credential は、`internal-service` のサービス認証方式とは別の保護層として扱う。UDS に TLS や mTLS を要求しない。
+
 同一プロセス内の呼び出しでも、呼び出し元が対象と操作を扱えるか、処理結果がどの要求に対応するかを確認する。確認にネットワーク通信や署名付きトークンを使うことは必須としない。この確認によって、別プロセスと同等の隔離や、同一プロセス内の任意のコード実行への保護は保証しない。具体的な実行方式と分離方法は後続の技術選定で判断する。
 
 ### 権限情報の受け渡しと適用
@@ -55,7 +59,7 @@ D-Plane から状態通知や処理結果が届いたら、送信元、対象資
 
 Management と Signaling の公開 HTTP サーバーには Fastify を使用する。Management は WebSocket を扱わず、Signaling は `@fastify/websocket` を使用する。Node host の Signaling 向け制御 API にも Fastify を使用できる。この API は内部向けで、Fastify はメディアパケットを扱わない。
 
-Management から Signaling へ状態を変更させる指示には Pub/Sub コマンドバスを使い、結果も Pub/Sub の結果イベントで返す。Signaling への鍵配布にはサービス間認証を行った Management 内部 API を使う。読み取り専用照会には、サービス間認証を行った Signaling 内部照会 API を使う。サービス間認証の方式・識別情報の形式は、用途ごとに選定する。
+Management から Signaling へ状態を変更させる指示には Pub/Sub コマンドバスを使い、結果も Pub/Sub の結果イベントで返す。Signaling への鍵配布にはサービス間認証を行った Management 内部 API を使う。読み取り専用照会には、サービス間認証を行った Signaling 内部照会 API を使う。サービス間認証の方式・識別情報の形式は、用途ごとに選定する。方式は `internal-service` プロファイルの相互認証と暗号化を満たし、TLS を使う場合は TLS 1.3 を満たす。
 
 D-Plane の実行形態は [D-Plane のプロセスモデルと IPC 境界](../platform/dplane.md)に従う。
 

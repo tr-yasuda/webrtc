@@ -160,6 +160,35 @@ gRPC over UDS を第一候補とする。契約はメッセージの意味論と
 - 同じ `controllerId` と `controllerEpoch` の再接続は許可し、古い制御接続を無効化する。
 - より大きい `controllerEpoch` の別 `controllerId` は制御を引き継げる。
 
+### プロセス分離と制御ソケットの権限
+
+Node host、TURN プロセス、SFU Worker は、別々のサービス UID で実行する。
+
+| プロセス | サービス UID | 制御グループ |
+|---|---|---|
+| Node host | `webrtc-node` | `webrtc-turn-ctrl` と `webrtc-sfu-ctrl` |
+| TURN プロセス | `webrtc-turn` | `webrtc-turn-ctrl` |
+| SFU Worker | `webrtc-sfu` | `webrtc-sfu-ctrl` |
+
+TURN と SFU Worker は互いの制御グループへ所属させない。Node host だけが両方の制御グループへ所属し、両方の制御ソケットへ接続できる。
+
+runtime directory と制御ソケットは、次の条件を満たす。
+
+| 対象 | 所有者 | 権限 |
+|---|---|---|
+| TURN の runtime directory | `webrtc-turn:webrtc-turn-ctrl` | `0700` または `0750` |
+| TURN の制御ソケット | `webrtc-turn:webrtc-turn-ctrl` | `0600` または `0660` |
+| SFU の runtime directory | `webrtc-sfu:webrtc-sfu-ctrl` | `0700` または `0750` |
+| SFU の制御ソケット | `webrtc-sfu:webrtc-sfu-ctrl` | `0600` または `0660` |
+
+具体的な値は、同一 UID を使わない構成を前提に、公開ネットワークからアクセスできず、意図した制御グループだけがアクセスできる最小権限とする。起動時に所有者・権限・パスを検証し、条件を満たさなければ待ち受けない。
+
+D-Plane は、接続元の peer UID が `webrtc-node` であることを確認する。Node host は、接続先の peer UID が期待する TURN または SFU の UID であること、socket の所有者・権限・パスが期待値と一致することを確認する。
+
+`SO_PEERCRED` の GID は接続元の主 GID だけを返す。補助グループによるアクセス制御はファイル権限で行い、認証は peer UID で行う。PID は識別子に使わない。接続インスタンスは `controllerId`、`controllerEpoch`、`controlSessionId` で識別する。
+
+UDS は同一ホスト内の制御経路であり、TLS を要求しない。別 VM に分離する場合は、別プロファイルで相互認証と暗号化を定義する。
+
 ### コマンドとイベント
 
 コマンドには少なくとも次を含める。

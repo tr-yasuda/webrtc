@@ -1,10 +1,13 @@
 dependsOn:
   - 'domain'
+  - 'security'
 
 tasks:
   typecheck:
     deps:
       - 'domain:build'
+      - 'security:build'
   build:
     deps:
       - 'domain:build'
+      - 'security:build'

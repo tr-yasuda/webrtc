@@ -28,3 +28,4 @@ export type {
 } from "./project-user.js";
 export { authorizeProjectUserAction } from "./project-user.js";
 export type { ProjectState } from "./project-state.js";
+export { authorizationDecisionAuditRecord } from "./audit.js";

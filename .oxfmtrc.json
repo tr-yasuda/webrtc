@@ -12,6 +12,8 @@
     "!*.cts",
     "!*.json",
     "!*.jsonc",
-    "!*.toml"
+    "!*.toml",
+    "specs/security/**",
+    "packages/security/src/generated/**"
   ]
 }
