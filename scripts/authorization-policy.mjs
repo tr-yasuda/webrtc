@@ -783,6 +783,8 @@ def adminOwnerManagementFields : ManagementOperation -> List OwnerField
 ${adminOwner}
   | _ => []
 
+def credentialProjectUserOperations : List ManagementOperation := ${leanConstructorList(policy.constraints.credentialProjectUserOperations)}
+
 def participantSubjectRequired : Bool :=
   ${policy.constraints.participantSubject.required ? "true" : "false"}
 

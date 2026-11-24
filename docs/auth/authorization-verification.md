@@ -80,7 +80,7 @@ Lean モデルは `packages/authorization/proofs/Authorization` に置く。
 
 - `Authorization/Types.lean` は生成された Role・Operation・Scope・Grant・許可表を import し、状態と入力ケースを定義する。
 - `Authorization/Participant.lean`、`ProjectUser.lean`、`ManagementCredential.lean` は TypeScript とは独立した判定ルールを持つ。
-- `Authorization/Theorems.lean` は soundness、completeness、監査 target、最初の失敗 reason、非干渉性、Owner 管理境界、role 包含関係、scope 分割を証明する。
+- `Authorization/Theorems.lean` は soundness、completeness、監査 target、最初の失敗 reason、非干渉性、Owner 管理境界、credential の ProjectUser 非継承、role 包含関係、scope 分割を証明する。
 - `Conformance` は Lean の有限ケースと TypeScript 実装を全件照合する。
 
 有限ケースは operation、状態、対象一致、role、対象 ID の有無、変更前後の role、grant の全組合せ、scope の全組合せ、失効・期限クラスを含む。conformance は次の件数を検査する。
@@ -108,8 +108,8 @@ StrykerJS は `packages/authorization/stryker.config.mjs` で認可判断を実�
 
 - Stryker の全件実行: 597 mutant、Mutation Score 100.00、1 分 58 秒
 - 生存 mutation と no coverage は 0
-- 仕様データ mutation: 9 件を独立したセキュリティ不変条件で検出
-- Lean モデル mutation: 生成された Owner の許可を削除し、`lake build` の失敗を確認
+- 仕様データ mutation: 10 件を独立したセキュリティ不変条件で検出
+- Lean モデル mutation: Owner の許可削除、Admin の変更後 Owner チェック削除、ProjectUser 除外操作への credential scope 追加を検出
 
 `scripts/check-authorization-stryker-report.mjs` は、未処理の生存 mutation、no coverage、timeout を失敗にする。等価 mutation を除外する場合は `packages/authorization/mutation-exclusions.json` に個別根拠を記録し、使われていない除外も失敗にする。現在の除外は 0 件。
 

@@ -29,6 +29,7 @@ open Authorization
 #print axioms management_credential_audit_target_exact
 #print axioms management_credential_first_failure_all
 #print axioms management_credential_non_interference
+#print axioms management_credential_rejects_project_user_management
 #print axioms scope_partition
 #print axioms validation_rejects_unknown_grant
 #print axioms validation_rejects_non_boolean_grant

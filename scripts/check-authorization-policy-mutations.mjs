@@ -209,6 +209,13 @@ const mutations = [
     },
   },
   {
+    id: "credential-project-user-scope-expanded",
+    specId: "AUTH-MC-02",
+    apply(candidate) {
+      candidate.scopes[0].operations.push("projectUser.remove");
+    },
+  },
+  {
     id: "credential-project-user-operation-removed",
     specId: "AUTH-MC-02",
     apply(candidate) {

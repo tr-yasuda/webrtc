@@ -32,6 +32,13 @@ for (let index = 0; index < lines.length; index += 1) {
       console.error("公理出力の括弧が閉じていません。");
       process.exit(1);
     }
+    if (
+      lines[index].includes("depends on axioms:") ||
+      lines[index].includes("does not depend on any axioms")
+    ) {
+      console.error("公理出力の括弧が閉じていません。");
+      process.exit(1);
+    }
     body += `\n${lines[index]}`;
     closed = lines[index].includes("]");
   }

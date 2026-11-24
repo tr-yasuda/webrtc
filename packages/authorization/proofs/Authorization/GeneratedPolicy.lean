@@ -213,6 +213,8 @@ def adminOwnerManagementFields : ManagementOperation -> List OwnerField
   | .projectUserChangeRole => [OwnerField.currentRole, OwnerField.nextRole]
   | _ => []
 
+def credentialProjectUserOperations : List ManagementOperation := [.projectUserRead, .projectUserAdd, .projectUserRemove, .projectUserChangeRole]
+
 def participantSubjectRequired : Bool :=
   true
 

@@ -75,10 +75,19 @@ def projectUserNonInterferenceCheck : Bool :=
     (projectUserVariants input).all fun variant =>
       decideProjectUser variant = decideProjectUser input
 
+-- 判定側の adminManagesOwner を再利用すると Owner チェックの削除を検出できないため、仕様から独立に定義する。
+def adminTargetsOwnerBySpec (input : ProjectUserInput) : Bool :=
+  input.role == .admin &&
+    match input.operation with
+    | .projectUserAdd => input.nextRole == some .owner
+    | .projectUserRemove => input.currentRole == some .owner
+    | .projectUserChangeRole =>
+        input.currentRole == some .owner || input.nextRole == some .owner
+    | _ => false
+
 def projectUserOwnerBoundaryCheck : Bool :=
   allProjectUserCases.all fun input =>
-    !(input.role == .admin && adminManagesOwner input) ||
-      !(decideProjectUser input).allowed
+    !(adminTargetsOwnerBySpec input) || !(decideProjectUser input).allowed
 
 def roleInclusionCheck : Bool :=
   managementOperations.all fun operation =>
@@ -129,6 +138,11 @@ def managementCredentialNonInterferenceCheck : Bool :=
   allManagementCredentialCases.all fun input =>
     (managementCredentialVariants input).all fun variant =>
       decideManagementCredential variant = decideManagementCredential input
+
+def managementCredentialProjectUserManagementDeniedCheck : Bool :=
+  allManagementCredentialCases.all fun input =>
+    !(credentialProjectUserOperations.contains input.operation) ||
+      !(decideManagementCredential input).allowed
 
 def scopePartitionCheck : Bool :=
   managementOperations.all fun operation =>
@@ -241,6 +255,9 @@ theorem management_credential_first_failure_all :
 @[auth_spec "AUTH-VER-02"]
 theorem management_credential_non_interference :
     managementCredentialNonInterferenceCheck = true := by native_decide
+@[auth_spec "AUTH-MC-02"]
+theorem management_credential_rejects_project_user_management :
+    managementCredentialProjectUserManagementDeniedCheck = true := by native_decide
 @[auth_spec "AUTH-MC-01"]
 theorem scope_partition : scopePartitionCheck = true := by native_decide
 @[auth_spec "AUTH-PART-05"]
