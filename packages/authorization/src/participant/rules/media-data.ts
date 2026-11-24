@@ -1,15 +1,13 @@
 import type { ParticipantAuthorizationReason } from "../../contracts/identifiers.js";
 import type { ParticipantAuthorizationInput } from "../../contracts/participant.js";
 import type { RuleViolation } from "../../contracts/rules.js";
-import { participantRequiresExistingRoom } from "../../generated/policy.js";
 
 export function checkMediaData(
   input: ParticipantAuthorizationInput,
 ): RuleViolation<ParticipantAuthorizationReason> | null {
-  if (participantRequiresExistingRoom[input.operation] && input.room.state !== "active") {
+  if (input.room.state !== "active") {
     return { reason: "room-not-active" };
   }
-  const roomId = input.room.state === "absent" ? undefined : input.room.id;
   if (input.session === undefined) {
     return { reason: "session-required" };
   }
@@ -24,12 +22,12 @@ export function checkMediaData(
   }
   if (
     input.session.projectId !== input.project.id ||
-    input.session.roomId !== roomId ||
+    input.session.roomId !== input.room.id ||
     input.session.participantId !== input.participant.id
   ) {
     return { reason: "session-target-mismatch" };
   }
-  if (input.participant.roomId !== roomId) {
+  if (input.participant.roomId !== input.room.id) {
     return { reason: "participant-target-mismatch" };
   }
   return null;
