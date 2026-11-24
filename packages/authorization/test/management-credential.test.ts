@@ -8,49 +8,16 @@ import {
   type ManagementCredentialScope,
 } from "../src/management-credential.js";
 import { otherProjectId, participantId, projectId, roomId, sessionId } from "./fixtures.js";
-const allScopes: readonly ManagementCredentialScope[] = [
-  "room.manage",
-  "session.manage",
-  "usage.read",
-  "audit.read",
-];
-const allOperations: readonly ManagementOperation[] = [
-  "project.read",
-  "project.update",
-  "project.delete",
-  "projectUser.read",
-  "projectUser.add",
-  "projectUser.remove",
-  "projectUser.changeRole",
-  "application.manage",
-  "applicationSigningKey.manage",
-  "managementApiCredential.manage",
-  "room.read",
-  "room.update",
-  "room.delete",
-  "session.read",
-  "session.disconnect",
-  "participant.read",
-  "participant.disconnect",
-  "usage.read",
-  "audit.read",
-];
-const expectedScopeOperations: Record<ManagementCredentialScope, readonly ManagementOperation[]> = {
-  "room.manage": ["room.read", "room.update", "room.delete"],
-  "session.manage": [
-    "session.read",
-    "session.disconnect",
-    "participant.read",
-    "participant.disconnect",
-  ],
-  "usage.read": ["usage.read"],
-  "audit.read": ["audit.read"],
-};
+import {
+  allManagementCredentialScopes,
+  allManagementOperations,
+  expectedCredentialScopeOperations,
+} from "./policy-expectations.js";
 
 const baseInput: ManagementCredentialAuthorizationInput = {
   credential: {
     projectId,
-    scopes: allScopes,
+    scopes: allManagementCredentialScopes,
     revoked: false,
     expiresAt: 2_000,
   },
@@ -300,10 +267,10 @@ describe("Management API credential の認可", () => {
     },
   );
 
-  test.each<ManagementCredentialScope>(allScopes)(
+  test.each<ManagementCredentialScope>(allManagementCredentialScopes)(
     "%s scope の操作可否が scope マトリクスと一致する",
     (scope) => {
-      for (const operation of allOperations) {
+      for (const operation of allManagementOperations) {
         const decision = authorizeManagementCredentialAction({
           ...baseInput,
           credential: {
@@ -315,7 +282,7 @@ describe("Management API credential の認可", () => {
         });
 
         expect(decision.allowed, `${scope} / ${operation}`).toBe(
-          expectedScopeOperations[scope].includes(operation),
+          expectedCredentialScopeOperations[scope].includes(operation),
         );
       }
     },
