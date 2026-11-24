@@ -14,6 +14,11 @@ import {
   roomId,
   sessionId,
 } from "./fixtures.js";
+import {
+  allManagementOperations,
+  allProjectUserRoles,
+  expectedProjectUserAllowedOperations,
+} from "./policy.js";
 
 function targetFor(operation: ManagementOperation): ProjectUserAuthorizationTarget {
   switch (operation) {
@@ -39,70 +44,6 @@ function targetFor(operation: ManagementOperation): ProjectUserAuthorizationTarg
       return { projectId, resourceId: "resource-a" };
   }
 }
-
-const expectedAllowedOperations: Record<ProjectUserRole, readonly ManagementOperation[]> = {
-  owner: [
-    "project.read",
-    "project.update",
-    "project.delete",
-    "projectUser.read",
-    "projectUser.add",
-    "projectUser.remove",
-    "projectUser.changeRole",
-    "application.manage",
-    "applicationSigningKey.manage",
-    "managementApiCredential.manage",
-    "room.read",
-    "room.update",
-    "room.delete",
-    "session.read",
-    "session.disconnect",
-    "participant.read",
-    "participant.disconnect",
-    "usage.read",
-    "audit.read",
-  ],
-  admin: [
-    "project.read",
-    "project.update",
-    "projectUser.read",
-    "projectUser.add",
-    "projectUser.remove",
-    "projectUser.changeRole",
-    "application.manage",
-    "applicationSigningKey.manage",
-    "managementApiCredential.manage",
-    "room.read",
-    "room.update",
-    "room.delete",
-    "session.read",
-    "session.disconnect",
-    "participant.read",
-    "participant.disconnect",
-    "usage.read",
-    "audit.read",
-  ],
-  operator: [
-    "project.read",
-    "room.read",
-    "room.update",
-    "room.delete",
-    "session.read",
-    "session.disconnect",
-    "participant.read",
-    "participant.disconnect",
-    "usage.read",
-  ],
-  auditor: [
-    "project.read",
-    "room.read",
-    "session.read",
-    "participant.read",
-    "usage.read",
-    "audit.read",
-  ],
-};
-const allOperations = expectedAllowedOperations.owner;
 
 describe("ProjectUser ロールの認可", () => {
   test("Owner は Project を削除できる", () => {
@@ -131,29 +72,26 @@ describe("ProjectUser ロールの認可", () => {
     });
   });
 
-  test.each(Object.keys(expectedAllowedOperations) as ProjectUserRole[])(
-    "%s ロールの操作可否が権限マトリクスと一致する",
-    (role) => {
-      for (const operation of allOperations) {
-        const decision = authorizeProjectUserAction({
-          actor: {
-            projectId,
-            role,
-          },
-          project: {
-            id: projectId,
-            state: "active",
-          },
-          operation,
-          target: targetFor(operation),
-        });
+  test.each(allProjectUserRoles)("%s ロールの操作可否が権限マトリクスと一致する", (role) => {
+    for (const operation of allManagementOperations) {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role,
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: targetFor(operation),
+      });
 
-        expect(decision.allowed, `${role} / ${operation}`).toBe(
-          expectedAllowedOperations[role].includes(operation),
-        );
-      }
-    },
-  );
+      expect(decision.allowed, `${role} / ${operation}`).toBe(
+        expectedProjectUserAllowedOperations[role].includes(operation),
+      );
+    }
+  });
 
   test.each([
     {
