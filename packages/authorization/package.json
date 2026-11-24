@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsdown",
     "check:traceability": "node scripts/check-traceability.mjs",
-    "mutation": "stryker run",
+    "mutation": "PBT_RUNS=50 stryker run",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:conformance": "pnpm build && node scripts/run-authorization-conformance.mjs",
@@ -20,6 +20,7 @@
     "@webrtc/domain": "workspace:*"
   },
   "devDependencies": {
+    "@fast-check/vitest": "0.5.0",
     "@stryker-mutator/core": "10.1.1",
     "@stryker-mutator/vitest-runner": "10.1.1",
     "@types/node": "24.19.2",

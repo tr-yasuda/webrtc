@@ -2,53 +2,17 @@ import type { ManagementOperation } from "../../src/management-operation.js";
 import type {
   ManagementCredentialAuthorizationInput,
   ManagementCredentialAuthorizationTarget,
-  ManagementCredentialScope,
 } from "../../src/management-credential.js";
+import {
+  allManagementCredentialScopes,
+  allManagementOperations,
+  expectedCredentialScopeOperations,
+} from "../policy.js";
 import { participantId, projectId, roomId, sessionId } from "../fixtures.js";
 
-export const allScopes: readonly ManagementCredentialScope[] = [
-  "room.manage",
-  "session.manage",
-  "usage.read",
-  "audit.read",
-];
-
-export const allOperations: readonly ManagementOperation[] = [
-  "project.read",
-  "project.update",
-  "project.delete",
-  "projectUser.read",
-  "projectUser.add",
-  "projectUser.remove",
-  "projectUser.changeRole",
-  "application.manage",
-  "applicationSigningKey.manage",
-  "managementApiCredential.manage",
-  "room.read",
-  "room.update",
-  "room.delete",
-  "session.read",
-  "session.disconnect",
-  "participant.read",
-  "participant.disconnect",
-  "usage.read",
-  "audit.read",
-];
-
-export const expectedScopeOperations: Record<
-  ManagementCredentialScope,
-  readonly ManagementOperation[]
-> = {
-  "room.manage": ["room.read", "room.update", "room.delete"],
-  "session.manage": [
-    "session.read",
-    "session.disconnect",
-    "participant.read",
-    "participant.disconnect",
-  ],
-  "usage.read": ["usage.read"],
-  "audit.read": ["audit.read"],
-};
+export const allScopes = allManagementCredentialScopes;
+export const allOperations = allManagementOperations;
+export const expectedScopeOperations = expectedCredentialScopeOperations;
 
 export const baseInput: ManagementCredentialAuthorizationInput = {
   credential: {

@@ -11,7 +11,7 @@ permissions:
 jobs:
   checks:
     name: Lint, Build, and Test
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,6 +78,9 @@ jobs:
 
       - name: Type-check, build, and test TypeScript
         run: pnpm test
+
+      - name: Run PostgreSQL integration tests
+        run: pnpm test:integration
 
       - name: Check authorization proofs with Lean
         run: moon run :check-authorization-proofs

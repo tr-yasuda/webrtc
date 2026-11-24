@@ -121,7 +121,7 @@ test/
   participant/
   project-user/
   management-credential/
-  properties/
+  pbt/
   conformance/
   contract/
 ```
@@ -376,11 +376,11 @@ export function checkProjectOwnerInvariant(input: {
 
 ## PBT
 
-PBTは、Leanの有限抽象モデル外の入力、validatorの異常入力、境界値、無関係項目の非干渉性を担当する。
+PBTは、Leanの有限抽象モデル外の入力、validatorの異常入力、境界値、無関係項目の非干渉性を担当する。詳細は [認可判定の Property-based Testing](../../docs/auth/authorization.md#認可判定の-property-based-testing) に従う。
 
-- `fast-check` 4.11.0 を使用する。
-- seedは実行ごとにランダムにし、失敗時にseedと反例を記録する。
-- 夜間は複数seedで実行時間を拡大する。
+- `fast-check` 4.11.0 と `@fast-check/vitest` 0.5.0 を使用し、`test/pbt/` で実行する。
+- CIは10,000件/性質、ローカルのmutationでは `PBT_RUNS=50` に縮小する。
+- seedは実行ごとにランダムにし、失敗時にseedと反例を記録する。`PBT_SEED` と `PBT_PATH` で再現できる。
 - Leanの有限列挙をPBTで置き換えない。PBTはモデル外の補完である。
 
 ## Mutation Testing
