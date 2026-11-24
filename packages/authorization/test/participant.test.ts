@@ -502,6 +502,64 @@ describe("参加 JWT の認可", () => {
     });
   });
 
+  test.each([
+    {
+      name: "Session",
+      input: {
+        ...baseJoinInput,
+        operation: "room.create" as const,
+        credential: {
+          ...baseJoinInput.credential,
+          roomName: "new-room",
+          grants: {
+            ...baseJoinInput.credential.grants,
+            "room.create": true,
+          },
+        },
+        room: {
+          state: "absent" as const,
+          projectId,
+          name: "new-room",
+        },
+      },
+      reason: "session-target-mismatch",
+    },
+    {
+      name: "Participant",
+      input: {
+        ...baseJoinWithoutSession,
+        operation: "room.create" as const,
+        credential: {
+          ...baseJoinInput.credential,
+          roomName: "new-room",
+          grants: {
+            ...baseJoinInput.credential.grants,
+            "room.create": true,
+          },
+        },
+        room: {
+          state: "absent" as const,
+          projectId,
+          name: "new-room",
+        },
+      },
+      reason: "participant-target-mismatch",
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    input: ParticipantAuthorizationInput;
+    reason: Exclude<ParticipantAuthorizationReason, "allowed">;
+  }>)("未作成 Room への room.create で $name を渡す場合は拒否する", ({ input, reason }) => {
+    const decision = authorizeParticipantAction(input);
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: "room.create",
+      target: expectedTarget(input),
+      reason,
+    });
+  });
+
   test.each<ParticipantOperation>(["media.publish", "media.subscribe", "data.send"])(
     "%s は同じ Room の有効な Session と Participant なら許可する",
     (operation) => {

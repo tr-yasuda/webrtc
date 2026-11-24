@@ -145,6 +145,12 @@ export function authorizeParticipantAction(
       if (input.credential.grants["room.join"] !== true) {
         return deny(input, target, "room-join-required");
       }
+      if (input.session !== undefined) {
+        return deny(input, target, "session-target-mismatch");
+      }
+      if (input.participant !== undefined) {
+        return deny(input, target, "participant-target-mismatch");
+      }
       return allow(input, target);
     case "room.join":
       if (input.room.state === "absent") {

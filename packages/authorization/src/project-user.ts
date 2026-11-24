@@ -1,4 +1,4 @@
-import type { AccountId, ProjectId, ProjectUserId } from "@webrtc/domain";
+import type { AccountId, ParticipantId, ProjectId, ProjectUserId, RoomId } from "@webrtc/domain";
 import type { AuthorizationDecision } from "./decision.js";
 import {
   isManagementOperation,
@@ -86,6 +86,24 @@ export type ProjectUserAuthorizationTarget =
     }
   | {
       readonly projectId: ProjectId;
+      readonly roomId: RoomId;
+      readonly currentRole?: ProjectUserRole;
+      readonly nextRole?: ProjectUserRole;
+    }
+  | {
+      readonly projectId: ProjectId;
+      readonly sessionId: string;
+      readonly currentRole?: ProjectUserRole;
+      readonly nextRole?: ProjectUserRole;
+    }
+  | {
+      readonly projectId: ProjectId;
+      readonly participantId: ParticipantId;
+      readonly currentRole?: ProjectUserRole;
+      readonly nextRole?: ProjectUserRole;
+    }
+  | {
+      readonly projectId: ProjectId;
       readonly resourceId?: string;
       readonly currentRole?: ProjectUserRole;
       readonly nextRole?: ProjectUserRole;
@@ -98,7 +116,7 @@ export type ProjectUserAuthorizationReason =
   | "target-project-mismatch"
   | "project-user-role-missing"
   | "project-user-role-invalid"
-  | "project-user-target-id-required"
+  | "target-id-required"
   | "insufficient-role"
   | "owner-management-forbidden"
   | "project-user-current-role-required"
@@ -151,14 +169,8 @@ export function authorizeProjectUserAction(
   ) {
     return deny(input, "project-user-role-invalid");
   }
-  if (input.operation === "projectUser.add" && !("accountId" in input.target)) {
-    return deny(input, "project-user-target-id-required");
-  }
-  if (
-    (input.operation === "projectUser.remove" || input.operation === "projectUser.changeRole") &&
-    !("projectUserId" in input.target)
-  ) {
-    return deny(input, "project-user-target-id-required");
+  if (!hasRequiredTargetId(input)) {
+    return deny(input, "target-id-required");
   }
   const allowedOperations = roleOperations[input.actor.role];
   if (!allowedOperations.has(input.operation)) {
@@ -187,6 +199,25 @@ export function authorizeProjectUserAction(
   }
 
   return allow(input);
+}
+
+function hasRequiredTargetId(input: ProjectUserAuthorizationInput): boolean {
+  switch (input.operation) {
+    case "projectUser.add":
+      return "accountId" in input.target;
+    case "projectUser.remove":
+    case "projectUser.changeRole":
+      return "projectUserId" in input.target;
+    case "room.update":
+    case "room.delete":
+      return "roomId" in input.target;
+    case "session.disconnect":
+      return "sessionId" in input.target;
+    case "participant.disconnect":
+      return "participantId" in input.target;
+    default:
+      return true;
+  }
 }
 
 function allow(input: ProjectUserAuthorizationInput): ProjectUserAuthorizationDecision {

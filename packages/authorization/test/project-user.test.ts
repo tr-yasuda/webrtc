@@ -5,7 +5,15 @@ import {
   type ProjectUserAuthorizationReason,
   type ProjectUserAuthorizationTarget,
 } from "../src/project-user.js";
-import { accountId, otherProjectId, projectId, projectUserId } from "./fixtures.js";
+import {
+  accountId,
+  otherProjectId,
+  participantId,
+  projectId,
+  projectUserId,
+  roomId,
+  sessionId,
+} from "./fixtures.js";
 
 function targetFor(operation: ManagementOperation): ProjectUserAuthorizationTarget {
   switch (operation) {
@@ -20,6 +28,13 @@ function targetFor(operation: ManagementOperation): ProjectUserAuthorizationTarg
         currentRole: "auditor",
         nextRole: "auditor",
       };
+    case "room.update":
+    case "room.delete":
+      return { projectId, roomId };
+    case "session.disconnect":
+      return { projectId, sessionId };
+    case "participant.disconnect":
+      return { projectId, participantId };
     default:
       return { projectId, resourceId: "resource-a" };
   }
@@ -504,6 +519,34 @@ describe("ProjectUser ロールの認可", () => {
         nextRole: "operator",
       },
     },
+    {
+      name: "Room の設定変更",
+      operation: "room.update",
+      target: {
+        projectId,
+      },
+    },
+    {
+      name: "Room の削除",
+      operation: "room.delete",
+      target: {
+        projectId,
+      },
+    },
+    {
+      name: "Session の強制切断",
+      operation: "session.disconnect",
+      target: {
+        projectId,
+      },
+    },
+    {
+      name: "Participant の強制切断",
+      operation: "participant.disconnect",
+      target: {
+        projectId,
+      },
+    },
   ] satisfies ReadonlyArray<{
     name: string;
     operation: ManagementOperation;
@@ -526,7 +569,7 @@ describe("ProjectUser ロールの認可", () => {
       allowed: false,
       operation,
       target: requestedTarget,
-      reason: "project-user-target-id-required",
+      reason: "target-id-required",
     });
   });
 
