@@ -1,13 +1,16 @@
 import type { ParticipantAuthorizationReason } from "../../contracts/identifiers.js";
 import type { ParticipantAuthorizationInput } from "../../contracts/participant.js";
 import type { RuleViolation } from "../../contracts/rules.js";
+import { participantRequiredGrantsWhenRoomAbsent } from "../../generated/policy.js";
 
 export function checkRoomJoin(
   input: ParticipantAuthorizationInput,
 ): RuleViolation<ParticipantAuthorizationReason> | null {
   if (input.room.state === "absent") {
-    if (input.credential.grants["room.create"] !== true) {
-      return { reason: "room-create-required" };
+    for (const grant of participantRequiredGrantsWhenRoomAbsent[input.operation]) {
+      if (input.credential.grants[grant] !== true) {
+        return { reason: "room-create-required" };
+      }
     }
     if (input.session !== undefined) {
       return { reason: "session-target-mismatch" };

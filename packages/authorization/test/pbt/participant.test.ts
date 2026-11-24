@@ -1,5 +1,6 @@
 import { test as pbtTest, fc } from "@fast-check/vitest";
 import { describe, expect, test as baseTest } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeParticipantAction,
   authorizeParticipantFromRaw,
@@ -31,7 +32,10 @@ const baselineCases = allParticipantOperations.flatMap((operation) =>
 
 describe("参加 JWT の Property-based Testing", () => {
   baseTest.each(baselineCases)(
-    "基準シナリオ $operation / $variant は許可される",
+    authSpecName(
+      ["AUTH-PART-02", "AUTH-PART-03"],
+      "基準シナリオ $operation / $variant は許可される",
+    ),
     ({ operation, variant }) => {
       const input = participantBaseline(operation, variant, fixedIdPool, fixedIdPool.subject);
 
@@ -75,7 +79,10 @@ describe("参加 JWT の Property-based Testing", () => {
   );
 
   pbtTest.prop([participantValidCaseArbitrary()], pbtParameters())(
-    "基準シナリオは常に許可され、監査対象が一致する",
+    authSpecName(
+      ["AUTH-PART-02", "AUTH-PART-03"],
+      "基準シナリオは常に許可され、監査対象が一致する",
+    ),
     (caseValue) => {
       const decision = authorizeParticipantAction(caseValue.input);
 
@@ -91,7 +98,7 @@ describe("参加 JWT の Property-based Testing", () => {
   );
 
   pbtTest.prop([participantSingleFaultCaseArbitrary()], pbtParameters())(
-    "単一故障は違反条件に対応する理由で拒否される",
+    authSpecName(["AUTH-PART-04", "AUTH-PART-05"], "単一故障は違反条件に対応する理由で拒否される"),
     (caseValue) => {
       const violations = participantViolations(caseValue.input);
       const decision = authorizeParticipantAction(caseValue.input);
@@ -109,7 +116,7 @@ describe("参加 JWT の Property-based Testing", () => {
   );
 
   pbtTest.prop([participantMultiFaultCaseArbitrary()], pbtParameters())(
-    "複合故障は違反理由のいずれかで拒否される",
+    authSpecName(["AUTH-PART-04", "AUTH-PART-05"], "複合故障は違反理由のいずれかで拒否される"),
     (caseValue) => {
       const violations = participantViolations(caseValue.input);
       const decision = authorizeParticipantAction(caseValue.input);
@@ -123,7 +130,10 @@ describe("参加 JWT の Property-based Testing", () => {
   );
 
   pbtTest.prop([participantCaseArbitrary()], pbtParameters())(
-    "許可と拒否は独立オラクルと一致し、許可条件を満たす",
+    authSpecName(
+      ["AUTH-PART-01", "AUTH-PART-03"],
+      "許可と拒否は独立オラクルと一致し、許可条件を満たす",
+    ),
     (caseValue) => {
       const input = caseValue.input;
       const violations = participantViolations(input);
@@ -146,7 +156,7 @@ describe("参加 JWT の Property-based Testing", () => {
     [participantBaselineCaseArbitrary(), participantUnknownOperationArbitrary()],
     pbtParameters(),
   )(
-    "未知の operation は固定候補でも任意文字列でも拒否される",
+    authSpecName("AUTH-PART-04", "未知の operation は固定候補でも任意文字列でも拒否される"),
     (base, operation) => {
       const input = { ...base.input, operation };
       const outcome = authorizeParticipantFromRaw(input);
@@ -160,7 +170,7 @@ describe("参加 JWT の Property-based Testing", () => {
   );
 
   pbtTest.prop([participantBaselineCaseArbitrary(), fc.string()], pbtParameters())(
-    "任意の subject でも判定は独立オラクルと一致する",
+    authSpecName("AUTH-PART-01", "任意の subject でも判定は独立オラクルと一致する"),
     (base, subject) => {
       const input = {
         ...base.input,

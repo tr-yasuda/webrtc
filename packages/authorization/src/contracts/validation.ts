@@ -25,10 +25,6 @@ export function isBoolean(value: unknown): value is boolean {
   return typeof value === "boolean";
 }
 
-export function isFiniteNumber(value: unknown): value is number {
-  return Number.isFinite(value);
-}
-
 export function parseDomainIdValue<T>(
   raw: unknown,
   parse: (value: string) => DomainIdParseResult<T>,

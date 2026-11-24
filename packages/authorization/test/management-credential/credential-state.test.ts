@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeManagementCredentialAction,
   type ManagementCredentialAuthorizationInput,
@@ -128,7 +129,7 @@ describe("Management API credential の認可", () => {
     name: string;
     input: ManagementCredentialAuthorizationInput;
     reason: Exclude<ManagementCredentialAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ input, reason }) => {
+  }>)(authSpecName("AUTH-MC-03", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeManagementCredentialAction(input);
 
     expect(decision).toStrictEqual({
@@ -136,6 +137,28 @@ describe("Management API credential の認可", () => {
       operation: input.operation,
       target: input.target,
       reason,
+    });
+  });
+
+  test.each([
+    { name: "小数", expiresAt: 2_000.5, now: 1_000 },
+    { name: "safe integer 範囲外", expiresAt: Number.MAX_SAFE_INTEGER + 1, now: 1_000 },
+    { name: "now が小数", expiresAt: 2_000, now: 1_000.5 },
+  ])(authSpecName("AUTH-MC-06", "期限が$nameの場合は拒否する"), ({ expiresAt, now }) => {
+    const decision = authorizeManagementCredentialAction({
+      ...baseInput,
+      credential: {
+        ...baseInput.credential,
+        expiresAt,
+      },
+      now,
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: baseInput.operation,
+      target: baseInput.target,
+      reason: "credential-expiry-invalid",
     });
   });
 });

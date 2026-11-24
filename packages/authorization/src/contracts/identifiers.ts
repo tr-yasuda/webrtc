@@ -1,13 +1,7 @@
 export const projectStates = ["active", "suspended"] as const;
 export type ProjectState = (typeof projectStates)[number];
 
-export const participantOperations = [
-  "room.create",
-  "room.join",
-  "media.publish",
-  "media.subscribe",
-  "data.send",
-] as const;
+export const participantOperations: typeof participantOperationValues = participantOperationValues;
 export type ParticipantOperation = (typeof participantOperations)[number];
 
 export const roomStates = ["active", "deleting", "deleted"] as const;
@@ -41,30 +35,10 @@ export const participantAuthorizationReasons = [
 ] as const;
 export type ParticipantAuthorizationReason = (typeof participantAuthorizationReasons)[number];
 
-export const projectUserRoles = ["owner", "admin", "operator", "auditor"] as const;
+export const projectUserRoles: typeof projectUserRoleValues = projectUserRoleValues;
 export type ProjectUserRole = (typeof projectUserRoles)[number];
 
-export const managementOperations = [
-  "project.read",
-  "project.update",
-  "project.delete",
-  "projectUser.read",
-  "projectUser.add",
-  "projectUser.remove",
-  "projectUser.changeRole",
-  "application.manage",
-  "applicationSigningKey.manage",
-  "managementApiCredential.manage",
-  "room.read",
-  "room.update",
-  "room.delete",
-  "session.read",
-  "session.disconnect",
-  "participant.read",
-  "participant.disconnect",
-  "usage.read",
-  "audit.read",
-] as const;
+export const managementOperations: typeof managementOperationValues = managementOperationValues;
 export type ManagementOperation = (typeof managementOperations)[number];
 
 export const projectUserAuthorizationReasons = [
@@ -84,12 +58,8 @@ export const projectUserAuthorizationReasons = [
 ] as const;
 export type ProjectUserAuthorizationReason = (typeof projectUserAuthorizationReasons)[number];
 
-export const managementCredentialScopes = [
-  "room.manage",
-  "session.manage",
-  "usage.read",
-  "audit.read",
-] as const;
+export const managementCredentialScopes: typeof managementCredentialScopeValues =
+  managementCredentialScopeValues;
 export type ManagementCredentialScope = (typeof managementCredentialScopes)[number];
 
 export const managementCredentialAuthorizationReasons = [
@@ -168,3 +138,9 @@ export function isManagementCredentialScope(value: unknown): value is Management
     managementCredentialScopeSet.has(value as ManagementCredentialScope)
   );
 }
+import {
+  managementCredentialScopeValues,
+  managementOperationValues,
+  participantOperationValues,
+  projectUserRoleValues,
+} from "../generated/policy.js";

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeParticipantAction,
   type ParticipantAuthorizationInput,
@@ -19,7 +20,7 @@ import { grants, baseMediaInput, expectedTarget } from "./support.js";
 
 describe("参加 JWT の認可", () => {
   test.each<ParticipantOperation>(["media.publish", "media.subscribe", "data.send"])(
-    "%s は同じ Room の有効な Session と Participant なら許可する",
+    authSpecName("AUTH-PART-03", "%s は同じ Room の有効な Session と Participant なら許可する"),
     (operation) => {
       const decision = authorizeParticipantAction({
         operation,

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import { authorizeProjectUserAction } from "../../src/project-user.js";
 import { otherProjectId, projectId } from "../fixtures.js";
 
@@ -95,7 +96,7 @@ describe("ProjectUser ロールの認可", () => {
       },
       reason: "insufficient-role",
     },
-  ])("$name 場合は拒否する", ({ input, reason }) => {
+  ])(authSpecName("AUTH-PU-04", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeProjectUserAction(input);
 
     expect(decision).toStrictEqual({

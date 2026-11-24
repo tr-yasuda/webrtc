@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { authorizeParticipantFromRaw } from "../../src/participant.js";
 import { projectId, subject } from "../fixtures.js";
 import { baseMediaInput, grants } from "./support.js";
+import { authSpecName } from "../auth-spec.js";
 
 describe("参加 JWT の grant 検証", () => {
   test.each([
@@ -50,7 +51,7 @@ describe("参加 JWT の grant 検証", () => {
         room: { state: "absent", projectId, name: "new-room" },
       },
     },
-  ])("$name場合は grant-invalid で拒否する", ({ input }) => {
+  ])(authSpecName("AUTH-PART-05", "$name場合は grant-invalid で拒否する"), ({ input }) => {
     expect(authorizeParticipantFromRaw(input)).toStrictEqual({
       ok: false,
       failure: "grant-invalid",

@@ -2,18 +2,6 @@ import Authorization.Types
 
 namespace Authorization
 
-def requiredScopes : ManagementOperation -> List CredentialScope
-  | .roomRead => [.roomManage]
-  | .roomUpdate => [.roomManage]
-  | .roomDelete => [.roomManage]
-  | .sessionRead => [.sessionManage]
-  | .sessionDisconnect => [.sessionManage]
-  | .participantRead => [.sessionManage]
-  | .participantDisconnect => [.sessionManage]
-  | .usageRead => [.usageRead]
-  | .auditRead => [.auditRead]
-  | _ => []
-
 def scopeEnabled (scopes : CredentialScopes) : CredentialScope -> Bool
   | .roomManage => scopes.roomManage
   | .sessionManage => scopes.sessionManage
@@ -22,13 +10,6 @@ def scopeEnabled (scopes : CredentialScopes) : CredentialScope -> Bool
 
 def hasRequiredScope (input : ManagementCredentialInput) : Bool :=
   (requiredScopes input.operation).any (scopeEnabled input.scopes)
-
-def managementRequiresTargetId : ManagementOperation -> Bool
-  | .roomUpdate => true
-  | .roomDelete => true
-  | .sessionDisconnect => true
-  | .participantDisconnect => true
-  | _ => false
 
 structure ManagementCredentialRule where
   id : String
@@ -54,12 +35,18 @@ def managementCredentialRules : List ManagementCredentialRule := [
     fails := fun input => !hasRequiredScope input }
 ]
 
+def firstManagementCredentialViolationFrom
+    (rules : List ManagementCredentialRule)
+    (input : ManagementCredentialInput) : Option String :=
+  match rules with
+  | [] => none
+  | rule :: rest =>
+      if rule.fails input then some rule.reason
+      else firstManagementCredentialViolationFrom rest input
+
 def firstManagementCredentialViolation
     (input : ManagementCredentialInput) : Option String :=
-  let rec go : List ManagementCredentialRule -> Option String
-    | [] => none
-    | rule :: rest => if rule.fails input then some rule.reason else go rest
-  go managementCredentialRules
+  firstManagementCredentialViolationFrom managementCredentialRules input
 
 def managementCredentialTargetKeys
     (input : ManagementCredentialInput) : List String :=

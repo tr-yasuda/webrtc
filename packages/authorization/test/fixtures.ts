@@ -8,6 +8,7 @@ export const otherRoomId = ulid() as RoomId;
 export const participantId = ulid() as ParticipantId;
 export const otherParticipantId = ulid() as ParticipantId;
 export const accountId = ulid() as AccountId;
+export const otherAccountId = ulid() as AccountId;
 export const projectUserId = ulid() as ProjectUserId;
 export const sessionId = ulid();
 export const otherSessionId = ulid();

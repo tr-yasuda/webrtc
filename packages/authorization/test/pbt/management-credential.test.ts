@@ -1,5 +1,6 @@
 import { test as pbtTest, fc } from "@fast-check/vitest";
 import { describe, expect, test as baseTest } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeManagementCredentialAction,
   authorizeManagementCredentialFromRaw,
@@ -55,7 +56,7 @@ describe("Management API credential の Property-based Testing", () => {
     },
   );
 
-  baseTest("期限直前の now は許可される", () => {
+  baseTest(authSpecName("AUTH-MC-06", "期限直前の now は許可される"), () => {
     const input = managementCredentialBaseline("room.read", "room.manage", fixedIdPool, {
       now: 1_999,
       expiresAt: 2_000,
@@ -99,7 +100,7 @@ describe("Management API credential の Property-based Testing", () => {
   );
 
   pbtTest.prop([managementCredentialValidCaseArbitrary()], pbtParameters())(
-    "基準シナリオは常に許可され、監査対象が一致する",
+    authSpecName("AUTH-MC-01", "基準シナリオは常に許可され、監査対象が一致する"),
     (caseValue) => {
       const decision = authorizeManagementCredentialAction(caseValue.input);
 
@@ -115,7 +116,10 @@ describe("Management API credential の Property-based Testing", () => {
   );
 
   pbtTest.prop([managementCredentialSingleFaultCaseArbitrary()], pbtParameters())(
-    "単一故障は違反条件に対応する理由で拒否される",
+    authSpecName(
+      ["AUTH-MC-03", "AUTH-MC-04", "AUTH-MC-05", "AUTH-MC-06"],
+      "単一故障は違反条件に対応する理由で拒否される",
+    ),
     (caseValue) => {
       const violations = managementCredentialViolations(caseValue.input);
       const decision = authorizeManagementCredentialAction(caseValue.input);
@@ -133,7 +137,10 @@ describe("Management API credential の Property-based Testing", () => {
   );
 
   pbtTest.prop([managementCredentialMultiFaultCaseArbitrary()], pbtParameters())(
-    "複合故障は違反理由のいずれかで拒否される",
+    authSpecName(
+      ["AUTH-MC-03", "AUTH-MC-04", "AUTH-MC-05", "AUTH-MC-06"],
+      "複合故障は違反理由のいずれかで拒否される",
+    ),
     (caseValue) => {
       const violations = managementCredentialViolations(caseValue.input);
       const decision = authorizeManagementCredentialAction(caseValue.input);
@@ -147,7 +154,10 @@ describe("Management API credential の Property-based Testing", () => {
   );
 
   pbtTest.prop([managementCredentialCaseArbitrary()], pbtParameters())(
-    "許可と拒否は独立オラクルと一致し、許可条件を満たす",
+    authSpecName(
+      ["AUTH-MC-01", "AUTH-MC-04"],
+      "許可と拒否は独立オラクルと一致し、許可条件を満たす",
+    ),
     (caseValue) => {
       const input = caseValue.input;
       const violations = managementCredentialViolations(input);
@@ -170,7 +180,7 @@ describe("Management API credential の Property-based Testing", () => {
     [managementCredentialBaselineCaseArbitrary(), managementCredentialUnknownOperationArbitrary()],
     pbtParameters(),
   )(
-    "未知の operation は固定候補でも任意文字列でも拒否される",
+    authSpecName("AUTH-MC-01", "未知の operation は固定候補でも任意文字列でも拒否される"),
     (base, operation) => {
       const input = { ...base.input, operation };
       expect(authorizeManagementCredentialFromRaw(input)).toStrictEqual({
@@ -185,7 +195,7 @@ describe("Management API credential の Property-based Testing", () => {
     [managementCredentialBaselineCaseArbitrary(), managementCredentialUnknownScopeArbitrary()],
     pbtParameters(),
   )(
-    "未知の scope は固定候補でも任意文字列でも拒否される",
+    authSpecName("AUTH-MC-01", "未知の scope は固定候補でも任意文字列でも拒否される"),
     (base, scope) => {
       const input = {
         ...base.input,
@@ -209,7 +219,7 @@ describe("Management API credential の Property-based Testing", () => {
     ],
     pbtParameters(),
   )(
-    "Management API credential は ProjectUser 専用操作を許可しない",
+    authSpecName("AUTH-MC-02", "Management API credential は ProjectUser 専用操作を許可しない"),
     (base, operation) => {
       const input = { ...base.input, operation };
       const decision = authorizeManagementCredentialAction(input);
@@ -232,7 +242,7 @@ describe("Management API credential の Property-based Testing", () => {
     ],
     pbtParameters(),
   )(
-    "credential の許可は明示 scope だけで決まる",
+    authSpecName("AUTH-MC-01", "credential の許可は明示 scope だけで決まる"),
     (operation, scope, ids) => {
       const input = managementCredentialBaseline(operation, scope, ids);
       const decision = authorizeManagementCredentialAction(input);
@@ -255,7 +265,7 @@ describe("Management API credential の Property-based Testing", () => {
     [managementCredentialBaselineCaseArbitrary(), fc.subarray([...allManagementCredentialScopes])],
     pbtParameters(),
   )(
-    "必要 scope に追加 scope を加えても許可される",
+    authSpecName("AUTH-MC-01", "必要 scope に追加 scope を加えても許可される"),
     (base, extraScopes) => {
       const input = {
         ...base.input,

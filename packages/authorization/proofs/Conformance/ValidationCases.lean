@@ -8,10 +8,11 @@ def projectIdA : String := "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 def roomIdA : String := "01ARZ3NDEKTSV4RRFFQ69G5FAX"
 
 def participantValidationInput
+    (operation : String)
     (credentialProjectId projectId roomProjectId : String)
     (grants : List (String × Json)) : Json :=
   Json.mkObj [
-    ("operation", Json.str "room.join"),
+    ("operation", Json.str operation),
     ("credential", Json.mkObj [
       ("projectId", Json.str credentialProjectId),
       ("roomName", Json.str "room-a"),
@@ -36,27 +37,31 @@ def participantValidationGrants : List (String × Json) := [
 
 def participantValidationCases : List Json := [
   validationCaseLine "participant"
-    (participantValidationInput "" projectIdA roomIdA participantValidationGrants)
+    (participantValidationInput "room.join" "" projectIdA roomIdA participantValidationGrants)
     "input-invalid",
   validationCaseLine "participant"
-    (participantValidationInput projectIdA "" roomIdA participantValidationGrants)
+    (participantValidationInput "room.join" projectIdA "" roomIdA participantValidationGrants)
     "input-invalid",
   validationCaseLine "participant"
-    (participantValidationInput projectIdA projectIdA "" participantValidationGrants)
+    (participantValidationInput "room.join" projectIdA projectIdA "" participantValidationGrants)
     "input-invalid",
   validationCaseLine "participant"
-    (participantValidationInput "not-a-ulid" projectIdA roomIdA participantValidationGrants)
+    (participantValidationInput "room.join" "not-a-ulid" projectIdA roomIdA participantValidationGrants)
     "input-invalid",
   validationCaseLine "participant"
-    (participantValidationInput projectIdA projectIdA roomIdA
+    (participantValidationInput "room.join" projectIdA projectIdA roomIdA
       (participantValidationGrants ++ [("recording", Json.bool true)]))
     "unsupported-grant",
   validationCaseLine "participant"
-    (participantValidationInput projectIdA projectIdA roomIdA [
+    (participantValidationInput "room.join" projectIdA projectIdA roomIdA [
       ("room.create", Json.bool true),
       ("room.join", Json.str "yes")
     ])
-    "grant-invalid"
+    "grant-invalid",
+  validationCaseLine "participant"
+    (participantValidationInput "unknown.operation" projectIdA projectIdA roomIdA
+      participantValidationGrants)
+    "unsupported-operation"
 ]
 
 def projectUserValidationInput

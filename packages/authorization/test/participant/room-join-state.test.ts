@@ -1,11 +1,12 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import { authorizeParticipantAction } from "../../src/participant.js";
 import { otherProjectId } from "../fixtures.js";
 import { baseJoinInput } from "./support.js";
 
 describe("既存 Room への参加状態の検証", () => {
   test.each(["deleting", "deleted"] as const)(
-    "Room が %s の場合は room-not-active で拒否する",
+    authSpecName("AUTH-PART-03", "Room が %s の場合は room-not-active で拒否する"),
     (state) => {
       const decision = authorizeParticipantAction({
         ...baseJoinInput,

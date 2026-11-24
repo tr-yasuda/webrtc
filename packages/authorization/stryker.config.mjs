@@ -12,13 +12,17 @@ export default {
   inPlace: true,
   thresholds: {
     high: 100,
-    low: 95,
-    break: 100,
+    low: 0,
+    break: 0,
   },
   vitest: {
     configFile: "vitest.config.ts",
   },
-  reporters: ["clear-text", "progress"],
+  reporters: ["clear-text", "json"],
+  jsonReporter: {
+    fileName: "reports/mutation.json",
+  },
   tempDirName: ".stryker-tmp",
   cleanTempDir: true,
+  concurrency: 1,
 };

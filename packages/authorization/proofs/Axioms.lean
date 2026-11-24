@@ -1,0 +1,39 @@
+import Authorization.Theorems
+
+open Authorization
+
+#print axioms Authorization.participant_decide_total
+#print axioms Authorization.participant_decide_deterministic
+#print axioms Authorization.participant_first_failure
+#print axioms Authorization.participant_allow_sound
+#print axioms Authorization.participant_allow_complete
+#print axioms Authorization.participant_audit_target_exact
+#print axioms Authorization.participant_first_failure_all
+#print axioms Authorization.participant_non_interference
+#print axioms Authorization.project_user_decide_total
+#print axioms Authorization.project_user_decide_deterministic
+#print axioms Authorization.project_user_first_failure
+#print axioms Authorization.project_user_allow_sound
+#print axioms Authorization.project_user_allow_complete
+#print axioms Authorization.project_user_audit_target_exact
+#print axioms Authorization.project_user_first_failure_all
+#print axioms Authorization.project_user_non_interference
+#print axioms Authorization.owner_admin_boundary
+#print axioms Authorization.owner_allows_every_management_operation
+#print axioms Authorization.role_inclusion_conditional
+#print axioms Authorization.role_non_inclusion
+#print axioms Authorization.management_credential_decide_total
+#print axioms Authorization.management_credential_decide_deterministic
+#print axioms Authorization.management_credential_first_failure
+#print axioms Authorization.management_credential_allow_sound
+#print axioms Authorization.management_credential_allow_complete
+#print axioms Authorization.management_credential_audit_target_exact
+#print axioms Authorization.management_credential_first_failure_all
+#print axioms Authorization.management_credential_non_interference
+#print axioms Authorization.management_credential_rejects_project_user_management
+#print axioms Authorization.scope_partition
+#print axioms Authorization.validation_rejects_unknown_grant
+#print axioms Authorization.validation_rejects_non_boolean_grant
+#print axioms Authorization.participant_concrete_abstract_equivalence
+#print axioms Authorization.project_user_concrete_abstract_equivalence
+#print axioms Authorization.management_credential_concrete_abstract_equivalence

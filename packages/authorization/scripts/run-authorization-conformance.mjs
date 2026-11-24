@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { createReadStream } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import readline from "node:readline";
+import { loadPolicy } from "../../../scripts/authorization-policy.mjs";
 import {
   authorizeManagementCredentialAction,
   authorizeParticipantAction,
@@ -16,10 +17,11 @@ import {
 
 const rootDir = path.resolve(import.meta.dirname, "..");
 const proofsDir = path.join(rootDir, "proofs");
+const manifestPath = path.join(rootDir, ".cache/authorization-conformance.json");
 const inputPath = process.argv[2];
 
 const expectedCounts = {
-  participant: { cases: 215046, decisions: 215040, validationFailures: 6 },
+  participant: { cases: 218503, decisions: 218496, validationFailures: 7 },
   "project-user": { cases: 38010, decisions: 38000, validationFailures: 10 },
   "management-credential": { cases: 29192, decisions: 19456, validationFailures: 9736 },
 };
@@ -224,6 +226,38 @@ function compareValidation(kind, expected, actual) {
   return null;
 }
 
+function conformanceGroup(entry) {
+  if (entry.kind === "participant") {
+    if (entry.caseType === "validation") {
+      if (
+        entry.validation.reason === "unsupported-grant" ||
+        entry.validation.reason === "grant-invalid"
+      ) {
+        return "participant.invalidGrant";
+      }
+      if (entry.validation.reason === "unsupported-operation") {
+        return "participant.invalidOperation";
+      }
+      return "participant.invalidInput";
+    }
+    if (entry.input.operation === "room.create") return "participant.roomCreate";
+    if (entry.input.operation === "room.join") {
+      return entry.input.roomState === "absent"
+        ? "participant.roomJoinAbsent"
+        : "participant.roomJoinPresent";
+    }
+    return entry.input.roomState === "active"
+      ? "participant.mediaRoomActive"
+      : "participant.mediaRoomInactive";
+  }
+  if (entry.kind === "project-user") {
+    return entry.caseType === "authorization"
+      ? "projectUser.validOperation"
+      : "projectUser.invalidOperation";
+  }
+  return "credential.credential";
+}
+
 const conformanceByKind = {
   participant: {
     buildAuthorizationInput: participantInput,
@@ -251,6 +285,7 @@ async function* readLines(file) {
 }
 
 async function main() {
+  await rm(manifestPath, { force: true });
   let generatedPath = inputPath;
   let temporaryDir;
   if (generatedPath === undefined) {
@@ -277,6 +312,7 @@ async function main() {
   const mismatches = [];
   const unknownKinds = [];
   const unknownCaseTypes = [];
+  const groups = new Map();
   for await (const line of readLines(generatedPath)) {
     if (line.length === 0) {
       continue;
@@ -291,6 +327,14 @@ async function main() {
       continue;
     }
     counts[entry.kind].cases += 1;
+    const group = conformanceGroup(entry);
+    const groupCount = groups.get(group) ?? {
+      cases: 0,
+      decisions: 0,
+      validationFailures: 0,
+    };
+    groupCount.cases += 1;
+    groups.set(group, groupCount);
     const subjectConformance = conformanceByKind[entry.kind];
     const raw =
       entry.caseType === "authorization"
@@ -303,9 +347,11 @@ async function main() {
     }
     if (!validation.ok) {
       counts[entry.kind].validationFailures += 1;
+      groupCount.validationFailures += 1;
       continue;
     }
     counts[entry.kind].decisions += 1;
+    groupCount.decisions += 1;
     const actual = subjectConformance.authorize(validation.value);
     const decisionMismatch = compareDecision(entry.kind, entry.decision, actual);
     if (decisionMismatch !== null && mismatches.length < 10) {
@@ -351,6 +397,37 @@ async function main() {
         `${kind}=${count.cases}(decisions=${count.decisions}, validationFailures=${count.validationFailures})`,
     )
     .join(", ");
+  const policy = loadPolicy();
+  const specIdsByGroup = new Map();
+  for (const rule of policy.specRules) {
+    for (const group of rule.cases ?? []) {
+      const specIds = specIdsByGroup.get(group) ?? [];
+      specIds.push(rule.id);
+      specIdsByGroup.set(group, specIds);
+    }
+  }
+  await mkdir(path.dirname(manifestPath), { recursive: true });
+  await writeFile(
+    manifestPath,
+    `${JSON.stringify(
+      {
+        schemaVersion: policy.schemaVersion,
+        groups: Object.fromEntries(
+          [...groups.entries()]
+            .map(([group, count]) => [
+              group,
+              {
+                ...count,
+                specIds: [...new Set(specIdsByGroup.get(group) ?? [])].toSorted(),
+              },
+            ])
+            .toSorted(([left], [right]) => left.localeCompare(right)),
+        ),
+      },
+      null,
+      2,
+    )}\n`,
+  );
   process.stdout.write(`conformance passed: ${summary}\n`);
 }
 

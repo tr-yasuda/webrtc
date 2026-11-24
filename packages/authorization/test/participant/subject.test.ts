@@ -6,6 +6,7 @@ import {
 } from "../../src/participant.js";
 import { otherSubject } from "../fixtures.js";
 import { baseMediaInput, baseJoinInput, expectedTarget } from "./support.js";
+import { authSpecName } from "../auth-spec.js";
 
 describe("参加 JWT の認可", () => {
   test.each([
@@ -57,7 +58,7 @@ describe("参加 JWT の認可", () => {
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ input, reason }) => {
+  }>)(authSpecName("AUTH-PART-01", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
     expect(decision).toStrictEqual({

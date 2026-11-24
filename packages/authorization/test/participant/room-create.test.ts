@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeParticipantAction,
   type ParticipantAuthorizationInput,
@@ -8,7 +9,7 @@ import { projectId, roomId, subject } from "../fixtures.js";
 import { grants, baseJoinInput, baseJoinWithoutSession, expectedTarget } from "./support.js";
 
 describe("参加 JWT の認可", () => {
-  test("room.create は room.join を自動許可しない", () => {
+  test(authSpecName("AUTH-PART-02", "room.create は room.join を自動許可しない"), () => {
     const decisions = [
       authorizeParticipantAction({
         operation: "room.create",

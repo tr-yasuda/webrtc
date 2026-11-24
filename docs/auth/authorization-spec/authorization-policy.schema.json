@@ -1,0 +1,381 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tr-yasuda/webrtc/docs/auth/authorization-spec/authorization-policy.schema.json",
+  "title": "Authorization policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "timeContract",
+    "roles",
+    "operations",
+    "scopes",
+    "grants",
+    "participantOperations",
+    "rolePermissions",
+    "targetRequirements",
+    "constraints",
+    "caseGroups",
+    "specRules"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timeContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit", "type", "invalidClasses"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/specId"
+        },
+        "unit": {
+          "const": "unixEpochMilliseconds"
+        },
+        "type": {
+          "const": "safeInteger"
+        },
+        "invalidClasses": {
+          "type": "array",
+          "items": {
+            "enum": ["fractional", "nonFinite", "outOfSafeRange"]
+          },
+          "minItems": 3,
+          "uniqueItems": true
+        }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/roleId"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "projectUserTarget", "credentialTarget"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/operationId"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectUserTarget": {
+            "type": "string",
+            "minLength": 1
+          },
+          "credentialTarget": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "operations"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/scopeId"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/operationId"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "grants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/grantId"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "participantOperations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "grant", "requiresExistingRoom"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/grantId"
+          },
+          "grant": {
+            "$ref": "#/$defs/grantId"
+          },
+          "requiresGrant": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/grantId"
+            },
+            "uniqueItems": true
+          },
+          "requiresGrantWhenRoomAbsent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/grantId"
+            },
+            "uniqueItems": true
+          },
+          "requiresExistingRoom": {
+            "type": "boolean"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "rolePermissions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/operationId"
+        },
+        "uniqueItems": true
+      },
+      "minProperties": 1
+    },
+    "targetRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectUser", "credential"],
+      "properties": {
+        "projectUser": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "credential": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["participantSubject", "adminOwnerManagement", "credentialProjectUserOperations"],
+      "properties": {
+        "participantSubject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "matchParticipantExternalUserId"],
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "matchParticipantExternalUserId": {
+              "type": "boolean"
+            }
+          }
+        },
+        "adminOwnerManagement": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "enum": ["currentRole", "nextRole"]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "credentialProjectUserOperations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operationId"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "caseGroups": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["participant", "projectUser", "credential"],
+      "properties": {
+        "participant": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "projectUser": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "credential": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "specRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "statement", "verification"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/specId"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verification": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/verificationMethod"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(participant|projectUser|credential)\\.[A-Za-z0-9]+$"
+            },
+            "uniqueItems": true
+          },
+          "scripts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tracking": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "verification": {
+                  "type": "array",
+                  "contains": {
+                    "const": "out_of_scope"
+                  }
+                }
+              },
+              "required": ["verification"]
+            },
+            "then": {
+              "required": ["reason", "tracking"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "verification": {
+                  "type": "array",
+                  "contains": {
+                    "const": "ci_script"
+                  }
+                }
+              },
+              "required": ["verification"]
+            },
+            "then": {
+              "required": ["scripts"]
+            }
+          }
+        ]
+      },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "roleId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "operationId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]*\\.[A-Za-z][A-Za-z0-9]*$"
+    },
+    "scopeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$"
+    },
+    "grantId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$"
+    },
+    "specId": {
+      "type": "string",
+      "pattern": "^AUTH-[A-Z]+(?:-[A-Z0-9]+)+$"
+    },
+    "verificationMethod": {
+      "enum": [
+        "lean_proof",
+        "conformance",
+        "typescript_test",
+        "property_test",
+        "mutation",
+        "review",
+        "out_of_scope",
+        "ci_script"
+      ]
+    }
+  }
+}

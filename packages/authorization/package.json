@@ -9,9 +9,11 @@
   },
   "scripts": {
     "build": "tsdown",
+    "check:policy": "node ../../scripts/check-authorization-policy-mutations.mjs",
     "check:traceability": "node scripts/check-traceability.mjs",
     "mutation": "PBT_RUNS=50 stryker run",
-    "test": "vitest run",
+    "mutation:check": "node ../../scripts/check-authorization-stryker-report.mjs",
+    "test": "vitest run --reporter=default --reporter=json --outputFile=.cache/vitest-authorization.json",
     "test:coverage": "vitest run --coverage",
     "test:conformance": "pnpm build && node scripts/run-authorization-conformance.mjs",
     "typecheck": "tsc -p tsconfig.test.json"

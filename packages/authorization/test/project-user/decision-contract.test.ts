@@ -111,6 +111,13 @@ describe("ProjectUser 認可の監査target契約", () => {
           nextRole: "owner" as const,
         },
       },
+      {
+        operation: "project.read" as const,
+        target: {
+          projectId,
+          nextRole: "owner" as const,
+        },
+      },
     ];
 
     for (const { operation, target } of cases) {

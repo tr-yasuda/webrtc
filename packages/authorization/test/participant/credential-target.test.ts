@@ -2,9 +2,10 @@ import { describe, expect, test } from "vitest";
 import { authorizeParticipantAction } from "../../src/participant.js";
 import { otherProjectId, projectId } from "../fixtures.js";
 import { baseMediaInput } from "./support.js";
+import { authSpecName } from "../auth-spec.js";
 
 describe("参加 JWT の credential target 検証", () => {
-  test("credential の Project だけが一致しない場合は拒否する", () => {
+  test(authSpecName("AUTH-PART-04", "credential の Project だけが一致しない場合は拒否する"), () => {
     expect(
       authorizeParticipantAction({
         ...baseMediaInput,

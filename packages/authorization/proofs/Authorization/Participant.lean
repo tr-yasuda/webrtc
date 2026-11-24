@@ -3,12 +3,7 @@ import Authorization.Types
 namespace Authorization
 
 def granted (input : ParticipantInput) : Bool :=
-  match input.operation with
-  | .roomCreate => input.grants.roomCreate
-  | .roomJoin => input.grants.roomJoin
-  | .mediaPublish => input.grants.mediaPublish
-  | .mediaSubscribe => input.grants.mediaSubscribe
-  | .dataSend => input.grants.dataSend
+  grantEnabled input.grants (participantGrantFor input.operation)
 
 def isMediaData : ParticipantOperation -> Bool
   | .mediaPublish => true
@@ -27,13 +22,15 @@ def participantRules : List ParticipantRule := [
   { id := "P-TGT-001", reason := "credential-target-mismatch",
     fails := fun input => !input.targetMatch },
   { id := "P-SUB-001", reason := "subject-required",
-    fails := fun input => input.subjectClass == .empty },
+    fails := fun input => participantSubjectRequired && input.subjectClass == .empty },
   { id := "P-SUB-002", reason := "subject-required",
     fails := fun input =>
-      input.participantPresent && input.participantSubjectClass == .empty },
+      participantSubjectRequired && input.participantPresent &&
+        input.participantSubjectClass == .empty },
   { id := "P-SUB-003", reason := "subject-mismatch",
     fails := fun input =>
-      input.participantPresent && input.participantSubjectClass == .mismatch },
+      participantSubjectMustMatch && input.participantPresent &&
+        input.participantSubjectClass == .mismatch },
   { id := "P-GRANT-001", reason := "grant-not-granted",
     fails := fun input => !granted input },
   { id := "P-RC-001", reason := "room-already-exists",
@@ -41,7 +38,8 @@ def participantRules : List ParticipantRule := [
       input.operation == .roomCreate && input.roomState != .absent },
   { id := "P-RC-002", reason := "room-join-required",
     fails := fun input =>
-      input.operation == .roomCreate && !input.grants.roomJoin },
+      input.operation == .roomCreate &&
+        !allGrantsEnabled input.grants (participantRequiredGrants input.operation) },
   { id := "P-RC-003", reason := "session-target-mismatch",
     fails := fun input =>
       input.operation == .roomCreate && input.sessionPresent },
@@ -51,7 +49,8 @@ def participantRules : List ParticipantRule := [
   { id := "P-RJ-001", reason := "room-create-required",
     fails := fun input =>
       input.operation == .roomJoin && input.roomState == .absent &&
-        !input.grants.roomCreate },
+        !allGrantsEnabled input.grants
+          (participantRequiredGrantsWhenRoomAbsent input.operation) },
   { id := "P-RJ-002", reason := "session-target-mismatch",
     fails := fun input =>
       input.operation == .roomJoin && input.roomState == .absent &&
@@ -85,7 +84,10 @@ def participantRules : List ParticipantRule := [
       input.operation == .roomJoin && input.roomState == .active &&
         input.participantPresent && !input.participantTargetMatch },
   { id := "P-MD-001", reason := "room-not-active",
-    fails := fun input => isMediaData input.operation && input.roomState != .active },
+    fails := fun input =>
+      isMediaData input.operation &&
+        participantRequiresExistingRoom input.operation &&
+        input.roomState != .active },
   { id := "P-MD-002", reason := "session-required",
     fails := fun input => isMediaData input.operation && !input.sessionPresent },
   { id := "P-MD-003", reason := "session-not-active",
@@ -110,11 +112,15 @@ def participantRules : List ParticipantRule := [
         input.participantPresent && !input.participantTargetMatch }
 ]
 
+def firstParticipantViolationFrom
+    (rules : List ParticipantRule) (input : ParticipantInput) : Option String :=
+  match rules with
+  | [] => none
+  | rule :: rest =>
+      if rule.fails input then some rule.reason else firstParticipantViolationFrom rest input
+
 def firstParticipantViolation (input : ParticipantInput) : Option String :=
-  let rec go : List ParticipantRule -> Option String
-    | [] => none
-    | rule :: rest => if rule.fails input then some rule.reason else go rest
-  go participantRules
+  firstParticipantViolationFrom participantRules input
 
 def participantTargetKeys (input : ParticipantInput) : List String :=
   ["projectId", "roomName"] ++
@@ -138,11 +144,14 @@ def participantPrerequisites (input : ParticipantInput) : Bool :=
     granted input &&
     (match input.operation with
      | .roomCreate =>
-       input.roomState == .absent && input.grants.roomJoin &&
+       input.roomState == .absent &&
+         allGrantsEnabled input.grants (participantRequiredGrants input.operation) &&
          !input.sessionPresent && !input.participantPresent
      | .roomJoin =>
        (if input.roomState == .absent then
-         input.grants.roomCreate && !input.sessionPresent && !input.participantPresent
+         allGrantsEnabled input.grants
+           (participantRequiredGrantsWhenRoomAbsent input.operation) &&
+           !input.sessionPresent && !input.participantPresent
        else if input.roomState == .active then
          (if input.sessionPresent then
            input.sessionState == .active && input.sessionTargetMatch &&
@@ -152,26 +161,21 @@ def participantPrerequisites (input : ParticipantInput) : Bool :=
            input.participantState == .active && input.participantTargetMatch
          else true)
        else false)
-     | .mediaPublish => input.roomState == .active && input.sessionPresent &&
+     | .mediaPublish => participantRequiresExistingRoom input.operation &&
+         input.roomState == .active && input.sessionPresent &&
          input.sessionState == .active && input.participantPresent &&
          input.participantState == .active && input.sessionTargetMatch &&
          input.participantTargetMatch
-     | .mediaSubscribe => input.roomState == .active && input.sessionPresent &&
+     | .mediaSubscribe => participantRequiresExistingRoom input.operation &&
+         input.roomState == .active && input.sessionPresent &&
          input.sessionState == .active && input.participantPresent &&
          input.participantState == .active && input.sessionTargetMatch &&
          input.participantTargetMatch
-     | .dataSend => input.roomState == .active && input.sessionPresent &&
+     | .dataSend => participantRequiresExistingRoom input.operation &&
+         input.roomState == .active && input.sessionPresent &&
          input.sessionState == .active && input.participantPresent &&
          input.participantState == .active && input.sessionTargetMatch &&
          input.participantTargetMatch)
-
-def allGrants : List ParticipantGrants :=
-  [true, false].flatMap fun roomCreate =>
-  [true, false].flatMap fun roomJoin =>
-  [true, false].flatMap fun mediaPublish =>
-  [true, false].flatMap fun mediaSubscribe =>
-  [true, false].map fun dataSend =>
-    { roomCreate, roomJoin, mediaPublish, mediaSubscribe, dataSend }
 
 def sessionChoices : List (Bool × SessionState × Bool) :=
   [(false, .active, true)] ++
@@ -303,8 +307,31 @@ def mediaDataCases : List ParticipantInput :=
       grants
     }
 
+def mediaDataInactiveCases : List ParticipantInput :=
+  [ParticipantOperation.mediaPublish, .mediaSubscribe, .dataSend].flatMap fun operation =>
+  projectStates.flatMap fun projectState =>
+  [true, false].flatMap fun targetMatch =>
+  subjectClasses.flatMap fun subjectClass =>
+  [RoomState.absent, .deleting, .deleted].flatMap fun roomState =>
+  allGrants.map fun grants =>
+    {
+      operation,
+      projectState,
+      targetMatch,
+      subjectClass,
+      roomState,
+      sessionPresent := true,
+      sessionState := .active,
+      sessionTargetMatch := true,
+      participantPresent := true,
+      participantState := .active,
+      participantTargetMatch := true,
+      participantSubjectClass := .match,
+      grants
+    }
+
 def allParticipantCases : List ParticipantInput :=
   roomCreateCases ++ roomJoinAbsentCases ++ roomJoinNonActiveCases ++
-    roomJoinActiveCases ++ mediaDataCases
+    roomJoinActiveCases ++ mediaDataCases ++ mediaDataInactiveCases
 
 end Authorization

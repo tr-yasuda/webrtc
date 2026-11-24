@@ -314,6 +314,14 @@ Management UI の OpenID Connect では、標準のプロトコル処理に既�
 セキュリティ修正を追跡し、更新時は影響する検証条件を再確認する。
 実装と検証は、[実装・検証の共通方針](../platform/verification.md#実装検証の共通方針)に従う。
 
+### 形式検証
+
+静的な認可ポリシーは `docs/auth/authorization-spec/authorization-policy.json` を正本とし、TypeScript と Lean の静的定義はそこから決定論的に生成する。認可の判定ロジックは両言語で独立して実装し、有限ケースの全件照合と Lean の証明で対応を確認する。
+
+仕様 ID、必要な検証手法、意味的なポリシー差分、Traceability、Mutation Testing の扱いは、[認可仕様の管理と形式検証](authorization-verification.md)に従う。証明が保証するのは Lean モデルの性質であり、HTTP、JWT 署名検証、DB、管理 UI の実装そのものではない。
+
+仕様 ID と定理・テストの機械的な対応は CI で生成・検査するが、仕様 JSON と規範文章の意味的な妥当性は人間がレビューする。
+
 ## セキュリティ
 
 認証、権限付与、資格情報の発行・更新・失効、管理操作、状態取得、通知購読に、それぞれ必要な認証・認可を適用する。

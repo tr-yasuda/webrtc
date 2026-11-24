@@ -1,3 +1,4 @@
+import Authorization.GeneratedPolicy
 import Lean.Data.Json
 
 open Lean
@@ -7,14 +8,6 @@ namespace Authorization
 inductive ProjectState
   | active
   | suspended
-  deriving DecidableEq, Repr, BEq
-
-inductive ParticipantOperation
-  | roomCreate
-  | roomJoin
-  | mediaPublish
-  | mediaSubscribe
-  | dataSend
   deriving DecidableEq, Repr, BEq
 
 inductive RoomState
@@ -42,14 +35,6 @@ inductive SubjectClass
   | mismatch
   deriving DecidableEq, Repr, BEq
 
-structure ParticipantGrants where
-  roomCreate : Bool
-  roomJoin : Bool
-  mediaPublish : Bool
-  mediaSubscribe : Bool
-  dataSend : Bool
-  deriving DecidableEq, Repr, BEq
-
 structure ParticipantInput where
   operation : ParticipantOperation
   projectState : ProjectState
@@ -66,36 +51,6 @@ structure ParticipantInput where
   grants : ParticipantGrants
   deriving DecidableEq, Repr, BEq
 
-inductive Role
-  | none
-  | owner
-  | admin
-  | operator
-  | auditor
-  deriving DecidableEq, Repr, BEq
-
-inductive ManagementOperation
-  | projectRead
-  | projectUpdate
-  | projectDelete
-  | projectUserRead
-  | projectUserAdd
-  | projectUserRemove
-  | projectUserChangeRole
-  | applicationManage
-  | applicationSigningKeyManage
-  | managementApiCredentialManage
-  | roomRead
-  | roomUpdate
-  | roomDelete
-  | sessionRead
-  | sessionDisconnect
-  | participantRead
-  | participantDisconnect
-  | usageRead
-  | auditRead
-  deriving DecidableEq, Repr, BEq
-
 structure ProjectUserInput where
   operation : ManagementOperation
   projectState : ProjectState
@@ -105,20 +60,6 @@ structure ProjectUserInput where
   targetIdPresent : Bool
   currentRole : Option Role
   nextRole : Option Role
-  deriving DecidableEq, Repr, BEq
-
-inductive CredentialScope
-  | roomManage
-  | sessionManage
-  | usageRead
-  | auditRead
-  deriving DecidableEq, Repr, BEq
-
-structure CredentialScopes where
-  roomManage : Bool
-  sessionManage : Bool
-  usageRead : Bool
-  auditRead : Bool
   deriving DecidableEq, Repr, BEq
 
 inductive ExpiryClass
@@ -146,39 +87,16 @@ structure Decision where
 
 def projectStates : List ProjectState := [.active, .suspended]
 
-def participantOperations : List ParticipantOperation :=
-  [.roomCreate, .roomJoin, .mediaPublish, .mediaSubscribe, .dataSend]
-
 def roomStates : List RoomState := [.absent, .active, .deleting, .deleted]
 def sessionStates : List SessionState := [.active, .revoked, .ended]
 def participantStates : List ParticipantState := [.active, .revoked, .left]
 def subjectClasses : List SubjectClass := [.empty, .match, .mismatch]
-
-def roles : List Role := [.none, .owner, .admin, .operator, .auditor]
-
-def managementOperations : List ManagementOperation :=
-  [.projectRead, .projectUpdate, .projectDelete, .projectUserRead,
-   .projectUserAdd, .projectUserRemove, .projectUserChangeRole,
-   .applicationManage, .applicationSigningKeyManage,
-   .managementApiCredentialManage, .roomRead, .roomUpdate, .roomDelete,
-   .sessionRead, .sessionDisconnect, .participantRead,
-   .participantDisconnect, .usageRead, .auditRead]
-
-def credentialScopes : List CredentialScope :=
-  [.roomManage, .sessionManage, .usageRead, .auditRead]
 
 def expiryClasses : List ExpiryClass := [.valid, .expired, .invalid]
 
 def projectStateName : ProjectState -> String
   | .active => "active"
   | .suspended => "suspended"
-
-def participantOperationName : ParticipantOperation -> String
-  | .roomCreate => "room.create"
-  | .roomJoin => "room.join"
-  | .mediaPublish => "media.publish"
-  | .mediaSubscribe => "media.subscribe"
-  | .dataSend => "data.send"
 
 def roomStateName : RoomState -> String
   | .absent => "absent"
@@ -200,34 +118,6 @@ def subjectClassName : SubjectClass -> String
   | .empty => "empty"
   | .match => "match"
   | .mismatch => "mismatch"
-
-def roleName : Role -> String
-  | .none => "none"
-  | .owner => "owner"
-  | .admin => "admin"
-  | .operator => "operator"
-  | .auditor => "auditor"
-
-def managementOperationName : ManagementOperation -> String
-  | .projectRead => "project.read"
-  | .projectUpdate => "project.update"
-  | .projectDelete => "project.delete"
-  | .projectUserRead => "projectUser.read"
-  | .projectUserAdd => "projectUser.add"
-  | .projectUserRemove => "projectUser.remove"
-  | .projectUserChangeRole => "projectUser.changeRole"
-  | .applicationManage => "application.manage"
-  | .applicationSigningKeyManage => "applicationSigningKey.manage"
-  | .managementApiCredentialManage => "managementApiCredential.manage"
-  | .roomRead => "room.read"
-  | .roomUpdate => "room.update"
-  | .roomDelete => "room.delete"
-  | .sessionRead => "session.read"
-  | .sessionDisconnect => "session.disconnect"
-  | .participantRead => "participant.read"
-  | .participantDisconnect => "participant.disconnect"
-  | .usageRead => "usage.read"
-  | .auditRead => "audit.read"
 
 def expiryClassName : ExpiryClass -> String
   | .valid => "valid"

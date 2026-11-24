@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeProjectUserAction,
   type ProjectUserAuthorizationTarget,
@@ -83,25 +84,28 @@ describe("ProjectUser ロールの認可", () => {
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
     allowed: boolean;
-  }>)("$name", ({ role, operation, target: requestedTarget, allowed }) => {
-    const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role,
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
-    });
+  }>)(
+    authSpecName("AUTH-PU-03", "$name"),
+    ({ role, operation, target: requestedTarget, allowed }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role,
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed,
-      operation,
-      target: requestedTarget,
-      reason: allowed ? "allowed" : "owner-management-forbidden",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed,
+        operation,
+        target: requestedTarget,
+        reason: allowed ? "allowed" : "owner-management-forbidden",
+      });
+    },
+  );
 });

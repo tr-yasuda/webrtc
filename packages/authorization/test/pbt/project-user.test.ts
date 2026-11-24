@@ -1,5 +1,6 @@
 import { test as pbtTest, fc } from "@fast-check/vitest";
 import { describe, expect, test as baseTest } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import { isProjectUserRole } from "../../src/management-operation.js";
 import {
   authorizeProjectUserAction,
@@ -148,7 +149,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
   );
 
   pbtTest.prop([projectUserValidCaseArbitrary()], pbtParameters())(
-    "基準シナリオは常に許可され、監査対象が一致する",
+    authSpecName(["AUTH-PU-01", "AUTH-PU-02"], "基準シナリオは常に許可され、監査対象が一致する"),
     (caseValue) => {
       const decision = authorizeProjectUserAction(caseValue.input);
 
@@ -164,7 +165,10 @@ describe("ProjectUser ロールの Property-based Testing", () => {
   );
 
   pbtTest.prop([projectUserSingleFaultCaseArbitrary()], pbtParameters())(
-    "単一故障は違反条件に対応する理由で拒否される",
+    authSpecName(
+      ["AUTH-PU-03", "AUTH-PU-04", "AUTH-PU-05"],
+      "単一故障は違反条件に対応する理由で拒否される",
+    ),
     (caseValue) => {
       const violations = projectUserViolations(caseValue.input);
       const decision = authorizeProjectUserAction(caseValue.input);
@@ -182,7 +186,10 @@ describe("ProjectUser ロールの Property-based Testing", () => {
   );
 
   pbtTest.prop([projectUserMultiFaultCaseArbitrary()], pbtParameters())(
-    "複合故障は違反理由のいずれかで拒否される",
+    authSpecName(
+      ["AUTH-PU-03", "AUTH-PU-04", "AUTH-PU-05"],
+      "複合故障は違反理由のいずれかで拒否される",
+    ),
     (caseValue) => {
       const violations = projectUserViolations(caseValue.input);
       const decision = authorizeProjectUserAction(caseValue.input);
@@ -196,7 +203,10 @@ describe("ProjectUser ロールの Property-based Testing", () => {
   );
 
   pbtTest.prop([projectUserCaseArbitrary()], pbtParameters())(
-    "許可と拒否は独立オラクルと一致し、許可条件を満たす",
+    authSpecName(
+      ["AUTH-PU-01", "AUTH-PU-02", "AUTH-PU-04"],
+      "許可と拒否は独立オラクルと一致し、許可条件を満たす",
+    ),
     (caseValue) => {
       const input = caseValue.input;
       const violations = projectUserViolations(input);
@@ -219,7 +229,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     [projectUserBaselineCaseArbitrary(), projectUserUnknownRoleArbitrary()],
     pbtParameters(),
   )(
-    "未知の role は固定候補でも任意文字列でも拒否される",
+    authSpecName("AUTH-PU-04", "未知の role は固定候補でも任意文字列でも拒否される"),
     (base, role) => {
       const input = {
         ...base.input,
@@ -237,7 +247,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     [projectUserBaselineCaseArbitrary(), projectUserUnknownRoleArbitrary(), fc.boolean()],
     pbtParameters(),
   )(
-    "未知の target role は固定候補でも任意文字列でも拒否される",
+    authSpecName("AUTH-PU-04", "未知の target role は固定候補でも任意文字列でも拒否される"),
     (base, role, useNextRole) => {
       const input = {
         ...base.input,
@@ -261,7 +271,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     [projectUserBaselineCaseArbitrary(), projectUserUnknownOperationArbitrary()],
     pbtParameters(),
   )(
-    "未知の operation は固定候補でも任意文字列でも拒否される",
+    authSpecName("AUTH-PU-04", "未知の operation は固定候補でも任意文字列でも拒否される"),
     (base, operation) => {
       const input = { ...base.input, operation };
       expect(authorizeProjectUserFromRaw(input)).toStrictEqual({
@@ -280,7 +290,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     ],
     pbtParameters(),
   )(
-    "Admin は Owner を付与・変更・除外できない",
+    authSpecName("AUTH-PU-03", "Admin は Owner を付与・変更・除外できない"),
     (operation, ownerIsCurrent, ids) => {
       const target = ownerTarget(operation, ownerIsCurrent, ids);
       const input: ProjectUserAuthorizationInput = {

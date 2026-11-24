@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeManagementCredentialAction,
   type ManagementCredentialScope,
 } from "../../src/management-credential.js";
+import { credentialProjectUserOperations } from "../../src/generated/policy.js";
 import { projectId } from "../fixtures.js";
 import {
   allOperations,
@@ -13,7 +15,7 @@ import {
 } from "./support.js";
 
 describe("Management API credential の認可", () => {
-  test("room.manage scope は Room の読み取りを許可する", () => {
+  test(authSpecName("AUTH-MC-01", "room.manage scope は Room の読み取りを許可する"), () => {
     const decision = authorizeManagementCredentialAction({
       credential: {
         projectId,
@@ -43,6 +45,25 @@ describe("Management API credential の認可", () => {
       },
     });
   });
+
+  test.each(credentialProjectUserOperations)(
+    authSpecName("AUTH-MC-02", "credential は ProjectUser 管理 %s を許可しない"),
+    (operation) => {
+      const target = targetFor(operation);
+      const decision = authorizeManagementCredentialAction({
+        ...baseInput,
+        operation,
+        target,
+      });
+
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target,
+        reason: "credential-operation-not-allowed",
+      });
+    },
+  );
 
   test("session.read は対象 ID を指定しない一覧取得を許可する", () => {
     const decision = authorizeManagementCredentialAction({

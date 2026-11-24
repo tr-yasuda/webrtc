@@ -1,6 +1,7 @@
 import type { ProjectUserAuthorizationReason } from "../../contracts/identifiers.js";
 import type { ProjectUserAuthorizationInput } from "../../contracts/project-user.js";
 import type { RuleViolation } from "../../contracts/rules.js";
+import { projectUserTargetFields } from "../../generated/policy.js";
 
 export function checkRequiredTargetId(
   input: ProjectUserAuthorizationInput,
@@ -12,20 +13,8 @@ export function checkRequiredTargetId(
 }
 
 function hasRequiredTargetId(input: ProjectUserAuthorizationInput): boolean {
-  switch (input.operation) {
-    case "projectUser.add":
-      return input.target.accountId !== undefined;
-    case "projectUser.remove":
-    case "projectUser.changeRole":
-      return input.target.projectUserId !== undefined;
-    case "room.update":
-    case "room.delete":
-      return input.target.roomId !== undefined;
-    case "session.disconnect":
-      return input.target.sessionId !== undefined;
-    case "participant.disconnect":
-      return input.target.participantId !== undefined;
-    default:
-      return true;
-  }
+  const field = projectUserTargetFields[input.operation];
+  if (field === undefined) return true;
+  const value = (input.target as Record<string, unknown>)[field];
+  return typeof value === "string" && value.length > 0;
 }

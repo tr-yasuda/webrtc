@@ -5,6 +5,7 @@ import {
 } from "../../src/project-user.js";
 import { type ManagementOperation } from "../../src/management-operation.js";
 import { projectId } from "../fixtures.js";
+import { authSpecName } from "../auth-spec.js";
 
 describe("ProjectUser ロールの認可", () => {
   test.each([
@@ -65,24 +66,43 @@ describe("ProjectUser ロールの認可", () => {
     name: string;
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
-  }>)("$name に対象 ID がない場合は拒否する", ({ operation, target: requestedTarget }) => {
+  }>)(
+    authSpecName("AUTH-PU-04", "$name に対象 ID がない場合は拒否する"),
+    ({ operation, target: requestedTarget }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role: "owner",
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
+
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: requestedTarget,
+        reason: "target-id-required",
+      });
+    },
+  );
+
+  test(authSpecName("AUTH-PU-05", "空の Session ID は対象 ID なしとして拒否する"), () => {
     const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role: "owner",
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
+      actor: { projectId, role: "owner" },
+      project: { id: projectId, state: "active" },
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
     });
 
     expect(decision).toStrictEqual({
       allowed: false,
-      operation,
-      target: requestedTarget,
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
       reason: "target-id-required",
     });
   });

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeManagementCredentialAction,
   type ManagementCredentialAuthorizationTarget,
@@ -34,24 +35,27 @@ describe("Management API credential の認可", () => {
     name: string;
     operation: ManagementOperation;
     scope: ManagementCredentialScope;
-  }>)("$name は対象 ID がない場合は拒否する", ({ operation, scope }) => {
-    const decision = authorizeManagementCredentialAction({
-      ...baseInput,
-      credential: {
-        ...baseInput.credential,
-        scopes: [scope],
-      },
-      operation,
-      target: { projectId },
-    });
+  }>)(
+    authSpecName("AUTH-MC-04", "$name は対象 ID がない場合は拒否する"),
+    ({ operation, scope }) => {
+      const decision = authorizeManagementCredentialAction({
+        ...baseInput,
+        credential: {
+          ...baseInput.credential,
+          scopes: [scope],
+        },
+        operation,
+        target: { projectId },
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation,
-      target: { projectId },
-      reason: "target-id-required",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: { projectId },
+        reason: "target-id-required",
+      });
+    },
+  );
 
   test.each([
     {
@@ -83,22 +87,44 @@ describe("Management API credential の認可", () => {
     operation: ManagementOperation;
     scope: ManagementCredentialScope;
     target: ManagementCredentialAuthorizationTarget;
-  }>)("$name は対象 ID がある場合は許可する", ({ operation, scope, target }) => {
+  }>)(
+    authSpecName("AUTH-MC-04", "$name は対象 ID がある場合は許可する"),
+    ({ operation, scope, target }) => {
+      const decision = authorizeManagementCredentialAction({
+        ...baseInput,
+        credential: {
+          ...baseInput.credential,
+          scopes: [scope],
+        },
+        operation,
+        target,
+      });
+
+      expect(decision).toStrictEqual({
+        allowed: true,
+        operation,
+        target,
+        reason: "allowed",
+      });
+    },
+  );
+
+  test(authSpecName("AUTH-MC-05", "空の Session ID は対象 ID なしとして拒否する"), () => {
     const decision = authorizeManagementCredentialAction({
       ...baseInput,
       credential: {
         ...baseInput.credential,
-        scopes: [scope],
+        scopes: ["session.manage"],
       },
-      operation,
-      target,
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
     });
 
     expect(decision).toStrictEqual({
-      allowed: true,
-      operation,
-      target,
-      reason: "allowed",
+      allowed: false,
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
+      reason: "target-id-required",
     });
   });
 });
