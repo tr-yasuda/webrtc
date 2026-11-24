@@ -497,6 +497,46 @@ describe("インメモリ資源管理の受け入れ条件", () => {
     });
   });
 
+  test("隔離済みの資源も停止確認後に解放する", async () => {
+    const reserved = await reserve(store, "reserve-isolated-confirmed");
+    if (reserved.status !== "reserved") {
+      throw new Error("reservation failed");
+    }
+    await allocate(store, reserved.reservation.id, "resource-1", "allocate-1", 1);
+    await store.applyEvent(
+      {
+        type: "isolate",
+        reservationId: reserved.reservation.id,
+        operationId: operation("isolate-1"),
+        at: 2,
+      },
+      2,
+    );
+    const job = await store.startReconciliation(
+      {
+        type: "worker-stopped",
+        workerId,
+        bootId,
+        confirmedResourceIds: [asResourceId("resource-1")],
+        operationId: operation("worker-stopped-isolated"),
+        at: 3,
+      },
+      3,
+    );
+
+    expect(await store.continueReconciliation(job.id, { cursor: 0 }, 3)).toMatchObject({
+      reclaimed: [reserved.reservation.id],
+      isolated: [],
+      unchanged: [],
+      hasMore: false,
+      status: "completed",
+    });
+    expect(await store.getReservation(reserved.reservation.id)).toMatchObject({
+      state: "released",
+    });
+    expect(await store.getQuotaUsage(serverScope)).toMatchObject({ usedCount: 0 });
+  });
+
   test("解放失敗への遅延通知は相関情報を補完して照合対象にする", async () => {
     const reserved = await reserve(store, "reserve-release-failed");
     if (reserved.status !== "reserved") {

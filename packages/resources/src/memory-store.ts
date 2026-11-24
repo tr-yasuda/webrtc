@@ -509,7 +509,7 @@ export class InMemoryResourceStore implements ResourceStore {
         markTargetSkipped(target);
         continue;
       }
-      if (reservation.state === "released" || reservation.state === "isolated") {
+      if (reservation.state === "released") {
         markTargetSkipped(target);
         continue;
       }

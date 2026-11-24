@@ -192,14 +192,19 @@ export class PostgresRateLimitTable implements RateLimitTable {
         bytes: 0,
       })
       .onConflictDoNothing();
+    const row = await this.lockExistingGlobal(tx);
+    if (row === undefined) {
+      throw new Error("global rate limit row is missing");
+    }
+    return row;
+  }
+
+  private async lockExistingGlobal(tx: ResourcesTransaction): Promise<GlobalRow | undefined> {
     const [row] = await tx
       .select()
       .from(schema.rateLimitGlobal)
       .where(eq(schema.rateLimitGlobal.tableKey, this.tableKey))
       .for("update");
-    if (row === undefined) {
-      throw new Error("global rate limit row is missing");
-    }
     return row;
   }
 
@@ -240,6 +245,11 @@ export class PostgresRateLimitTable implements RateLimitTable {
     tx: ResourcesTransaction,
     now: number,
   ): Promise<{ readonly entries: number; readonly entryBytes: number; readonly deleted: number }> {
+    // consume と同じ global → entry の順でロックし、sweep と consume のデッドロックを防ぐ。
+    // global 行がない場合は entry も存在しないため、ここで作成しない。
+    if ((await this.lockExistingGlobal(tx)) === undefined) {
+      return { entries: 0, entryBytes: 0, deleted: 0 };
+    }
     const deleted = await tx.execute(sql`
       WITH expired AS (
         SELECT entry_key

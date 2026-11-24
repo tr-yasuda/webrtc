@@ -600,8 +600,7 @@ export class PostgresReconciliationStore {
       reservation.bootId !== bootId ||
       (targetResourceId !== undefined && targetResourceId !== reservation.resourceId) ||
       (targetResourceId === undefined && reservation.resourceId !== undefined) ||
-      reservation.state === "released" ||
-      reservation.state === "isolated"
+      reservation.state === "released"
     ) {
       return skip();
     }

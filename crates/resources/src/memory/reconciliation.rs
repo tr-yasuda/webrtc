@@ -411,7 +411,6 @@ impl InMemoryResourceStore {
         if reservation.worker_id.as_ref() != Some(worker_id)
             || reservation.boot_id.as_ref() != Some(boot_id)
             || reservation.state == ResourceState::Released
-            || reservation.state == ResourceState::Isolated
         {
             return ReconciliationTargetOutcome::Skipped;
         }

@@ -491,3 +491,56 @@ fn 遅延確保と解放失敗は相関情報を補完して照合対象にす�
     assert!(batch.isolated.contains(&delayed.id));
     assert!(batch.isolated.contains(&failed.id));
 }
+
+#[test]
+fn 隔離済みの資源も停止確認後に解放する() {
+    let mut store = store(2, 10);
+    let reserved =
+        reserved(store.reserve(&claim(1, None), operation("reserve-isolated-confirmed"), 0));
+    allocate(&mut store, &reserved, "resource-1", "allocate-1", 0);
+    store.apply_event(
+        ResourceEvent::Isolate {
+            reservation_id: reserved.id.clone(),
+            operation_id: operation("isolate-1"),
+            at: 1,
+        },
+        1,
+    );
+    let job = store
+        .start_reconciliation(
+            &ResourceEvent::WorkerStopped {
+                worker_id: worker(),
+                boot_id: boot(),
+                confirmed_resource_ids: vec![resource("resource-1")],
+                operation_id: operation("worker-stopped-isolated"),
+                at: 2,
+            },
+            2,
+        )
+        .expect("reconciliation job");
+    let batch = store
+        .continue_reconciliation(
+            &job.id,
+            ReconciliationBatchOptions {
+                cursor: 0,
+                limit: None,
+            },
+            2,
+        )
+        .expect("reconciliation batch");
+    assert_eq!(batch.reclaimed, vec![reserved.id.clone()]);
+    assert_eq!(
+        store
+            .get_reservation(&reserved.id)
+            .expect("reservation")
+            .state,
+        ResourceState::Released
+    );
+    assert_eq!(
+        store
+            .get_quota_usage(&server_scope())
+            .expect("quota usage")
+            .used_count,
+        0
+    );
+}

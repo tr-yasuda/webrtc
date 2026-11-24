@@ -1,5 +1,6 @@
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
+use std::sync::Arc;
 
 use crate::contract::ResourceStoreError;
 
@@ -77,7 +78,7 @@ struct RateLimitEntry {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ExpiryRecord {
-    key: String,
+    key: Arc<str>,
     expires_at: u64,
     generation: u64,
 }
@@ -97,7 +98,7 @@ impl PartialOrd for ExpiryRecord {
 }
 
 pub struct InMemoryRateLimitTable {
-    entries: HashMap<String, RateLimitEntry>,
+    entries: HashMap<Arc<str>, RateLimitEntry>,
     options: RateLimitOptions,
     global_window_started_at: Option<u64>,
     global_count: u64,
@@ -159,7 +160,12 @@ impl InMemoryRateLimitTable {
             );
         }
 
-        let mut entry = match self.entries.get(key).cloned() {
+        let key = self
+            .entries
+            .get_key_value(key)
+            .map(|(stored, _)| Arc::clone(stored))
+            .unwrap_or_else(|| Arc::from(key));
+        let mut entry = match self.entries.get(key.as_ref()).cloned() {
             Some(existing) => {
                 let mut entry = existing;
                 if now >= entry.window_started_at + self.options.window_ms {
@@ -195,7 +201,7 @@ impl InMemoryRateLimitTable {
         };
 
         entry.last_used_at = now;
-        self.refresh_expiry(key, &mut entry);
+        self.refresh_expiry(&key, &mut entry);
         if entry.count >= self.options.max_requests_per_key
             || cost_bytes > self.options.max_bytes_per_key.saturating_sub(entry.bytes)
         {
@@ -205,13 +211,15 @@ impl InMemoryRateLimitTable {
                 RateLimitRejectionReason::BandwidthLimit
             };
             let retry = retry_after_ms(entry.window_started_at, self.options.window_ms, now);
-            self.entries.insert(key.to_owned(), entry);
+            self.entries.insert(key, entry);
+            self.compact_expiry_heap();
             return RateLimitDecision::rejected_with_retry(reason, retry);
         }
 
         entry.count += 1;
         entry.bytes += cost_bytes;
-        self.entries.insert(key.to_owned(), entry);
+        self.entries.insert(key, entry);
+        self.compact_expiry_heap();
         self.global_count += 1;
         self.global_bytes += cost_bytes;
         RateLimitDecision::allowed()
@@ -226,14 +234,14 @@ impl InMemoryRateLimitTable {
                 return;
             }
             let record = self.expiry_heap.pop().expect("expiry record was peeked").0;
-            let Some(entry) = self.entries.get(&record.key) else {
+            let Some(entry) = self.entries.get(record.key.as_ref()) else {
                 continue;
             };
             if entry.generation != record.generation || entry.expires_at != record.expires_at {
                 continue;
             }
             let removed_bytes = entry.size_bytes;
-            self.entries.remove(&record.key);
+            self.entries.remove(record.key.as_ref());
             self.entry_bytes = self.entry_bytes.saturating_sub(removed_bytes);
         }
     }
@@ -257,15 +265,30 @@ impl InMemoryRateLimitTable {
         }
     }
 
-    fn refresh_expiry(&mut self, key: &str, entry: &mut RateLimitEntry) {
+    fn refresh_expiry(&mut self, key: &Arc<str>, entry: &mut RateLimitEntry) {
         entry.generation += 1;
         entry.expires_at = (entry.last_used_at + self.options.idle_ttl_ms)
             .max(entry.window_started_at + self.options.window_ms);
         self.expiry_heap.push(Reverse(ExpiryRecord {
-            key: key.to_owned(),
+            key: Arc::clone(key),
             expires_at: entry.expires_at,
             generation: entry.generation,
         }));
+    }
+
+    fn compact_expiry_heap(&mut self) {
+        let limit = self.entries.len().saturating_mul(2).max(64);
+        if self.expiry_heap.len() <= limit {
+            return;
+        }
+        self.expiry_heap.clear();
+        for (key, entry) in &self.entries {
+            self.expiry_heap.push(Reverse(ExpiryRecord {
+                key: Arc::clone(key),
+                expires_at: entry.expires_at,
+                generation: entry.generation,
+            }));
+        }
     }
 }
 
@@ -273,4 +296,34 @@ fn retry_after_ms(window_started_at: u64, window_ms: u64, now: u64) -> u64 {
     window_started_at
         .saturating_add(window_ms)
         .saturating_sub(now)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn options() -> RateLimitOptions {
+        RateLimitOptions {
+            max_entries: 10,
+            max_bytes: 100,
+            entry_overhead_bytes: 8,
+            idle_ttl_ms: 1_000_000,
+            window_ms: 1_000_000,
+            max_requests_per_key: 1,
+            max_bytes_per_key: 100,
+            max_requests_global: 1_000_000,
+            max_bytes_global: 1_000_000,
+        }
+    }
+
+    #[test]
+    fn 同一キーへの拒否要求で期限索引が無制限に増えない() {
+        let mut table = InMemoryRateLimitTable::new(options()).expect("create rate limit table");
+        assert!(table.consume("source-a", 1, 0).allowed);
+        for now in 1..=10_000 {
+            let _ = table.consume("source-a", 1, now);
+        }
+
+        assert!(table.expiry_heap.len() <= 64);
+    }
 }

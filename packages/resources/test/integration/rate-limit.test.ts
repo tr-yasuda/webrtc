@@ -55,6 +55,19 @@ beforeEach(async () => {
 });
 
 describe("PostgreSQL レート制限表", () => {
+  test("期限切れがない空の表を sweep しても全体行を作らない", async () => {
+    const table = await createRateLimitTable("empty-sweep", rateLimitOptions());
+
+    await table.sweep(0);
+
+    const result = await pool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM rate_limit_global WHERE table_key = $1",
+      ["empty-sweep"],
+    );
+    expect(result.rows[0]?.count).toBe("0");
+    expect(await table.getUsage()).toMatchObject({ entries: 0, bytes: 0 });
+  });
+
   test("制限期間が残っている項目を TTL で早期削除しない", async () => {
     const table = await createRateLimitTable(
       "ttl",

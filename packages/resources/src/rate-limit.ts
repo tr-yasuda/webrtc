@@ -25,8 +25,16 @@ interface ExpiryRecord {
 class ExpiryHeap {
   private readonly items: ExpiryRecord[] = [];
 
+  public get size(): number {
+    return this.items.length;
+  }
+
   public peek(): ExpiryRecord | undefined {
     return this.items[0];
+  }
+
+  public clear(): void {
+    this.items.length = 0;
   }
 
   public push(record: ExpiryRecord): void {
@@ -221,6 +229,18 @@ export class InMemoryRateLimitTable implements RateLimitTable {
       expiresAt: entry.expiresAt,
       generation: entry.generation,
     });
+    // 同一キーへの要求ごとに期限レコードを積むため、entries に対して有界に保つ。
+    if (this.expiryHeap.size <= Math.max(64, this.entries.size * 2)) {
+      return;
+    }
+    this.expiryHeap.clear();
+    for (const [currentKey, current] of this.entries) {
+      this.expiryHeap.push({
+        key: currentKey,
+        expiresAt: current.expiresAt,
+        generation: current.generation,
+      });
+    }
   }
 
   private resetGlobalWindow(now: number): number {

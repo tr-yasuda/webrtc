@@ -16,6 +16,10 @@ function options(overrides: Partial<RateLimitOptions> = {}): RateLimitOptions {
   };
 }
 
+function expiryRecordCount(table: ReturnType<typeof createInMemoryRateLimitTable>): number {
+  return (table as unknown as { expiryHeap: { size: number } }).expiryHeap.size;
+}
+
 describe("送信元ごとのレート制限表", () => {
   test("制限期間が残っている項目を TTL で早期削除しない", async () => {
     const table = createInMemoryRateLimitTable(
@@ -142,5 +146,24 @@ describe("送信元ごとのレート制限表", () => {
       allowed: false,
       reason: "bandwidth-limit",
     });
+  });
+
+  test("同じキーへの拒否要求で期限索引が無制限に増えない", async () => {
+    const table = createInMemoryRateLimitTable(
+      options({
+        maxEntries: 10,
+        idleTtlMs: 1_000_000,
+        windowMs: 1_000_000,
+        maxRequestsPerKey: 1,
+        maxRequestsGlobal: 1_000_000,
+        maxBytesGlobal: 1_000_000,
+      }),
+    );
+    expect(await table.consume("source-a", 1, 0)).toMatchObject({ allowed: true });
+    for (let now = 1; now <= 10_000; now += 1) {
+      await table.consume("source-a", 1, now);
+    }
+
+    expect(expiryRecordCount(table)).toBeLessThanOrEqual(64);
   });
 });
