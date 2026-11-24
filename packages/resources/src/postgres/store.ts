@@ -2,7 +2,6 @@ import { and, asc, eq, gt, inArray, lte, ne, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { Pool } from "pg";
 import {
-  compareQuotaScopes,
   resolveBatchLimit,
   validateResourceClaim,
   resolveResourceStoreOptions,
@@ -43,7 +42,6 @@ import {
 } from "../audit/contract.js";
 import {
   asBootId,
-  asReconciliationJobId,
   asReservationId,
   asResourceId,
   asWorkerId,
@@ -60,17 +58,25 @@ import { confirmedResourceSize, reconciliationTargetSize } from "../reconciliati
 import type { ResourceState } from "../state.js";
 import { planExpiry, planTransition, planWorkerStopForReservation } from "../transition.js";
 import { PostgresAuditLog, type AuditWriteInput } from "./audit.js";
-import { toQuotaScopeKind, toResourceState } from "./codec.js";
+import {
+  toQuotaUsage,
+  toReconciliationJob,
+  toReconciliationJobStatus,
+  toReservation,
+} from "./codec.js";
 import type { ResourcesDatabase, ResourcesTransaction } from "./db.js";
+import {
+  completeOperation,
+  lockOperation,
+  lockQuota,
+  lockQuotaScope,
+  releaseQuota as releaseReservationQuota,
+  updateReservation,
+  type QuotaRow,
+} from "./operations.js";
 import * as schema from "./schema.js";
 
-type ReservationRow = typeof schema.resourceReservation.$inferSelect;
-type QuotaRow = typeof schema.resourceQuota.$inferSelect;
-type OperationRow = typeof schema.resourceOperation.$inferSelect;
-type ReconciliationJobRow = typeof schema.reconciliationJob.$inferSelect;
 type ReconciliationTargetRow = typeof schema.reconciliationTarget.$inferSelect;
-
-const PENDING_RESULT: { readonly status: "pending" } = { status: "pending" };
 
 type ReconciliationTargetOutcome =
   | { readonly kind: "reclaimed"; readonly reservationId: ReservationId }
@@ -81,167 +87,6 @@ type ReconciliationTargetOutcome =
 export interface PostgresResourceStoreOptions extends ResourceStoreOptions {
   readonly pool: Pool;
   readonly audit: ResourceAuditOptions;
-}
-
-function toReservation(row: ReservationRow): Reservation {
-  return {
-    id: asReservationId(row.id),
-    state: toResourceState(row.state),
-    scopes: row.scopes,
-    sizeBytes: row.sizeBytes,
-    version: row.version,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    ...(row.resourceId === null ? {} : { resourceId: asResourceId(row.resourceId) }),
-    ...(row.workerId === null ? {} : { workerId: asWorkerId(row.workerId) }),
-    ...(row.bootId === null ? {} : { bootId: asBootId(row.bootId) }),
-    ...(row.expiresAt === null ? {} : { expiresAt: row.expiresAt }),
-  };
-}
-
-function toQuotaUsage(row: QuotaRow): QuotaUsage {
-  return {
-    scope: { kind: toQuotaScopeKind(row.scopeKind), key: row.scopeKey },
-    maxCount: row.maxCount,
-    maxBytes: row.maxBytes,
-    usedCount: row.usedCount,
-    usedBytes: row.usedBytes,
-  };
-}
-
-function toReconciliationJobStatus(value: string): ReconciliationJobStatus {
-  if (value !== "pending" && value !== "running" && value !== "completed" && value !== "failed") {
-    throw new Error(`unknown reconciliation job status: ${value}`);
-  }
-  return value;
-}
-
-function toReconciliationJob(row: ReconciliationJobRow): ReconciliationJob {
-  return {
-    id: asReconciliationJobId(row.jobId),
-    workerId: asWorkerId(row.workerId),
-    bootId: asBootId(row.bootId),
-    status: toReconciliationJobStatus(row.status),
-    lastTargetSeq: row.lastTargetSeq,
-    targetCount: row.targetCount,
-    targetBytes: row.targetBytes,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    ...(row.error === null ? {} : { error: row.error }),
-  };
-}
-
-// 同じ操作IDの同時再送を直列化する。先行トランザクションの INSERT が確定するまで待ち、
-// その後 FOR UPDATE で結果を読み出す。未完了の結果は pending として区別する。
-type LockedOperation =
-  | { readonly kind: "owned"; readonly stored: OperationRow }
-  | { readonly kind: "existing"; readonly stored: OperationRow }
-  | { readonly kind: "capacity-exhausted" };
-
-async function lockOperation(
-  tx: ResourcesTransaction,
-  operationId: OperationId,
-  kind: "reserve" | "event",
-  occurredAt: number,
-  recordedAt: number,
-  capacityExceeded: boolean,
-): Promise<LockedOperation> {
-  const [existing] = await tx
-    .select()
-    .from(schema.resourceOperation)
-    .where(eq(schema.resourceOperation.operationId, operationId))
-    .limit(1);
-  if (existing !== undefined) {
-    if ((existing.result as { status?: string }).status === "pending") {
-      throw new Error("operation result is incomplete");
-    }
-    return { kind: "existing", stored: existing };
-  }
-  if (capacityExceeded) {
-    return { kind: "capacity-exhausted" };
-  }
-
-  const inserted = await tx
-    .insert(schema.resourceOperation)
-    .values({
-      operationId,
-      kind,
-      result: PENDING_RESULT,
-      occurredAt,
-      recordedAt,
-    })
-    .onConflictDoNothing()
-    .returning({ operationId: schema.resourceOperation.operationId });
-  const [stored] = await tx
-    .select()
-    .from(schema.resourceOperation)
-    .where(eq(schema.resourceOperation.operationId, operationId))
-    .for("update");
-  if (stored === undefined) {
-    throw new Error("operation row is missing");
-  }
-  if (!inserted.length && (stored.result as { status?: string }).status === "pending") {
-    throw new Error("operation result is incomplete");
-  }
-  return { kind: inserted.length > 0 ? "owned" : "existing", stored };
-}
-
-async function completeOperation<T>(
-  tx: ResourcesTransaction,
-  operationId: OperationId,
-  result: T,
-): Promise<T> {
-  const updated = await tx
-    .update(schema.resourceOperation)
-    .set({ result })
-    .where(eq(schema.resourceOperation.operationId, operationId))
-    .returning({ operationId: schema.resourceOperation.operationId });
-  if (updated.length === 0) {
-    throw new Error("operation row is missing");
-  }
-  return result;
-}
-
-async function lockQuota(
-  tx: ResourcesTransaction,
-  scope: QuotaScope,
-): Promise<QuotaRow | undefined> {
-  const [row] = await tx
-    .select()
-    .from(schema.resourceQuota)
-    .where(
-      and(
-        eq(schema.resourceQuota.scopeKind, scope.kind),
-        eq(schema.resourceQuota.scopeKey, scope.key),
-      ),
-    )
-    .for("update");
-  return row;
-}
-
-// quota 行の INSERT と DELETE が競合すると変更前値を失うため、スコープ単位で直列化する。
-async function lockQuotaScope(tx: ResourcesTransaction, scope: QuotaScope): Promise<void> {
-  await tx.execute(
-    sql`SELECT pg_advisory_xact_lock(hashtext(${`${scope.kind}:${scope.key}`})::bigint)`,
-  );
-}
-
-async function updateReservation(
-  tx: ResourcesTransaction,
-  reservation: Reservation,
-): Promise<void> {
-  await tx
-    .update(schema.resourceReservation)
-    .set({
-      state: reservation.state,
-      resourceId: reservation.resourceId ?? null,
-      workerId: reservation.workerId ?? null,
-      bootId: reservation.bootId ?? null,
-      version: reservation.version,
-      updatedAt: reservation.updatedAt,
-      expiresAt: reservation.expiresAt ?? null,
-    })
-    .where(eq(schema.resourceReservation.id, reservation.id));
 }
 
 export class PostgresResourceStore implements ResourceStore {
@@ -544,7 +389,7 @@ export class PostgresResourceStore implements ResourceStore {
       }
 
       if (plan.releaseQuota) {
-        await this.releaseQuota(tx, reservation);
+        await releaseReservationQuota(tx, reservation);
       }
       await updateReservation(tx, plan.next);
       await this.writeAuditEvent(tx, {
@@ -601,7 +446,7 @@ export class PostgresResourceStore implements ResourceStore {
           continue;
         }
         if (plan.releaseQuota) {
-          await this.releaseQuota(tx, reservation);
+          await releaseReservationQuota(tx, reservation);
         }
         await updateReservation(tx, plan.next);
         await this.writeAuditEvent(tx, {
@@ -1090,7 +935,7 @@ export class PostgresResourceStore implements ResourceStore {
     }
 
     if (plan.action === "release") {
-      await this.releaseQuota(tx, reservation);
+      await releaseReservationQuota(tx, reservation);
     }
     if (plan.next !== undefined && plan.action !== "unchanged") {
       await updateReservation(tx, plan.next);
@@ -1437,31 +1282,6 @@ export class PostgresResourceStore implements ResourceStore {
         updatedAt: now,
       })
       .where(eq(schema.reconciliationJob.jobId, boot.jobId));
-  }
-
-  private async releaseQuota(tx: ResourcesTransaction, reservation: Reservation): Promise<void> {
-    const scopes = reservation.scopes.toSorted(compareQuotaScopes);
-    for (const scope of scopes) {
-      const quota = await lockQuota(tx, scope);
-      if (quota === undefined) {
-        throw new Error(`quota is missing for ${scope.kind}:${scope.key}`);
-      }
-      if (quota.usedCount < 1 || quota.usedBytes < reservation.sizeBytes) {
-        throw new Error(`quota accounting is inconsistent for ${scope.kind}:${scope.key}`);
-      }
-      await tx
-        .update(schema.resourceQuota)
-        .set({
-          usedCount: quota.usedCount - 1,
-          usedBytes: quota.usedBytes - reservation.sizeBytes,
-        })
-        .where(
-          and(
-            eq(schema.resourceQuota.scopeKind, quota.scopeKind),
-            eq(schema.resourceQuota.scopeKey, quota.scopeKey),
-          ),
-        );
-    }
   }
 }
 
