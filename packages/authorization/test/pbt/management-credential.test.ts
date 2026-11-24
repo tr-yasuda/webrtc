@@ -2,6 +2,8 @@ import { test as pbtTest, fc } from "@fast-check/vitest";
 import { describe, expect, test as baseTest } from "vitest";
 import {
   authorizeManagementCredentialAction,
+  authorizeManagementCredentialFromRaw,
+  buildManagementCredentialTarget,
   type ManagementCredentialAuthorizationInput,
   type ManagementCredentialScope,
 } from "../../src/management-credential.js";
@@ -21,7 +23,7 @@ import {
   managementCredentialValidCaseArbitrary,
 } from "./management-credential/cases.js";
 import {
-  managementCredentialMutations,
+  managementCredentialAuthorizationMutations,
   managementCredentialUnknownOperationArbitrary,
   managementCredentialUnknownScopeArbitrary,
 } from "./management-credential/mutations.js";
@@ -47,7 +49,7 @@ describe("Management API credential の Property-based Testing", () => {
       expect(authorizeManagementCredentialAction(input)).toStrictEqual({
         allowed: true,
         operation,
-        target: input.target,
+        target: buildManagementCredentialTarget(input),
         reason: "allowed",
       });
     },
@@ -63,12 +65,12 @@ describe("Management API credential の Property-based Testing", () => {
     expect(authorizeManagementCredentialAction(input)).toStrictEqual({
       allowed: true,
       operation: "room.read",
-      target: input.target,
+      target: buildManagementCredentialTarget(input),
       reason: "allowed",
     });
   });
 
-  baseTest.each(managementCredentialMutations)(
+  baseTest.each(managementCredentialAuthorizationMutations)(
     "単一故障 $id は $reason で拒否される",
     (mutation) => {
       const base = {
@@ -90,7 +92,7 @@ describe("Management API credential の Property-based Testing", () => {
       expect(authorizeManagementCredentialAction(input)).toStrictEqual({
         allowed: false,
         operation: input.operation,
-        target: input.target,
+        target: buildManagementCredentialTarget(input),
         reason: mutation.reason,
       });
     },
@@ -105,7 +107,7 @@ describe("Management API credential の Property-based Testing", () => {
       expect(decision).toStrictEqual({
         allowed: true,
         operation: caseValue.input.operation,
-        target: caseValue.input.target,
+        target: buildManagementCredentialTarget(caseValue.input),
         reason: "allowed",
       });
     },
@@ -122,7 +124,7 @@ describe("Management API credential の Property-based Testing", () => {
       expect(decision).toStrictEqual({
         allowed: false,
         operation: caseValue.input.operation,
-        target: caseValue.input.target,
+        target: buildManagementCredentialTarget(caseValue.input),
         reason: [...violations][0],
       });
       expect(caseValue.mutations).toHaveLength(1);
@@ -152,7 +154,7 @@ describe("Management API credential の Property-based Testing", () => {
       const decision = authorizeManagementCredentialAction(input);
 
       expect(decision.operation).toBe(input.operation);
-      expect(decision.target).toStrictEqual(input.target);
+      expect(decision.target).toStrictEqual(buildManagementCredentialTarget(input));
       expect(authorizeManagementCredentialAction(input)).toStrictEqual(decision);
       expect(decision.allowed).toBe(violations.size === 0);
       if (decision.allowed) {
@@ -171,13 +173,9 @@ describe("Management API credential の Property-based Testing", () => {
     "未知の operation は固定候補でも任意文字列でも拒否される",
     (base, operation) => {
       const input = { ...base.input, operation };
-      const decision = authorizeManagementCredentialAction(input);
-
-      expect(decision).toStrictEqual({
-        allowed: false,
-        operation,
-        target: input.target,
-        reason: "unsupported-operation",
+      expect(authorizeManagementCredentialFromRaw(input)).toStrictEqual({
+        ok: false,
+        failure: "unsupported-operation",
       });
     },
     pbtTestTimeout(),
@@ -196,13 +194,9 @@ describe("Management API credential の Property-based Testing", () => {
           scopes: [...base.input.credential.scopes, scope],
         },
       };
-      const decision = authorizeManagementCredentialAction(input);
-
-      expect(decision).toStrictEqual({
-        allowed: false,
-        operation: base.input.operation,
-        target: input.target,
-        reason: "credential-input-invalid",
+      expect(authorizeManagementCredentialFromRaw(input)).toStrictEqual({
+        ok: false,
+        failure: "unsupported-scope",
       });
     },
     pbtTestTimeout(),
@@ -223,7 +217,7 @@ describe("Management API credential の Property-based Testing", () => {
       expect(decision).toStrictEqual({
         allowed: false,
         operation,
-        target: input.target,
+        target: buildManagementCredentialTarget(input),
         reason: "credential-operation-not-allowed",
       });
     },
@@ -249,7 +243,7 @@ describe("Management API credential の Property-based Testing", () => {
         expect(decision).toStrictEqual({
           allowed: false,
           operation,
-          target: input.target,
+          target: buildManagementCredentialTarget(input),
           reason: "credential-scope-missing",
         });
       }
@@ -289,7 +283,7 @@ describe("Management API credential の Property-based Testing", () => {
       new Set(allManagementCredentialScopes),
     );
     expect(new Set(samples.flatMap((sample) => sample.mutations))).toStrictEqual(
-      new Set(managementCredentialMutations.map((mutation) => mutation.id)),
+      new Set(managementCredentialAuthorizationMutations.map((mutation) => mutation.id)),
     );
   });
 });

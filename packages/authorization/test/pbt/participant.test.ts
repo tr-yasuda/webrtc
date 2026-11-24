@@ -2,6 +2,7 @@ import { test as pbtTest, fc } from "@fast-check/vitest";
 import { describe, expect, test as baseTest } from "vitest";
 import {
   authorizeParticipantAction,
+  authorizeParticipantFromRaw,
   type ParticipantAuthorizationInput,
 } from "../../src/participant.js";
 import { allParticipantOperations } from "../policy.js";
@@ -18,7 +19,7 @@ import {
   participantValidCaseArbitrary,
 } from "./participant/cases.js";
 import {
-  participantMutations,
+  participantAuthorizationMutations,
   participantUnknownOperationArbitrary,
 } from "./participant/mutations.js";
 import { participantExpectedTarget, participantViolations } from "./participant/oracle.js";
@@ -44,31 +45,34 @@ describe("参加 JWT の Property-based Testing", () => {
     },
   );
 
-  baseTest.each(participantMutations)("単一故障 $id は $reason で拒否される", (mutation) => {
-    const base = {
-      input: participantBaseline(
-        mutation.catalog.operation,
-        mutation.catalog.variant,
-        fixedIdPool,
-        fixedIdPool.subject,
-      ),
-      ids: fixedIdPool,
-      operation: mutation.catalog.operation,
-      variant: mutation.catalog.variant,
-    };
-    const next = mutation.apply(base);
+  baseTest.each(participantAuthorizationMutations)(
+    "単一故障 $id は $reason で拒否される",
+    (mutation) => {
+      const base = {
+        input: participantBaseline(
+          mutation.catalog.operation,
+          mutation.catalog.variant,
+          fixedIdPool,
+          fixedIdPool.subject,
+        ),
+        ids: fixedIdPool,
+        operation: mutation.catalog.operation,
+        variant: mutation.catalog.variant,
+      };
+      const next = mutation.apply(base);
 
-    expect(next).toBeDefined();
-    const input = next!.input;
-    const violations = participantViolations(input);
-    expect([...violations]).toStrictEqual([mutation.reason]);
-    expect(authorizeParticipantAction(input)).toStrictEqual({
-      allowed: false,
-      operation: input.operation,
-      target: participantExpectedTarget(input),
-      reason: mutation.reason,
-    });
-  });
+      expect(next).toBeDefined();
+      const input = next!.input;
+      const violations = participantViolations(input);
+      expect([...violations]).toStrictEqual([mutation.reason]);
+      expect(authorizeParticipantAction(input)).toStrictEqual({
+        allowed: false,
+        operation: input.operation,
+        target: participantExpectedTarget(input),
+        reason: mutation.reason,
+      });
+    },
+  );
 
   pbtTest.prop([participantValidCaseArbitrary()], pbtParameters())(
     "基準シナリオは常に許可され、監査対象が一致する",
@@ -145,13 +149,11 @@ describe("参加 JWT の Property-based Testing", () => {
     "未知の operation は固定候補でも任意文字列でも拒否される",
     (base, operation) => {
       const input = { ...base.input, operation };
-      const decision = authorizeParticipantAction(input);
+      const outcome = authorizeParticipantFromRaw(input);
 
-      expect(decision).toStrictEqual({
-        allowed: false,
-        operation,
-        target: participantExpectedTarget(input),
-        reason: "unsupported-operation",
+      expect(outcome).toStrictEqual({
+        ok: false,
+        failure: "unsupported-operation",
       });
     },
     pbtTestTimeout(),
@@ -190,7 +192,7 @@ describe("参加 JWT の Property-based Testing", () => {
       new Set(allParticipantBaselineVariants),
     );
     expect(new Set(samples.flatMap((sample) => sample.mutations))).toStrictEqual(
-      new Set(participantMutations.map((mutation) => mutation.id)),
+      new Set(participantAuthorizationMutations.map((mutation) => mutation.id)),
     );
   });
 });

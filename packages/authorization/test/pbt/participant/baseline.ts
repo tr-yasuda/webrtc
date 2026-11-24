@@ -206,7 +206,7 @@ export function participantBaselineVariants(
 }
 
 function grantsFor(...operations: readonly ParticipantOperation[]): ParticipantGrants {
-  const grants: Record<ParticipantOperation, boolean> = { ...noGrants };
+  const grants: Partial<Record<ParticipantOperation, boolean>> = { ...noGrants };
   for (const operation of operations) {
     grants[operation] = true;
   }

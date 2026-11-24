@@ -8,3 +8,11 @@ tasks:
   build:
     deps:
       - 'domain:build'
+  conformance:
+    command: 'pnpm run test:conformance'
+  mutation:
+    command: 'pnpm run mutation'
+    options:
+      cache: false
+  traceability:
+    command: 'pnpm run check:traceability'

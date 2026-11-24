@@ -3,6 +3,8 @@ import { describe, expect, test as baseTest } from "vitest";
 import { isProjectUserRole } from "../../src/management-operation.js";
 import {
   authorizeProjectUserAction,
+  authorizeProjectUserFromRaw,
+  buildProjectUserTarget,
   type ProjectUserAuthorizationInput,
   type ProjectUserAuthorizationTarget,
 } from "../../src/project-user.js";
@@ -19,7 +21,7 @@ import {
   projectUserValidCaseArbitrary,
 } from "./project-user/cases.js";
 import {
-  projectUserMutations,
+  projectUserAuthorizationMutations,
   projectUserUnknownOperationArbitrary,
   projectUserUnknownRoleArbitrary,
 } from "./project-user/mutations.js";
@@ -103,7 +105,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
       expect(authorizeProjectUserAction(input)).toStrictEqual({
         allowed: true,
         operation,
-        target: input.target,
+        target: buildProjectUserTarget(input),
         reason: "allowed",
       });
     },
@@ -116,31 +118,34 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     expect(authorizeProjectUserAction(input)).toStrictEqual({
       allowed: true,
       operation,
-      target: input.target,
+      target: buildProjectUserTarget(input),
       reason: "allowed",
     });
   });
 
-  baseTest.each(projectUserMutations)("単一故障 $id は $reason で拒否される", (mutation) => {
-    const base = {
-      input: projectUserBaseline(mutation.catalog.operation, mutation.catalog.role, fixedIdPool),
-      ids: fixedIdPool,
-      operation: mutation.catalog.operation,
-      role: mutation.catalog.role,
-    };
-    const next = mutation.apply(base);
+  baseTest.each(projectUserAuthorizationMutations)(
+    "単一故障 $id は $reason で拒否される",
+    (mutation) => {
+      const base = {
+        input: projectUserBaseline(mutation.catalog.operation, mutation.catalog.role, fixedIdPool),
+        ids: fixedIdPool,
+        operation: mutation.catalog.operation,
+        role: mutation.catalog.role,
+      };
+      const next = mutation.apply(base);
 
-    expect(next).toBeDefined();
-    const input = next!.input;
-    const violations = projectUserViolations(input);
-    expect([...violations]).toStrictEqual([mutation.reason]);
-    expect(authorizeProjectUserAction(input)).toStrictEqual({
-      allowed: false,
-      operation: input.operation,
-      target: input.target,
-      reason: mutation.reason,
-    });
-  });
+      expect(next).toBeDefined();
+      const input = next!.input;
+      const violations = projectUserViolations(input);
+      expect([...violations]).toStrictEqual([mutation.reason]);
+      expect(authorizeProjectUserAction(input)).toStrictEqual({
+        allowed: false,
+        operation: input.operation,
+        target: buildProjectUserTarget(input),
+        reason: mutation.reason,
+      });
+    },
+  );
 
   pbtTest.prop([projectUserValidCaseArbitrary()], pbtParameters())(
     "基準シナリオは常に許可され、監査対象が一致する",
@@ -151,7 +156,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
       expect(decision).toStrictEqual({
         allowed: true,
         operation: caseValue.input.operation,
-        target: caseValue.input.target,
+        target: buildProjectUserTarget(caseValue.input),
         reason: "allowed",
       });
     },
@@ -168,7 +173,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
       expect(decision).toStrictEqual({
         allowed: false,
         operation: caseValue.input.operation,
-        target: caseValue.input.target,
+        target: buildProjectUserTarget(caseValue.input),
         reason: [...violations][0],
       });
       expect(caseValue.mutations).toHaveLength(1);
@@ -198,7 +203,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
       const decision = authorizeProjectUserAction(input);
 
       expect(decision.operation).toBe(input.operation);
-      expect(decision.target).toStrictEqual(input.target);
+      expect(decision.target).toStrictEqual(buildProjectUserTarget(input));
       expect(authorizeProjectUserAction(input)).toStrictEqual(decision);
       expect(decision.allowed).toBe(violations.size === 0);
       if (decision.allowed) {
@@ -220,10 +225,10 @@ describe("ProjectUser ロールの Property-based Testing", () => {
         ...base.input,
         actor: { ...base.input.actor, role },
       };
-      const decision = authorizeProjectUserAction(input);
-
-      expect(decision.allowed).toBe(false);
-      expect(decision.reason).toBe("project-user-role-invalid");
+      expect(authorizeProjectUserFromRaw(input)).toStrictEqual({
+        ok: false,
+        failure: "unsupported-role",
+      });
     },
     pbtTestTimeout(),
   );
@@ -236,15 +241,18 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     (base, role, useNextRole) => {
       const input = {
         ...base.input,
+        operation: "projectUser.changeRole" as const,
         target: {
-          ...base.input.target,
-          ...(useNextRole ? { nextRole: role } : { currentRole: role }),
+          projectId: base.input.target.projectId,
+          projectUserId: base.ids.projectUserId,
+          currentRole: useNextRole ? "auditor" : role,
+          nextRole: useNextRole ? role : "auditor",
         },
       };
-      const decision = authorizeProjectUserAction(input);
-
-      expect(decision.allowed).toBe(false);
-      expect(decision.reason).toBe("project-user-role-invalid");
+      expect(authorizeProjectUserFromRaw(input)).toStrictEqual({
+        ok: false,
+        failure: "unsupported-role",
+      });
     },
     pbtTestTimeout(),
   );
@@ -256,13 +264,9 @@ describe("ProjectUser ロールの Property-based Testing", () => {
     "未知の operation は固定候補でも任意文字列でも拒否される",
     (base, operation) => {
       const input = { ...base.input, operation };
-      const decision = authorizeProjectUserAction(input);
-
-      expect(decision).toStrictEqual({
-        allowed: false,
-        operation,
-        target: input.target,
-        reason: "unsupported-operation",
+      expect(authorizeProjectUserFromRaw(input)).toStrictEqual({
+        ok: false,
+        failure: "unsupported-operation",
       });
     },
     pbtTestTimeout(),
@@ -310,7 +314,7 @@ describe("ProjectUser ロールの Property-based Testing", () => {
       new Set(allProjectUserRoles),
     );
     expect(new Set(samples.flatMap((sample) => sample.mutations))).toStrictEqual(
-      new Set(projectUserMutations.map((mutation) => mutation.id)),
+      new Set(projectUserAuthorizationMutations.map((mutation) => mutation.id)),
     );
   });
 });

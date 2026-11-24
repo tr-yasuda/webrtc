@@ -50,7 +50,7 @@ TURN、ICE、内部サービス、管理操作の資格情報として無条件�
 | `media.subscribe` | 同じ Room で発行済みの音声・映像を購読する |
 | `data.send` | 同じ Room の DataChannel へデータを送信する |
 
-Signaling は未知の grant と未サポートの grant を黙って無視せず、参加要求を拒否する。`grants` の値は真偽値以外を受け入れない。将来は `recording`・`transcription` など、追加機能ごとに新しい grant を定義して拡張する。
+Signaling は未知の grant と未サポートの grant を黙って無視せず、入力検証で参加要求を拒否する。`grants` の値は真偽値以外を受け入れない。認可判断は検証済みの入力だけを受け取り、入力検証の失敗と認可判断の拒否を区別する。将来は `recording`・`transcription` など、追加機能ごとに新しい grant を定義して拡張する。
 
 発行するトークンには、次の情報を対応付ける。各情報はトークンに直接格納するか、検証時に取得できるようにする。
 
