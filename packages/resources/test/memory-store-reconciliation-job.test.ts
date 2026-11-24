@@ -167,6 +167,47 @@ describe("インメモリ資源管理の受け入れ条件", () => {
     );
   });
 
+  test("照合対象が処理前に解放された場合は unchanged に含めない", async () => {
+    const reserved = await reserve(store, "reserve-released-before-reconciliation");
+    if (reserved.status !== "reserved") {
+      throw new Error("reservation failed");
+    }
+    await allocate(store, reserved.reservation.id, "resource-1", "allocate-1", 1);
+    const job = await store.startReconciliation(
+      {
+        type: "worker-stopped",
+        workerId,
+        bootId,
+        confirmedResourceIds: [],
+        operationId: operation("worker-stopped-before-release"),
+        at: 2,
+      },
+      2,
+    );
+    expect(job.targetCount).toBe(1);
+
+    await store.applyEvent(
+      {
+        type: "released",
+        reservationId: reserved.reservation.id,
+        resourceId: asResourceId("resource-1"),
+        workerId,
+        bootId,
+        operationId: operation("release-before-reconciliation"),
+        at: 3,
+      },
+      3,
+    );
+
+    expect(await store.continueReconciliation(job.id, { cursor: 0 }, 3)).toMatchObject({
+      reclaimed: [],
+      isolated: [],
+      unchanged: [],
+      hasMore: false,
+      status: "completed",
+    });
+  });
+
   test("完了した照合ジョブだけを保持期間後に削除する", async () => {
     const jobStore = createInMemoryResourceStore({
       reservationTtlMs: 1_000,

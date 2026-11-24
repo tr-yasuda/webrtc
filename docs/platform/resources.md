@@ -151,6 +151,8 @@ Signaling は `worker-stopped` 通知を受け取ると、Worker ID と起動世
 
 `continueReconciliation(jobId, { cursor, limit }, now)` は、`cursor` がジョブの `lastTargetSeq` と一致する場合だけ対象を処理する。一致しない場合は `ReconciliationCursorMismatchError` を返し、状態を変更しない。ジョブ行をロックして同一カーソルの並行バッチを直列化し、二重解放を防ぐ。1回の処理件数は `reconciliationBatchSize` 件までとし、戻り値は解放・隔離・変更なしの予約、`nextCursor`、`hasMore`、ジョブ状態とする。
 
+照合対象の予約が見つからない、Worker ID・起動世代・資源 ID が一致しない、または既に解放・隔離済みの場合は、対象を `skipped` として進める。`skipped` は `reclaimed`・`isolated`・`unchanged` のどれにも含めない。
+
 ジョブ状態は `pending`、`running`、`completed`、`failed` とする。対象が残っている間は `running`、全対象を処理すると `completed` になる。完了後に遅延した確保通知で対象が増えた場合は `pending` に戻す。`failed` のジョブには対象を追記しない。
 
 開始時に受け取る `confirmedResourceIds` は、件数が `maxConfirmedResourceIds`、バイト数が `maxConfirmedResourceBytes` を超えてはならない。照合対象は件数が `maxReconciliationTargets`、バイト数が `maxReconciliationTargetBytes` を超えてはならない。開始時に超える場合は `ReconciliationCapacityError` を返す。開始後の追記で超える場合は、確保通知を `capacity-exhausted` として拒否し、管理状態を部分更新しない。

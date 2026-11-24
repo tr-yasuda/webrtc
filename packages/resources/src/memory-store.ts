@@ -488,17 +488,16 @@ export class InMemoryResourceStore implements ResourceStore {
     const isolated: ReservationId[] = [];
     const unchanged: ReservationId[] = [];
     let lastTargetSeq = state.job.lastTargetSeq;
-    const skipTarget = (target: ReconciliationTargetState): void => {
+    const markTargetSkipped = (target: ReconciliationTargetState): void => {
       target.state = "skipped";
       target.processedAt = now;
-      unchanged.push(target.reservationId);
     };
 
     for (const target of selected) {
       lastTargetSeq = target.targetSeq;
       const reservation = this.reservations.get(target.reservationId);
       if (reservation === undefined) {
-        skipTarget(target);
+        markTargetSkipped(target);
         continue;
       }
       if (
@@ -507,11 +506,11 @@ export class InMemoryResourceStore implements ResourceStore {
         (target.resourceId !== undefined && target.resourceId !== reservation.resourceId) ||
         (target.resourceId === undefined && reservation.resourceId !== undefined)
       ) {
-        skipTarget(target);
+        markTargetSkipped(target);
         continue;
       }
       if (reservation.state === "released" || reservation.state === "isolated") {
-        skipTarget(target);
+        markTargetSkipped(target);
         continue;
       }
 
@@ -527,7 +526,7 @@ export class InMemoryResourceStore implements ResourceStore {
         now,
       );
       if (plan === undefined) {
-        skipTarget(target);
+        markTargetSkipped(target);
         continue;
       }
       if (plan.action === "release") {

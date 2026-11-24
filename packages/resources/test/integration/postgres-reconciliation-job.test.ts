@@ -215,6 +215,63 @@ describe("PostgreSQL 照合ジョブ", () => {
     expect(await store.getQuotaUsage(serverScope)).toMatchObject({ usedCount: 0 });
   });
 
+  test("照合対象が処理前に解放された場合は unchanged に含めない", async () => {
+    const store = await createStore();
+    const reserved = await store.reserve(
+      claim(),
+      operation("reserve-released-before-reconciliation"),
+      0,
+    );
+    if (reserved.status !== "reserved") {
+      throw new Error("reservation failed");
+    }
+    await store.applyEvent(
+      {
+        type: "allocated",
+        reservationId: reserved.reservation.id,
+        resourceId: asResourceId("resource-1"),
+        workerId,
+        bootId,
+        operationId: operation("allocate-1"),
+        at: 1,
+      },
+      1,
+    );
+    const job = await store.startReconciliation(
+      {
+        type: "worker-stopped",
+        workerId,
+        bootId,
+        confirmedResourceIds: [],
+        operationId: operation("worker-stopped-before-release"),
+        at: 2,
+      },
+      2,
+    );
+    expect(job.targetCount).toBe(1);
+
+    await store.applyEvent(
+      {
+        type: "released",
+        reservationId: reserved.reservation.id,
+        resourceId: asResourceId("resource-1"),
+        workerId,
+        bootId,
+        operationId: operation("release-before-reconciliation"),
+        at: 3,
+      },
+      3,
+    );
+
+    expect(await store.continueReconciliation(job.id, { cursor: 0 }, 3)).toMatchObject({
+      reclaimed: [],
+      isolated: [],
+      unchanged: [],
+      hasMore: false,
+      status: "completed",
+    });
+  });
+
   test("完了した照合ジョブだけを保持期間後に削除する", async () => {
     const store = createPostgresResourceStore({
       pool,
