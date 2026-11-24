@@ -33,6 +33,54 @@ tasks:
       - 'packages/authorization/proofs/lakefile.toml'
       - 'packages/authorization/proofs/lake-manifest.json'
       - 'scripts/check-authorization-axioms.sh'
+      - 'scripts/check-authorization-axioms.mjs'
+
+  check-authorization-policy:
+    toolchains: 'system'
+    script: |
+      scripts/check-authorization-generated.sh
+      node scripts/check-authorization-policy-mutations.mjs
+    inputs:
+      - 'docs/auth/authorization-spec/**'
+      - 'scripts/authorization-policy.mjs'
+      - 'scripts/generate-authorization-policy.mjs'
+      - 'scripts/check-authorization-generated.sh'
+      - 'scripts/check-authorization-policy-mutations.mjs'
+      - 'packages/authorization/src/generated/**'
+      - 'packages/authorization/proofs/AuthorizationVerification/GeneratedPolicy.lean'
+
+  check-authorization-lean-mutations:
+    toolchains: 'system'
+    script: 'node scripts/check-authorization-lean-mutations.mjs'
+    inputs:
+      - 'packages/authorization/proofs/**/*.lean'
+      - 'packages/authorization/proofs/lean-toolchain'
+      - 'packages/authorization/proofs/lakefile.toml'
+      - 'packages/authorization/proofs/lake-manifest.json'
+      - 'scripts/check-authorization-lean-mutations.mjs'
+
+  check-authorization-traceability:
+    toolchains: 'system'
+    script: 'node scripts/check-authorization-traceability.mjs'
+    deps:
+      - 'authorization:test'
+    inputs:
+      - 'docs/auth/authorization-spec/**'
+      - 'packages/authorization/**/*.lean'
+      - 'packages/authorization/test/**'
+      - 'scripts/check-authorization-traceability.mjs'
+
+  check-authorization-mutations:
+    toolchains: 'system'
+    script: |
+      pnpm --filter @webrtc/authorization mutation
+      node scripts/check-authorization-stryker-report.mjs
+    inputs:
+      - 'packages/authorization/src/**'
+      - 'packages/authorization/test/**'
+      - 'packages/authorization/stryker.config.mjs'
+      - 'packages/authorization/mutation-exclusions.json'
+      - 'scripts/check-authorization-stryker-report.mjs'
 
   setup-tlc:
     toolchains: 'system'

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "./auth-spec.js";
 import {
   authorizeParticipantAction,
   type ParticipantAuthorizationInput,
@@ -99,47 +100,50 @@ function expectedTarget(input: ParticipantAuthorizationInput): ParticipantAuthor
 }
 
 describe("参加 JWT の認可", () => {
-  test("有効な room.join grant と参加可能な Room なら参加を許可する", () => {
-    const decision = authorizeParticipantAction({
-      operation: "room.join",
-      credential: {
-        projectId,
-        subject,
-        roomName: "room-a",
-        grants,
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      room: {
-        state: "active",
-        id: roomId,
-        projectId,
-        name: "room-a",
-      },
-      participant: {
-        id: participantId,
-        roomId,
-        externalUserId: subject,
-        state: "active",
-      },
-    });
+  test(
+    authSpecName("AUTH-PART-03", "有効な room.join grant と参加可能な Room なら参加を許可する"),
+    () => {
+      const decision = authorizeParticipantAction({
+        operation: "room.join",
+        credential: {
+          projectId,
+          subject,
+          roomName: "room-a",
+          grants,
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        room: {
+          state: "active",
+          id: roomId,
+          projectId,
+          name: "room-a",
+        },
+        participant: {
+          id: participantId,
+          roomId,
+          externalUserId: subject,
+          state: "active",
+        },
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: true,
-      operation: "room.join",
-      reason: "allowed",
-      target: {
-        projectId,
-        roomName: "room-a",
-        roomId,
-        participantId,
-      },
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: true,
+        operation: "room.join",
+        reason: "allowed",
+        target: {
+          projectId,
+          roomName: "room-a",
+          roomId,
+          participantId,
+        },
+      });
+    },
+  );
 
-  test("room.create は room.join を自動許可しない", () => {
+  test(authSpecName("AUTH-PART-02", "room.create は room.join を自動許可しない"), () => {
     const decisions = [
       authorizeParticipantAction({
         operation: "room.create",
@@ -203,7 +207,7 @@ describe("参加 JWT の認可", () => {
     ]);
   });
 
-  test("room.create は room.join と同時なら許可する", () => {
+  test(authSpecName("AUTH-PART-02", "room.create は room.join と同時なら許可する"), () => {
     const decision = authorizeParticipantAction({
       operation: "room.create",
       credential: {
@@ -235,75 +239,84 @@ describe("参加 JWT の認可", () => {
     });
   });
 
-  test("未作成 Room への参加は room.create と room.join の両方を必要とする", () => {
-    const decision = authorizeParticipantAction({
-      operation: "room.join",
-      credential: {
-        projectId,
-        subject,
-        roomName: "new-room",
-        grants: {
-          ...grants,
-          "room.create": true,
-          "room.join": true,
+  test(
+    authSpecName(
+      "AUTH-PART-02",
+      "未作成 Room への参加は room.create と room.join の両方を必要とする",
+    ),
+    () => {
+      const decision = authorizeParticipantAction({
+        operation: "room.join",
+        credential: {
+          projectId,
+          subject,
+          roomName: "new-room",
+          grants: {
+            ...grants,
+            "room.create": true,
+            "room.join": true,
+          },
         },
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      room: {
-        state: "absent",
-        projectId,
-        name: "new-room",
-      },
-    });
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        room: {
+          state: "absent",
+          projectId,
+          name: "new-room",
+        },
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: true,
-      operation: "room.join",
-      reason: "allowed",
-      target: {
-        projectId,
-        roomName: "new-room",
-      },
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: true,
+        operation: "room.join",
+        reason: "allowed",
+        target: {
+          projectId,
+          roomName: "new-room",
+        },
+      });
+    },
+  );
 
-  test("room.join は Session/Participant を渡さない新規参加を許可する", () => {
-    const decision = authorizeParticipantAction({
-      operation: "room.join",
-      credential: {
-        projectId,
-        subject,
-        roomName: "room-a",
-        grants,
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      room: {
-        state: "active",
-        id: roomId,
-        projectId,
-        name: "room-a",
-      },
-    });
+  test(
+    authSpecName("AUTH-PART-03", "room.join は Session/Participant を渡さない新規参加を許可する"),
+    () => {
+      const decision = authorizeParticipantAction({
+        operation: "room.join",
+        credential: {
+          projectId,
+          subject,
+          roomName: "room-a",
+          grants,
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        room: {
+          state: "active",
+          id: roomId,
+          projectId,
+          name: "room-a",
+        },
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: true,
-      operation: "room.join",
-      target: {
-        projectId,
-        roomName: "room-a",
-        roomId,
-      },
-      reason: "allowed",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: true,
+        operation: "room.join",
+        target: {
+          projectId,
+          roomName: "room-a",
+          roomId,
+        },
+        reason: "allowed",
+      });
+    },
+  );
 
-  test("room.join は Session だけを渡された場合は拒否する", () => {
+  test(authSpecName("AUTH-PART-03", "room.join は Session だけを渡された場合は拒否する"), () => {
     const { participant: _baseJoinParticipant, ...input } = baseJoinInput;
     const decision = authorizeParticipantAction(input);
 
@@ -364,7 +377,7 @@ describe("参加 JWT の認可", () => {
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ input, reason }) => {
+  }>)(authSpecName("AUTH-PART-01", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
     expect(decision).toStrictEqual({
@@ -372,6 +385,41 @@ describe("参加 JWT の認可", () => {
       operation: input.operation,
       target: expectedTarget(input),
       reason,
+    });
+  });
+
+  test.each([
+    {
+      name: "subject が配列",
+      input: {
+        ...baseMediaInput,
+        credential: {
+          ...baseMediaInput.credential,
+          subject: ["subject"] as unknown as string,
+        },
+      },
+    },
+    {
+      name: "Participant の ExternalUser が配列",
+      input: {
+        ...baseMediaInput,
+        participant: {
+          ...baseMediaInput.participant!,
+          externalUserId: ["subject"] as unknown as string,
+        },
+      },
+    },
+  ] satisfies ReadonlyArray<{
+    name: string;
+    input: ParticipantAuthorizationInput;
+  }>)(authSpecName("AUTH-PART-01", "$name の場合は subject 不正として拒否する"), ({ input }) => {
+    const decision = authorizeParticipantAction(input);
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: input.operation,
+      target: expectedTarget(input),
+      reason: "subject-required",
     });
   });
 
@@ -435,7 +483,7 @@ describe("参加 JWT の認可", () => {
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("room.join で $name 場合は拒否する", ({ input, reason }) => {
+  }>)(authSpecName("AUTH-PART-03", "room.join で $name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
     expect(decision).toStrictEqual({
@@ -491,16 +539,19 @@ describe("参加 JWT の認可", () => {
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("未作成 Room への room.join で $name を渡す場合は拒否する", ({ input, reason }) => {
-    const decision = authorizeParticipantAction(input);
+  }>)(
+    authSpecName("AUTH-PART-03", "未作成 Room への room.join で $name を渡す場合は拒否する"),
+    ({ input, reason }) => {
+      const decision = authorizeParticipantAction(input);
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation: "room.join",
-      target: expectedTarget(input),
-      reason,
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation: "room.join",
+        target: expectedTarget(input),
+        reason,
+      });
+    },
+  );
 
   test.each([
     {
@@ -549,19 +600,22 @@ describe("参加 JWT の認可", () => {
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("未作成 Room への room.create で $name を渡す場合は拒否する", ({ input, reason }) => {
-    const decision = authorizeParticipantAction(input);
+  }>)(
+    authSpecName("AUTH-PART-03", "未作成 Room への room.create で $name を渡す場合は拒否する"),
+    ({ input, reason }) => {
+      const decision = authorizeParticipantAction(input);
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation: "room.create",
-      target: expectedTarget(input),
-      reason,
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation: "room.create",
+        target: expectedTarget(input),
+        reason,
+      });
+    },
+  );
 
   test.each<ParticipantOperation>(["media.publish", "media.subscribe", "data.send"])(
-    "%s は同じ Room の有効な Session と Participant なら許可する",
+    authSpecName("AUTH-PART-03", "%s は同じ Room の有効な Session と Participant なら許可する"),
     (operation) => {
       const decision = authorizeParticipantAction({
         operation,
@@ -615,7 +669,7 @@ describe("参加 JWT の認可", () => {
   );
 
   test.each(["unknown.operation", "constructor"] as ParticipantOperation[])(
-    "定義外の participant operation %s は拒否する",
+    authSpecName("AUTH-PART-04", "定義外の participant operation %s は拒否する"),
     (operation) => {
       const decision = authorizeParticipantAction({
         ...baseMediaInput,
@@ -788,7 +842,7 @@ describe("参加 JWT の認可", () => {
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ input, reason }) => {
+  }>)(authSpecName("AUTH-PART-04", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
     expect(decision).toStrictEqual({
@@ -799,7 +853,7 @@ describe("参加 JWT の認可", () => {
     });
   });
 
-  test("room.create の grant がない場合は拒否する", () => {
+  test(authSpecName("AUTH-PART-05", "room.create の grant がない場合は拒否する"), () => {
     const decision = authorizeParticipantAction({
       operation: "room.create",
       credential: {
@@ -830,7 +884,7 @@ describe("参加 JWT の認可", () => {
     });
   });
 
-  test("room.join の grant がない場合は拒否する", () => {
+  test(authSpecName("AUTH-PART-05", "room.join の grant がない場合は拒否する"), () => {
     const decision = authorizeParticipantAction({
       operation: "room.join",
       credential: {
@@ -863,7 +917,7 @@ describe("参加 JWT の認可", () => {
   });
 
   test.each<ParticipantOperation>(["media.publish", "media.subscribe", "data.send"])(
-    "%s の grant がない場合は拒否する",
+    authSpecName("AUTH-PART-05", "%s の grant がない場合は拒否する"),
     (operation) => {
       const decision = authorizeParticipantAction({
         ...baseMediaInput,
@@ -886,7 +940,7 @@ describe("参加 JWT の認可", () => {
     },
   );
 
-  test("既存 Room への room.create は拒否する", () => {
+  test(authSpecName("AUTH-PART-03", "既存 Room への room.create は拒否する"), () => {
     const decision = authorizeParticipantAction({
       operation: "room.create",
       credential: {
@@ -918,37 +972,40 @@ describe("参加 JWT の認可", () => {
     });
   });
 
-  test("未作成 Room への参加で room.create がない場合は拒否する", () => {
-    const decision = authorizeParticipantAction({
-      operation: "room.join",
-      credential: {
-        projectId,
-        subject,
-        roomName: "new-room",
-        grants: {
-          ...grants,
-          "room.create": false,
-          "room.join": true,
+  test(
+    authSpecName("AUTH-PART-02", "未作成 Room への参加で room.create がない場合は拒否する"),
+    () => {
+      const decision = authorizeParticipantAction({
+        operation: "room.join",
+        credential: {
+          projectId,
+          subject,
+          roomName: "new-room",
+          grants: {
+            ...grants,
+            "room.create": false,
+            "room.join": true,
+          },
         },
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      room: {
-        state: "absent",
-        projectId,
-        name: "new-room",
-      },
-    });
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        room: {
+          state: "absent",
+          projectId,
+          name: "new-room",
+        },
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation: "room.join",
-      target: { projectId, roomName: "new-room" },
-      reason: "room-create-required",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation: "room.join",
+        target: { projectId, roomName: "new-room" },
+        reason: "room-create-required",
+      });
+    },
+  );
 
   test.each([
     {
@@ -988,7 +1045,7 @@ describe("参加 JWT の認可", () => {
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ input, reason }) => {
+  }>)(authSpecName("AUTH-PART-03", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
     expect(decision).toStrictEqual({
@@ -1023,7 +1080,7 @@ describe("参加 JWT の認可", () => {
           name: "new-room",
         },
       },
-      reason: "grant-not-granted",
+      reason: "grant-input-invalid",
     },
     {
       name: "media.publish の grant が真偽値でない",
@@ -1037,7 +1094,7 @@ describe("参加 JWT の認可", () => {
           },
         },
       },
-      reason: "grant-not-granted",
+      reason: "grant-input-invalid",
     },
     {
       name: "未作成 Room への参加で room.create の grant が真偽値でない",
@@ -1063,13 +1120,43 @@ describe("参加 JWT の認可", () => {
           name: "new-room",
         },
       },
-      reason: "room-create-required",
+      reason: "grant-input-invalid",
+    },
+    {
+      name: "未知の grant がある",
+      input: {
+        ...baseMediaInput,
+        credential: {
+          ...baseMediaInput.credential,
+          grants: {
+            ...baseMediaInput.credential.grants,
+            recording: true,
+          } as unknown as ParticipantAuthorizationInput["credential"]["grants"],
+        },
+      },
+      reason: "grant-input-invalid",
+    },
+    {
+      name: "既知の grant が欠落している",
+      input: {
+        ...baseMediaInput,
+        credential: {
+          ...baseMediaInput.credential,
+          grants: {
+            "room.create": false,
+            "room.join": true,
+            "media.publish": true,
+            "media.subscribe": false,
+          } as unknown as ParticipantAuthorizationInput["credential"]["grants"],
+        },
+      },
+      reason: "grant-input-invalid",
     },
   ] satisfies ReadonlyArray<{
     name: string;
     input: ParticipantAuthorizationInput;
     reason: Exclude<ParticipantAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ input, reason }) => {
+  }>)(authSpecName("AUTH-PART-05", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeParticipantAction(input);
 
     expect(decision).toStrictEqual({
@@ -1079,4 +1166,69 @@ describe("参加 JWT の認可", () => {
       reason,
     });
   });
+
+  test.each([
+    {
+      name: "undefined",
+      grants: undefined,
+    },
+    {
+      name: "null",
+      grants: null,
+    },
+    {
+      name: "配列",
+      grants: ["room.create"],
+    },
+    {
+      name: "文字列",
+      grants: "room.join",
+    },
+  ] as ReadonlyArray<{ name: string; grants: unknown }>)(
+    authSpecName("AUTH-PART-05", "grants が $name の場合は拒否する"),
+    ({ grants: invalidGrantValue }) => {
+      const input = {
+        ...baseMediaInput,
+        credential: {
+          ...baseMediaInput.credential,
+          grants: invalidGrantValue as ParticipantAuthorizationInput["credential"]["grants"],
+        },
+      };
+      const decision = authorizeParticipantAction(input);
+
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation: input.operation,
+        target: expectedTarget(input),
+        reason: "grant-input-invalid",
+      });
+    },
+  );
+
+  test(
+    authSpecName("AUTH-PART-05", "既知の grant 数と同じで未知の grant を含む場合は拒否する"),
+    () => {
+      const input = {
+        ...baseMediaInput,
+        credential: {
+          ...baseMediaInput.credential,
+          grants: {
+            "room.create": false,
+            "room.join": true,
+            "media.publish": true,
+            "media.subscribe": false,
+            recording: true,
+          } as unknown as ParticipantAuthorizationInput["credential"]["grants"],
+        },
+      };
+      const decision = authorizeParticipantAction(input);
+
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation: input.operation,
+        target: expectedTarget(input),
+        reason: "grant-input-invalid",
+      });
+    },
+  );
 });

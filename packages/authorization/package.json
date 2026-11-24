@@ -9,14 +9,19 @@
   },
   "scripts": {
     "build": "tsdown",
+    "mutation": "stryker run",
+    "mutation:check": "node ../../scripts/check-authorization-stryker-report.mjs",
+    "premutation": "scripts/generate-lean-cases.sh",
     "pretest": "scripts/generate-lean-cases.sh",
-    "test": "vitest run",
+    "test": "vitest run --reporter=default --reporter=json --outputFile=.cache/vitest-authorization.json",
     "typecheck": "tsc"
   },
   "dependencies": {
     "@webrtc/domain": "workspace:*"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/vitest-runner": "10.1.1",
     "@types/node": "24.19.2",
     "tsdown": "0.23.7",
     "ulid": "3.0.2",

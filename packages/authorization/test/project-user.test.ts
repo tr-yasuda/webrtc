@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "./auth-spec.js";
 import type { ManagementOperation, ProjectUserRole } from "../src/management-operation.js";
 import {
   authorizeProjectUserAction,
@@ -105,7 +106,7 @@ const expectedAllowedOperations: Record<ProjectUserRole, readonly ManagementOper
 const allOperations = expectedAllowedOperations.owner;
 
 describe("ProjectUser ロールの認可", () => {
-  test("Owner は Project を削除できる", () => {
+  test(authSpecName("AUTH-PU-01", "Owner は Project を削除できる"), () => {
     const decision = authorizeProjectUserAction({
       actor: {
         projectId,
@@ -131,8 +132,24 @@ describe("ProjectUser ロールの認可", () => {
     });
   });
 
+  test(authSpecName("AUTH-PU-05", "空の Session ID は対象 ID なしとして拒否する"), () => {
+    const decision = authorizeProjectUserAction({
+      actor: { projectId, role: "owner" },
+      project: { id: projectId, state: "active" },
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
+      reason: "target-id-required",
+    });
+  });
+
   test.each(Object.keys(expectedAllowedOperations) as ProjectUserRole[])(
-    "%s ロールの操作可否が権限マトリクスと一致する",
+    authSpecName(["AUTH-PU-01", "AUTH-PU-02"], "%s ロールの操作可否が権限マトリクスと一致する"),
     (role) => {
       for (const operation of allOperations) {
         const decision = authorizeProjectUserAction({
@@ -219,27 +236,30 @@ describe("ProjectUser ロールの認可", () => {
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
     allowed: boolean;
-  }>)("$name", ({ role, operation, target: requestedTarget, allowed }) => {
-    const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role,
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
-    });
+  }>)(
+    authSpecName("AUTH-PU-03", "$name"),
+    ({ role, operation, target: requestedTarget, allowed }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role,
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed,
-      operation,
-      target: requestedTarget,
-      reason: allowed ? "allowed" : "owner-management-forbidden",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed,
+        operation,
+        target: requestedTarget,
+        reason: allowed ? "allowed" : "owner-management-forbidden",
+      });
+    },
+  );
 
   test.each([
     {
@@ -285,27 +305,30 @@ describe("ProjectUser ロールの認可", () => {
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
     reason: Exclude<ProjectUserAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ operation, target: requestedTarget, reason }) => {
-    const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role: "owner",
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
-    });
+  }>)(
+    authSpecName("AUTH-PU-04", "$name 場合は拒否する"),
+    ({ operation, target: requestedTarget, reason }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role: "owner",
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation,
-      target: requestedTarget,
-      reason,
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: requestedTarget,
+        reason,
+      });
+    },
+  );
 
   test.each([
     {
@@ -399,7 +422,7 @@ describe("ProjectUser ロールの認可", () => {
       },
       reason: "insufficient-role",
     },
-  ])("$name 場合は拒否する", ({ input, reason }) => {
+  ])(authSpecName("AUTH-PU-04", "$name 場合は拒否する"), ({ input, reason }) => {
     const decision = authorizeProjectUserAction(input);
 
     expect(decision).toStrictEqual({
@@ -411,7 +434,7 @@ describe("ProjectUser ロールの認可", () => {
   });
 
   test.each(["superuser", "__proto__", "constructor"] as ProjectUserRole[])(
-    "定義外の ProjectUser ロール %s は拒否する",
+    authSpecName("AUTH-PU-04", "定義外の ProjectUser ロール %s は拒否する"),
     (role) => {
       const decision = authorizeProjectUserAction({
         actor: {
@@ -471,27 +494,30 @@ describe("ProjectUser ロールの認可", () => {
     name: string;
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
-  }>)("$name場合は拒否する", ({ operation, target: requestedTarget }) => {
-    const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role: "admin",
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
-    });
+  }>)(
+    authSpecName("AUTH-PU-04", "$name場合は拒否する"),
+    ({ operation, target: requestedTarget }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role: "admin",
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation,
-      target: requestedTarget,
-      reason: "project-user-role-invalid",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: requestedTarget,
+        reason: "project-user-role-invalid",
+      });
+    },
+  );
 
   test.each([
     {
@@ -551,27 +577,30 @@ describe("ProjectUser ロールの認可", () => {
     name: string;
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
-  }>)("$name に対象 ID がない場合は拒否する", ({ operation, target: requestedTarget }) => {
-    const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role: "owner",
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
-    });
+  }>)(
+    authSpecName("AUTH-PU-04", "$name に対象 ID がない場合は拒否する"),
+    ({ operation, target: requestedTarget }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role: "owner",
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation,
-      target: requestedTarget,
-      reason: "target-id-required",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: requestedTarget,
+        reason: "target-id-required",
+      });
+    },
+  );
 
   test.each([
     {
@@ -606,29 +635,32 @@ describe("ProjectUser ロールの認可", () => {
     name: string;
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
-  }>)("$name は対象 ID を監査 target に含める", ({ operation, target: requestedTarget }) => {
-    const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role: "owner",
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
-    });
+  }>)(
+    authSpecName("AUTH-PU-04", "$name は対象 ID を監査 target に含める"),
+    ({ operation, target: requestedTarget }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role: "owner",
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: true,
-      operation,
-      target: requestedTarget,
-      reason: "allowed",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: true,
+        operation,
+        target: requestedTarget,
+        reason: "allowed",
+      });
+    },
+  );
 
-  test("定義外の Management operation は拒否する", () => {
+  test(authSpecName("AUTH-PU-04", "定義外の Management operation は拒否する"), () => {
     const decision = authorizeProjectUserAction({
       actor: {
         projectId,

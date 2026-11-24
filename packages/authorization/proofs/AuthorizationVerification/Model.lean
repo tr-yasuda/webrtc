@@ -54,12 +54,19 @@ inductive ParticipantCase where
       (subjectAbsent : Bool)
       (session : Option SessionCase)
       (participant : Option ParticipantCaseRecord)
+  | invalidGrant
+      (operation : ParticipantOperation)
+      (projectState : ProjectState)
+      (targetMatch : Bool)
+      (subjectAbsent : Bool)
+      (participant : Option ParticipantSubjectStatus)
+      (kind : InvalidGrantKind)
   | invalidOperation
 deriving DecidableEq, Repr
 
 def participantSubjectDecision : Option ParticipantSubjectStatus → Option Decision
-  | some .empty => some (deny "subject-required")
-  | some .mismatch => some (deny "subject-mismatch")
+  | some .empty => if participantSubjectRequired then some (deny "subject-required") else none
+  | some .mismatch => if participantSubjectMustMatch then some (deny "subject-mismatch") else none
   | _ => none
 
 def sessionMatches (session : SessionCase) (participant : Option ParticipantCaseRecord) : Bool :=
@@ -73,7 +80,7 @@ def decideParticipantCase : ParticipantCase → Decision
   | .roomCreate grants projectState targetMatch subjectAbsent roomPresent sessionPresent participant =>
       if projectState != .active then deny "project-not-active"
       else if !targetMatch then deny "credential-target-mismatch"
-      else if subjectAbsent then deny "subject-required"
+      else if participantSubjectRequired && subjectAbsent then deny "subject-required"
       else match participantSubjectDecision participant with
         | some decision => decision
         | none =>
@@ -86,7 +93,7 @@ def decideParticipantCase : ParticipantCase → Decision
   | .roomJoinAbsent grants projectState targetMatch subjectAbsent sessionPresent participant =>
       if projectState != .active then deny "project-not-active"
       else if !targetMatch then deny "credential-target-mismatch"
-      else if subjectAbsent then deny "subject-required"
+      else if participantSubjectRequired && subjectAbsent then deny "subject-required"
       else match participantSubjectDecision participant with
         | some decision => decision
         | none =>
@@ -98,7 +105,7 @@ def decideParticipantCase : ParticipantCase → Decision
   | .roomJoinPresent grants projectState targetMatch subjectAbsent roomState session participant =>
       if projectState != .active then deny "project-not-active"
       else if !targetMatch then deny "credential-target-mismatch"
-      else if subjectAbsent then deny "subject-required"
+      else if participantSubjectRequired && subjectAbsent then deny "subject-required"
       else match participantSubjectDecision (participant.map (·.subjectStatus)) with
         | some decision => decision
         | none =>
@@ -108,10 +115,10 @@ def decideParticipantCase : ParticipantCase → Decision
             else match session with
               | some s =>
                   if s.state != .active then deny "session-not-active"
-                  else if !sessionMatches s participant then deny "session-target-mismatch"
                   else match participant with
                     | some p =>
-                        if p.state != .active then deny "participant-not-active"
+                        if !sessionMatches s (some p) then deny "session-target-mismatch"
+                        else if p.state != .active then deny "participant-not-active"
                         else if !p.roomMatch then deny "participant-target-mismatch"
                         else allow
                     | none => allow
@@ -125,7 +132,7 @@ def decideParticipantCase : ParticipantCase → Decision
   | .mediaRoomInactive operation grants projectState targetMatch subjectAbsent participant =>
       if projectState != .active then deny "project-not-active"
       else if !targetMatch then deny "credential-target-mismatch"
-      else if subjectAbsent then deny "subject-required"
+      else if participantSubjectRequired && subjectAbsent then deny "subject-required"
       else match participantSubjectDecision participant with
         | some decision => decision
         | none =>
@@ -134,7 +141,7 @@ def decideParticipantCase : ParticipantCase → Decision
   | .mediaRoomActive operation grants projectState targetMatch subjectAbsent session participant =>
       if projectState != .active then deny "project-not-active"
       else if !targetMatch then deny "credential-target-mismatch"
-      else if subjectAbsent then deny "subject-required"
+      else if participantSubjectRequired && subjectAbsent then deny "subject-required"
       else match participantSubjectDecision (participant.map (·.subjectStatus)) with
         | some decision => decision
         | none =>
@@ -147,9 +154,16 @@ def decideParticipantCase : ParticipantCase → Decision
                     | none => deny "participant-required"
                     | some p =>
                         if p.state != .active then deny "participant-not-active"
-                        else if !sessionMatches s participant then deny "session-target-mismatch"
+                        else if !sessionMatches s (some p) then deny "session-target-mismatch"
                         else if !p.roomMatch then deny "participant-target-mismatch"
                         else allow
+  | .invalidGrant _ projectState targetMatch subjectAbsent participant _ =>
+      if projectState != .active then deny "project-not-active"
+      else if !targetMatch then deny "credential-target-mismatch"
+      else if participantSubjectRequired && subjectAbsent then deny "subject-required"
+      else match participantSubjectDecision participant with
+        | some decision => decision
+        | none => deny "grant-input-invalid"
 
 structure ProjectUserCase where
   actorRole : RoleValue
@@ -157,7 +171,7 @@ structure ProjectUserCase where
   projectState : ProjectState
   actorProjectMatch : Bool
   targetProjectMatch : Bool
-  targetIdPresent : Bool
+  targetIdState : TargetIdState
   currentRole : RoleValue
   nextRole : RoleValue
 deriving DecidableEq, Repr
@@ -168,77 +182,15 @@ structure ProjectUserInvalidOperationCase where
   targetProjectMatch : Bool
 deriving DecidableEq, Repr
 
-def roleAllows : Role → Operation → Bool
-  | .owner, _ => true
-  | .admin, .projectDelete => false
-  | .admin, _ => true
-  | .operator, .projectRead => true
-  | .operator, .roomRead => true
-  | .operator, .roomUpdate => true
-  | .operator, .roomDelete => true
-  | .operator, .sessionRead => true
-  | .operator, .sessionDisconnect => true
-  | .operator, .participantRead => true
-  | .operator, .participantDisconnect => true
-  | .operator, .usageRead => true
-  | .operator, _ => false
-  | .auditor, .projectRead => true
-  | .auditor, .roomRead => true
-  | .auditor, .sessionRead => true
-  | .auditor, .participantRead => true
-  | .auditor, .usageRead => true
-  | .auditor, .auditRead => true
-  | .auditor, _ => false
-
-def specRoleAllows : Role → Operation → Bool
-  | .owner, _ => true
-  | .admin, .projectDelete => false
-  | .admin, _ => true
-  | .operator, .projectRead => true
-  | .operator, .roomRead => true
-  | .operator, .roomUpdate => true
-  | .operator, .roomDelete => true
-  | .operator, .sessionRead => true
-  | .operator, .sessionDisconnect => true
-  | .operator, .participantRead => true
-  | .operator, .participantDisconnect => true
-  | .operator, .usageRead => true
-  | .operator, _ => false
-  | .auditor, .projectRead => true
-  | .auditor, .roomRead => true
-  | .auditor, .sessionRead => true
-  | .auditor, .participantRead => true
-  | .auditor, .usageRead => true
-  | .auditor, .auditRead => true
-  | .auditor, _ => false
-
-def requiresTargetId : Operation → Bool
-  | .projectUserAdd => true
-  | .projectUserRemove => true
-  | .projectUserChangeRole => true
-  | .roomUpdate => true
-  | .roomDelete => true
-  | .sessionDisconnect => true
-  | .participantDisconnect => true
-  | _ => false
-
-def credentialRequiresTargetId : Operation → Bool
-  | .roomUpdate => true
-  | .roomDelete => true
-  | .sessionDisconnect => true
-  | .participantDisconnect => true
-  | _ => false
-
 def roleValueIsOwner : RoleValue → Bool
   | .valid .owner => true
   | _ => false
 
 def adminOwnerManagementForbidden (operation : Operation) (currentRole nextRole : RoleValue) : Bool :=
-  match operation with
-  | .projectUserAdd => roleValueIsOwner nextRole
-  | .projectUserRemove => roleValueIsOwner currentRole
-  | .projectUserChangeRole => roleValueIsOwner currentRole || roleValueIsOwner nextRole
-  | _ => false
+  (adminOwnerManagementFields operation).any fun field =>
+    match field with
+    | .currentRole => roleValueIsOwner currentRole
+    | .nextRole => roleValueIsOwner nextRole
 
 def decideProjectUserCase (c : ProjectUserCase) : Decision :=
   if c.projectState != .active then deny "project-not-active"
@@ -250,7 +202,7 @@ def decideProjectUserCase (c : ProjectUserCase) : Decision :=
     | .valid role =>
         if c.currentRole == .invalid || c.nextRole == .invalid then
           deny "project-user-role-invalid"
-        else if requiresTargetId c.operation && !c.targetIdPresent then
+        else if requiresTargetId c.operation && c.targetIdState != .valid then
           deny "target-id-required"
         else if !roleAllows role c.operation then
           deny "insufficient-role"
@@ -278,34 +230,22 @@ deriving DecidableEq, Repr
 
 structure CredentialCase where
   revoked : Bool
-  expiry : ExpiryState
+  time : CredentialTimeCase
   credentialProjectMatch : Bool
   targetProjectMatch : Bool
   projectState : ProjectState
   scopes : ScopeCase
   operation : OperationValue
-  targetIdPresent : Bool
+  targetIdState : TargetIdState
 deriving DecidableEq, Repr
-
-def requiredScopes : Operation → Option (List Scope)
-  | .roomRead => some [.roomManage]
-  | .roomUpdate => some [.roomManage]
-  | .roomDelete => some [.roomManage]
-  | .sessionRead => some [.sessionManage]
-  | .sessionDisconnect => some [.sessionManage]
-  | .participantRead => some [.sessionManage]
-  | .participantDisconnect => some [.sessionManage]
-  | .usageRead => some [.usageRead]
-  | .auditRead => some [.auditRead]
-  | _ => none
 
 def scopeSetAllows (set : ScopeSet) (required : List Scope) : Bool :=
   required.any set.contains
 
 def decideCredentialCase (c : CredentialCase) : Decision :=
   if c.revoked then deny "credential-revoked"
-  else if c.expiry == .invalid then deny "credential-expiry-invalid"
-  else if c.expiry == .expired then deny "credential-expired"
+  else if credentialTimeStateOfCase c.time == .invalid then deny "credential-expiry-invalid"
+  else if credentialTimeStateOfCase c.time == .expired then deny "credential-expired"
   else if !c.credentialProjectMatch || !c.targetProjectMatch then
     deny "credential-target-mismatch"
   else if c.projectState != .active then deny "project-not-active"
@@ -315,7 +255,7 @@ def decideCredentialCase (c : CredentialCase) : Decision :=
         match c.operation with
         | .invalid => deny "unsupported-operation"
         | .valid operation =>
-            if credentialRequiresTargetId operation && !c.targetIdPresent then
+            if credentialRequiresTargetId operation && c.targetIdState != .valid then
               deny "target-id-required"
             else match requiredScopes operation with
               | none => deny "credential-operation-not-allowed"

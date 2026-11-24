@@ -316,9 +316,11 @@ Management UI の OpenID Connect では、標準のプロトコル処理に既�
 
 ### 形式検証
 
-ProjectUser のロール、Management API credential の scope、参加 JWT の grants による認可判断は、[認可ポリシーの形式検証](authorization-verification.md)に従って Lean 4 のモデルで証明する。Lean モデルと TypeScript 実装の対応は、有限ケースの全件照合で確認する。
+静的な認可ポリシーは `docs/auth/authorization-spec/authorization-policy.json` を正本とし、TypeScript と Lean の静的定義はそこから決定論的に生成する。認可の判定ロジックは両言語で独立して実装し、有限ケースの全件照合と Lean の証明で対応を確認する。
 
-証明が保証するのは Lean モデルの性質であり、HTTP、JWT 署名検証、DB、管理 UI の実装そのものではない。仕様 ID と定理・テストの対応は CI で欠落を検査するが、意味的な妥当性は人間がレビューする。
+仕様 ID、必要な検証手法、意味的なポリシー差分、Traceability、Mutation Testing の扱いは、[認可仕様の管理と形式検証](authorization-verification.md)に従う。証明が保証するのは Lean モデルの性質であり、HTTP、JWT 署名検証、DB、管理 UI の実装そのものではない。
+
+仕様 ID と定理・テストの機械的な対応は CI で生成・検査するが、仕様 JSON と規範文章の意味的な妥当性は人間がレビューする。
 
 ## セキュリティ
 

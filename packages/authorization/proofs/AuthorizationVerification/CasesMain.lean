@@ -29,6 +29,7 @@ def reasonCodeString {α : Type}
     reasonChar (reasonIndex (decide item).reason reasons)
 
 def groupJson {α : Type}
+    (kind : String)
     (name : String)
     (axes : List Axis)
     (cases : List α)
@@ -37,6 +38,7 @@ def groupJson {α : Type}
   Json.mkObj
     [ ("name", Json.str name)
     , ("axes", Json.arr (axes.toArray.map axisJson))
+    , ("specIds", Json.arr ((caseGroupSpecIds kind name).toArray.map Json.str))
     , ("count", cases.length)
     , ("allowed", Json.str (allowedString cases decide))
     , ("reasonCodes", Json.str (reasonCodeString cases decide reasons))
@@ -51,6 +53,7 @@ def participantReasons : List String :=
   , "subject-required"
   , "subject-mismatch"
   , "grant-not-granted"
+  , "grant-input-invalid"
   , "room-already-exists"
   , "room-join-required"
   , "session-target-mismatch"
@@ -96,19 +99,22 @@ def manifestJson : Json :=
   Json.mkObj
     [ ( "participant"
       , Json.arr <| (participantGroups.map fun group =>
-            groupJson group.name group.axes group.cases decideParticipantCase participantReasons).toArray
+            groupJson "participant" group.name group.axes group.cases decideParticipantCase
+              participantReasons).toArray
       )
     , ( "projectUser"
       , Json.arr <|
           (projectUserGroups.map fun group =>
-            groupJson group.name group.axes group.cases decideProjectUserCase projectUserReasons).toArray ++
+            groupJson "projectUser" group.name group.axes group.cases decideProjectUserCase
+              projectUserReasons).toArray ++
           (projectUserInvalidOperationGroups.map fun group =>
-            groupJson group.name group.axes group.cases decideProjectUserInvalidOperationCase
-              projectUserReasons).toArray
+            groupJson "projectUser" group.name group.axes group.cases
+              decideProjectUserInvalidOperationCase projectUserReasons).toArray
       )
     , ( "credential"
       , Json.arr <| (credentialGroups.map fun group =>
-            groupJson group.name group.axes group.cases decideCredentialCase credentialReasons).toArray
+            groupJson "credential" group.name group.axes group.cases decideCredentialCase
+              credentialReasons).toArray
       )
     ]
 

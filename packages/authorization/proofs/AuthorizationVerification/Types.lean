@@ -1,160 +1,7 @@
+import AuthorizationVerification.GeneratedPolicy
+import AuthorizationVerification.SpecAttributes
+
 namespace AuthorizationVerification
-
-inductive Role where
-  | owner
-  | admin
-  | operator
-  | auditor
-deriving DecidableEq, Repr
-
-def Role.toString : Role → String
-  | .owner => "owner"
-  | .admin => "admin"
-  | .operator => "operator"
-  | .auditor => "auditor"
-
-def Role.fromString? : String → Option Role
-  | "owner" => some .owner
-  | "admin" => some .admin
-  | "operator" => some .operator
-  | "auditor" => some .auditor
-  | _ => none
-
-def allRoles : List Role := [.owner, .admin, .operator, .auditor]
-
-inductive Operation where
-  | projectRead
-  | projectUpdate
-  | projectDelete
-  | projectUserRead
-  | projectUserAdd
-  | projectUserRemove
-  | projectUserChangeRole
-  | applicationManage
-  | applicationSigningKeyManage
-  | managementApiCredentialManage
-  | roomRead
-  | roomUpdate
-  | roomDelete
-  | sessionRead
-  | sessionDisconnect
-  | participantRead
-  | participantDisconnect
-  | usageRead
-  | auditRead
-deriving DecidableEq, Repr
-
-def Operation.toString : Operation → String
-  | .projectRead => "project.read"
-  | .projectUpdate => "project.update"
-  | .projectDelete => "project.delete"
-  | .projectUserRead => "projectUser.read"
-  | .projectUserAdd => "projectUser.add"
-  | .projectUserRemove => "projectUser.remove"
-  | .projectUserChangeRole => "projectUser.changeRole"
-  | .applicationManage => "application.manage"
-  | .applicationSigningKeyManage => "applicationSigningKey.manage"
-  | .managementApiCredentialManage => "managementApiCredential.manage"
-  | .roomRead => "room.read"
-  | .roomUpdate => "room.update"
-  | .roomDelete => "room.delete"
-  | .sessionRead => "session.read"
-  | .sessionDisconnect => "session.disconnect"
-  | .participantRead => "participant.read"
-  | .participantDisconnect => "participant.disconnect"
-  | .usageRead => "usage.read"
-  | .auditRead => "audit.read"
-
-def Operation.fromString? : String → Option Operation
-  | "project.read" => some .projectRead
-  | "project.update" => some .projectUpdate
-  | "project.delete" => some .projectDelete
-  | "projectUser.read" => some .projectUserRead
-  | "projectUser.add" => some .projectUserAdd
-  | "projectUser.remove" => some .projectUserRemove
-  | "projectUser.changeRole" => some .projectUserChangeRole
-  | "application.manage" => some .applicationManage
-  | "applicationSigningKey.manage" => some .applicationSigningKeyManage
-  | "managementApiCredential.manage" => some .managementApiCredentialManage
-  | "room.read" => some .roomRead
-  | "room.update" => some .roomUpdate
-  | "room.delete" => some .roomDelete
-  | "session.read" => some .sessionRead
-  | "session.disconnect" => some .sessionDisconnect
-  | "participant.read" => some .participantRead
-  | "participant.disconnect" => some .participantDisconnect
-  | "usage.read" => some .usageRead
-  | "audit.read" => some .auditRead
-  | _ => none
-
-def allOperations : List Operation :=
-  [ .projectRead
-  , .projectUpdate
-  , .projectDelete
-  , .projectUserRead
-  , .projectUserAdd
-  , .projectUserRemove
-  , .projectUserChangeRole
-  , .applicationManage
-  , .applicationSigningKeyManage
-  , .managementApiCredentialManage
-  , .roomRead
-  , .roomUpdate
-  , .roomDelete
-  , .sessionRead
-  , .sessionDisconnect
-  , .participantRead
-  , .participantDisconnect
-  , .usageRead
-  , .auditRead
-  ]
-
-inductive ParticipantOperation where
-  | roomCreate
-  | roomJoin
-  | mediaPublish
-  | mediaSubscribe
-  | dataSend
-deriving DecidableEq, Repr
-
-def ParticipantOperation.toString : ParticipantOperation → String
-  | .roomCreate => "room.create"
-  | .roomJoin => "room.join"
-  | .mediaPublish => "media.publish"
-  | .mediaSubscribe => "media.subscribe"
-  | .dataSend => "data.send"
-
-inductive MediaOperation where
-  | publish
-  | subscribe
-  | dataSend
-deriving DecidableEq, Repr
-
-def MediaOperation.toString : MediaOperation → String
-  | .publish => "media.publish"
-  | .subscribe => "media.subscribe"
-  | .dataSend => "data.send"
-
-def MediaOperation.toParticipantOperation : MediaOperation → ParticipantOperation
-  | .publish => .mediaPublish
-  | .subscribe => .mediaSubscribe
-  | .dataSend => .dataSend
-
-def allMediaOperations : List MediaOperation := [.publish, .subscribe, .dataSend]
-
-inductive Scope where
-  | roomManage
-  | sessionManage
-  | usageRead
-  | auditRead
-deriving DecidableEq, Repr
-
-def Scope.fromString? : String → Option Scope
-  | "room.manage" => some .roomManage
-  | "session.manage" => some .sessionManage
-  | "usage.read" => some .usageRead
-  | "audit.read" => some .auditRead
-  | _ => none
 
 structure ScopeSet where
   roomManage : Bool
@@ -187,13 +34,98 @@ def allScopeSets : List ScopeSet :=
     auditRead := auditRead
   }
 
-structure Grants where
-  roomCreate : Bool
-  roomJoin : Bool
-  mediaPublish : Bool
-  mediaSubscribe : Bool
-  dataSend : Bool
+inductive TargetIdState where
+  | missing
+  | empty
+  | valid
 deriving DecidableEq, Repr
+
+def TargetIdState.toString : TargetIdState → String
+  | .missing => "missing"
+  | .empty => "empty"
+  | .valid => "valid"
+
+def allTargetIdStates : List TargetIdState := [.missing, .empty, .valid]
+
+def targetIdStateOf (value : Option String) : TargetIdState :=
+  match value with
+  | none => .missing
+  | some text => if text == "" then .empty else .valid
+
+inductive InvalidGrantKind where
+  | unknownKey
+  | nonBoolean
+  | missingKey
+  | notObject
+deriving DecidableEq, Repr
+
+def InvalidGrantKind.toString : InvalidGrantKind → String
+  | .unknownKey => "unknownKey"
+  | .nonBoolean => "nonBoolean"
+  | .missingKey => "missingKey"
+  | .notObject => "notObject"
+
+def allInvalidGrantKinds : List InvalidGrantKind :=
+  [.unknownKey, .nonBoolean, .missingKey, .notObject]
+
+inductive GrantInput where
+  | valid (grants : Grants)
+  | invalid (kind : InvalidGrantKind)
+deriving DecidableEq, Repr
+
+inductive Timestamp where
+  | safe (value : Int)
+  | fractional
+  | nonFinite
+  | outOfSafeRange
+deriving DecidableEq, Repr
+
+inductive CredentialTimeCase where
+  | valid
+  | expired
+  | minimumBoundaryExpired
+  | maximumBoundaryValid
+  | maximumBoundaryExpired
+  | fractionalExpiresAt
+  | fractionalNow
+  | nonFiniteExpiresAt
+  | nonFiniteNow
+  | outOfSafeRangeExpiresAt
+  | outOfSafeRangeNow
+  | missingExpiresAt
+  | missingNow
+deriving DecidableEq, Repr
+
+def CredentialTimeCase.toString : CredentialTimeCase → String
+  | .valid => "valid"
+  | .expired => "expired"
+  | .minimumBoundaryExpired => "minimumBoundaryExpired"
+  | .maximumBoundaryValid => "maximumBoundaryValid"
+  | .maximumBoundaryExpired => "maximumBoundaryExpired"
+  | .fractionalExpiresAt => "fractionalExpiresAt"
+  | .fractionalNow => "fractionalNow"
+  | .nonFiniteExpiresAt => "nonFiniteExpiresAt"
+  | .nonFiniteNow => "nonFiniteNow"
+  | .outOfSafeRangeExpiresAt => "outOfSafeRangeExpiresAt"
+  | .outOfSafeRangeNow => "outOfSafeRangeNow"
+  | .missingExpiresAt => "missingExpiresAt"
+  | .missingNow => "missingNow"
+
+def allCredentialTimeCases : List CredentialTimeCase :=
+  [ .valid
+  , .expired
+  , .minimumBoundaryExpired
+  , .maximumBoundaryValid
+  , .maximumBoundaryExpired
+  , .fractionalExpiresAt
+  , .fractionalNow
+  , .nonFiniteExpiresAt
+  , .nonFiniteNow
+  , .outOfSafeRangeExpiresAt
+  , .outOfSafeRangeNow
+  , .missingExpiresAt
+  , .missingNow
+  ]
 
 def Grants.forOperation (grants : Grants) : Option ParticipantOperation → Bool
   | some .roomCreate => grants.roomCreate
@@ -202,19 +134,6 @@ def Grants.forOperation (grants : Grants) : Option ParticipantOperation → Bool
   | some .mediaSubscribe => grants.mediaSubscribe
   | some .dataSend => grants.dataSend
   | _ => false
-
-def allGrants : List Grants :=
-  [false, true].flatMap fun roomCreate =>
-  [false, true].flatMap fun roomJoin =>
-  [false, true].flatMap fun mediaPublish =>
-  [false, true].flatMap fun mediaSubscribe =>
-  [false, true].map fun dataSend =>
-  { roomCreate := roomCreate
-    roomJoin := roomJoin
-    mediaPublish := mediaPublish
-    mediaSubscribe := mediaSubscribe
-    dataSend := dataSend
-  }
 
 inductive ProjectState where
   | active
@@ -291,6 +210,18 @@ def ExpiryState.toString : ExpiryState → String
   | .invalid => "invalid"
 
 def allExpiryStates : List ExpiryState := [.valid, .expired, .invalid]
+
+def credentialTimeStateOfCase : CredentialTimeCase → ExpiryState
+  | .valid | .maximumBoundaryValid => .valid
+  | .expired | .minimumBoundaryExpired | .maximumBoundaryExpired => .expired
+  | .fractionalExpiresAt
+  | .fractionalNow
+  | .nonFiniteExpiresAt
+  | .nonFiniteNow
+  | .outOfSafeRangeExpiresAt
+  | .outOfSafeRangeNow
+  | .missingExpiresAt
+  | .missingNow => .invalid
 
 inductive RoleValue where
   | missing

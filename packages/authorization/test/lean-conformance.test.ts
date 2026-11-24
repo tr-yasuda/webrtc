@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
-import type { ParticipantAuthorizationInput, ParticipantOperation } from "../src/participant.js";
+import type {
+  ParticipantAuthorizationInput,
+  ParticipantAuthorizationTarget,
+  ParticipantOperation,
+} from "../src/participant.js";
 import { authorizeParticipantAction } from "../src/participant.js";
 import type { ManagementOperation, ProjectUserRole } from "../src/management-operation.js";
 import type {
@@ -29,6 +33,7 @@ import {
   sessionId,
   subject,
 } from "./fixtures.js";
+import { authSpecName } from "./auth-spec.js";
 
 type Axis = {
   readonly name: string;
@@ -38,6 +43,7 @@ type Axis = {
 type LeanGroup = {
   readonly name: string;
   readonly axes: readonly Axis[];
+  readonly specIds: readonly string[];
   readonly count: number;
   readonly allowed: string;
   readonly reasonCodes: string;
@@ -89,6 +95,30 @@ function grantsFromBits(bits: string): ParticipantAuthorizationInput["credential
   };
 }
 
+function invalidGrants(kind: string): ParticipantAuthorizationInput["credential"]["grants"] {
+  const valid = grantsFromBits("11111");
+  switch (kind) {
+    case "unknownKey":
+      return {
+        ...valid,
+        unknownGrant: true,
+      } as unknown as ParticipantAuthorizationInput["credential"]["grants"];
+    case "nonBoolean":
+      return {
+        ...valid,
+        "room.create": "yes",
+      } as unknown as ParticipantAuthorizationInput["credential"]["grants"];
+    case "missingKey": {
+      const { "room.join": _removed, ...missing } = valid;
+      return missing as ParticipantAuthorizationInput["credential"]["grants"];
+    }
+    case "notObject":
+      return "invalid" as unknown as ParticipantAuthorizationInput["credential"]["grants"];
+    default:
+      throw new Error(`unexpected invalid grant kind: ${kind}`);
+  }
+}
+
 function projectStateValue(value: string | undefined): "active" | "suspended" {
   if (value === "active" || value === "suspended") return value;
   throw new Error(`unexpected project state: ${value ?? "missing"}`);
@@ -99,6 +129,19 @@ function mediaOperationValue(value: string | undefined): ParticipantOperation {
     return value;
   }
   throw new Error(`unexpected media operation: ${value ?? "missing"}`);
+}
+
+function participantOperationValue(value: string | undefined): ParticipantOperation {
+  if (
+    value === "room.create" ||
+    value === "room.join" ||
+    value === "media.publish" ||
+    value === "media.subscribe" ||
+    value === "data.send"
+  ) {
+    return value;
+  }
+  throw new Error(`unexpected participant operation: ${value ?? "missing"}`);
 }
 
 function participantSubjectValue(value: string | undefined): string {
@@ -212,6 +255,23 @@ function participantInputFor(group: LeanGroup, row: CaseRow): ParticipantAuthori
     };
   }
 
+  if (group.name === "invalidGrant") {
+    const targetMatches = boolValue(row.targetMatch);
+    const participant = participantSubjectOnly(row.participant);
+    return {
+      operation: participantOperationValue(row.operation),
+      credential: {
+        projectId: targetMatches ? projectId : otherProjectId,
+        roomName: "room-a",
+        subject: boolValue(row.subjectAbsent) ? "" : subject,
+        grants: invalidGrants(row.invalidGrantKind ?? "unknownKey"),
+      },
+      project: { id: projectId, state: projectStateValue(row.projectState) },
+      room: { state: "active", id: roomId, projectId, name: "room-a" },
+      ...(participant === undefined ? {} : { participant }),
+    };
+  }
+
   const targetMatches = boolValue(row.targetMatch);
   const subjectAbsent = boolValue(row.subjectAbsent);
   const baseCredential = {
@@ -264,6 +324,12 @@ function targetRoleValue(value: string | undefined): ProjectUserRole | undefined
   throw new Error(`unexpected target role: ${value ?? "missing"}`);
 }
 
+function targetIdState(value: string | undefined): "missing" | "empty" | "valid" {
+  if (value === "missing" || value === "empty" || value === "valid") return value;
+  if (value === undefined) return "valid";
+  throw new Error(`unexpected target id state: ${value}`);
+}
+
 function targetIdForOperation(
   operation: ManagementOperation,
 ): keyof ProjectUserAuthorizationTarget {
@@ -289,7 +355,7 @@ function projectUserTarget(
   row: CaseRow,
   operation: ManagementOperation,
 ): ProjectUserAuthorizationTarget {
-  const targetIdPresent = row.targetIdPresent === undefined ? true : boolValue(row.targetIdPresent);
+  const state = targetIdState(row.targetIdState);
   const targetId = targetIdForOperation(operation);
   const common = {
     projectId: boolValue(row.targetProjectMatch) ? projectId : otherProjectId,
@@ -297,23 +363,41 @@ function projectUserTarget(
     nextRole: targetRoleValue(row.nextRole),
   };
 
-  if (!targetIdPresent) {
+  if (state === "missing") {
     return common as ProjectUserAuthorizationTarget;
   }
 
   switch (targetId) {
     case "accountId":
-      return { ...common, accountId } as ProjectUserAuthorizationTarget;
+      return {
+        ...common,
+        accountId: (state === "empty" ? "" : accountId) as typeof accountId,
+      } as ProjectUserAuthorizationTarget;
     case "projectUserId":
-      return { ...common, projectUserId } as ProjectUserAuthorizationTarget;
+      return {
+        ...common,
+        projectUserId: (state === "empty" ? "" : projectUserId) as typeof projectUserId,
+      } as ProjectUserAuthorizationTarget;
     case "roomId":
-      return { ...common, roomId } as ProjectUserAuthorizationTarget;
+      return {
+        ...common,
+        roomId: (state === "empty" ? "" : roomId) as typeof roomId,
+      } as ProjectUserAuthorizationTarget;
     case "sessionId":
-      return { ...common, sessionId } as ProjectUserAuthorizationTarget;
+      return {
+        ...common,
+        sessionId: state === "empty" ? "" : sessionId,
+      } as ProjectUserAuthorizationTarget;
     case "participantId":
-      return { ...common, participantId } as ProjectUserAuthorizationTarget;
+      return {
+        ...common,
+        participantId: (state === "empty" ? "" : participantId) as typeof participantId,
+      } as ProjectUserAuthorizationTarget;
     default:
-      return { ...common, resourceId: "resource-a" } as ProjectUserAuthorizationTarget;
+      return {
+        ...common,
+        resourceId: state === "empty" ? "" : "resource-a",
+      } as ProjectUserAuthorizationTarget;
   }
 }
 
@@ -348,30 +432,65 @@ function credentialTarget(
   row: CaseRow,
   operation: ManagementOperation,
 ): ManagementCredentialAuthorizationTarget {
-  const targetIdPresent = boolValue(row.targetIdPresent);
+  const state = targetIdState(row.targetIdState);
   const targetProjectId = boolValue(row.targetProjectMatch) ? projectId : otherProjectId;
   const targetId = targetIdForOperation(operation);
 
-  if (!targetIdPresent) {
-    return { projectId: targetProjectId, resourceId: "resource-a" };
+  if (state === "missing") {
+    return { projectId: targetProjectId };
   }
 
   switch (targetId) {
     case "roomId":
-      return { projectId: targetProjectId, roomId };
+      return {
+        projectId: targetProjectId,
+        roomId: (state === "empty" ? "" : roomId) as typeof roomId,
+      };
     case "sessionId":
-      return { projectId: targetProjectId, sessionId };
+      return { projectId: targetProjectId, sessionId: state === "empty" ? "" : sessionId };
     case "participantId":
-      return { projectId: targetProjectId, participantId };
+      return {
+        projectId: targetProjectId,
+        participantId: (state === "empty" ? "" : participantId) as typeof participantId,
+      };
     default:
-      return { projectId: targetProjectId, resourceId: "resource-a" };
+      return { projectId: targetProjectId, resourceId: state === "empty" ? "" : "resource-a" };
   }
 }
 
-function expiresAtFromCase(expiry: string | undefined): number {
-  if (expiry === "valid") return 2_000;
-  if (expiry === "expired") return 1_000;
-  return Number.NaN;
+function timeFromCase(time: string | undefined): { expiresAt: number; now: number } {
+  const minSafe = Number.MIN_SAFE_INTEGER;
+  const maxSafe = Number.MAX_SAFE_INTEGER;
+  switch (time) {
+    case "valid":
+      return { expiresAt: 2_000, now: 1_000 };
+    case "expired":
+      return { expiresAt: 1_000, now: 1_000 };
+    case "minimumBoundaryExpired":
+      return { expiresAt: minSafe, now: minSafe };
+    case "maximumBoundaryValid":
+      return { expiresAt: maxSafe, now: maxSafe - 1 };
+    case "maximumBoundaryExpired":
+      return { expiresAt: maxSafe, now: maxSafe };
+    case "fractionalExpiresAt":
+      return { expiresAt: 1_000.5, now: 1_000 };
+    case "fractionalNow":
+      return { expiresAt: 2_000, now: 1_000.5 };
+    case "nonFiniteExpiresAt":
+      return { expiresAt: Number.POSITIVE_INFINITY, now: 1_000 };
+    case "nonFiniteNow":
+      return { expiresAt: 2_000, now: Number.POSITIVE_INFINITY };
+    case "outOfSafeRangeExpiresAt":
+      return { expiresAt: maxSafe + 1, now: 1_000 };
+    case "outOfSafeRangeNow":
+      return { expiresAt: 2_000, now: maxSafe + 1 };
+    case "missingExpiresAt":
+      return { expiresAt: undefined as unknown as number, now: 1_000 };
+    case "missingNow":
+      return { expiresAt: 2_000, now: undefined as unknown as number };
+    default:
+      throw new Error(`unexpected time case: ${time}`);
+  }
 }
 
 function credentialInputFor(row: CaseRow): ManagementCredentialAuthorizationInput {
@@ -384,17 +503,18 @@ function credentialInputFor(row: CaseRow): ManagementCredentialAuthorizationInpu
       ? (["unknown.scope"] as unknown as readonly ManagementCredentialScope[])
       : scopeSetFromBits(row.scopes ?? "0000");
 
+  const time = timeFromCase(row.time);
   return {
     credential: {
       projectId: boolValue(row.credentialProjectMatch) ? projectId : otherProjectId,
       scopes,
       revoked: boolValue(row.revoked),
-      expiresAt: expiresAtFromCase(row.expiry),
+      expiresAt: time.expiresAt,
     },
     project: { id: projectId, state: projectStateValue(row.projectState) },
     operation,
     target: credentialTarget(row, operation),
-    now: 1_000,
+    now: time.now,
   };
 }
 
@@ -405,6 +525,18 @@ function expectedDecision(group: LeanGroup, index: number): { allowed: boolean; 
     throw new Error(`missing reason code at ${group.name}[${index}]`);
   }
   return { allowed: group.allowed[index] === "1", reason };
+}
+
+function expectedParticipantTarget(
+  input: ParticipantAuthorizationInput,
+): ParticipantAuthorizationTarget {
+  return {
+    projectId: input.project.id,
+    roomName: input.room.name,
+    ...(input.room.state === "absent" ? {} : { roomId: input.room.id }),
+    ...(input.session === undefined ? {} : { sessionId: input.session.id }),
+    ...(input.participant === undefined ? {} : { participantId: input.participant.id }),
+  };
 }
 
 function participantRepresentativeInput(
@@ -473,56 +605,83 @@ function credentialRepresentativeInput(
 }
 
 describe("Lean 認可モデルとの全件照合", () => {
-  test("参加 JWT の全ケースで許可・拒否と理由が一致する", () => {
-    for (const group of manifest.participant) {
+  test.each(
+    manifest.participant.map((group) => ({
+      ...group,
+      title: authSpecName(
+        "AUTH-VER-02",
+        `参加 JWT の全ケースで許可・拒否と理由が一致する: ${group.name}`,
+      ),
+    })),
+  )(
+    "$title",
+    (group) => {
       const rows = rowsFor(group);
       expect(rows.length, group.name).toBe(group.count);
       expect(group.allowed.length, group.name).toBe(group.count);
       expect(group.reasonCodes.length, group.name).toBe(group.count);
 
       rows.forEach((row, index) => {
-        const decision = authorizeParticipantAction(participantInputFor(group, row));
+        const input = participantInputFor(group, row);
+        const decision = authorizeParticipantAction(input);
+        expect(decision.operation).toBe(input.operation);
+        expect(decision.target).toStrictEqual(expectedParticipantTarget(input));
         expect(
           { allowed: decision.allowed, reason: decision.reason },
           `${group.name}[${index}]`,
         ).toStrictEqual(expectedDecision(group, index));
       });
-    }
-  });
+    },
+    15_000,
+  );
 
-  test("ProjectUser の全ケースで許可・拒否と理由が一致する", () => {
-    for (const group of manifest.projectUser) {
-      const rows = rowsFor(group);
-      expect(rows.length, group.name).toBe(group.count);
-      expect(group.allowed.length, group.name).toBe(group.count);
-      expect(group.reasonCodes.length, group.name).toBe(group.count);
+  test(
+    authSpecName("AUTH-VER-02", "ProjectUser の全ケースで許可・拒否と理由が一致する"),
+    () => {
+      for (const group of manifest.projectUser) {
+        const rows = rowsFor(group);
+        expect(rows.length, group.name).toBe(group.count);
+        expect(group.allowed.length, group.name).toBe(group.count);
+        expect(group.reasonCodes.length, group.name).toBe(group.count);
 
-      rows.forEach((row, index) => {
-        const decision = authorizeProjectUserAction(projectUserInputFor(group, row));
-        expect(
-          { allowed: decision.allowed, reason: decision.reason },
-          `${group.name}[${index}]`,
-        ).toStrictEqual(expectedDecision(group, index));
-      });
-    }
-  });
+        rows.forEach((row, index) => {
+          const input = projectUserInputFor(group, row);
+          const decision = authorizeProjectUserAction(input);
+          expect(decision.operation).toBe(input.operation);
+          expect(decision.target).toStrictEqual(input.target);
+          expect(
+            { allowed: decision.allowed, reason: decision.reason },
+            `${group.name}[${index}]`,
+          ).toStrictEqual(expectedDecision(group, index));
+        });
+      }
+    },
+    15_000,
+  );
 
-  test("Management API credential の全ケースで許可・拒否と理由が一致する", () => {
-    for (const group of manifest.credential) {
-      const rows = rowsFor(group);
-      expect(rows.length, group.name).toBe(group.count);
-      expect(group.allowed.length, group.name).toBe(group.count);
-      expect(group.reasonCodes.length, group.name).toBe(group.count);
+  test(
+    authSpecName("AUTH-VER-02", "Management API credential の全ケースで許可・拒否と理由が一致する"),
+    () => {
+      for (const group of manifest.credential) {
+        const rows = rowsFor(group);
+        expect(rows.length, group.name).toBe(group.count);
+        expect(group.allowed.length, group.name).toBe(group.count);
+        expect(group.reasonCodes.length, group.name).toBe(group.count);
 
-      rows.forEach((row, index) => {
-        const decision = authorizeManagementCredentialAction(credentialInputFor(row));
-        expect(
-          { allowed: decision.allowed, reason: decision.reason },
-          `${group.name}[${index}]`,
-        ).toStrictEqual(expectedDecision(group, index));
-      });
-    }
-  });
+        rows.forEach((row, index) => {
+          const input = credentialInputFor(row);
+          const decision = authorizeManagementCredentialAction(input);
+          expect(decision.operation).toBe(input.operation);
+          expect(decision.target).toStrictEqual(input.target);
+          expect(
+            { allowed: decision.allowed, reason: decision.reason },
+            `${group.name}[${index}]`,
+          ).toStrictEqual(expectedDecision(group, index));
+        });
+      }
+    },
+    15_000,
+  );
 
   test("同値類内の代表値を変えても参加 JWT の判定が変わらない", () => {
     const first = authorizeParticipantAction(participantRepresentativeInput(subject, otherSubject));

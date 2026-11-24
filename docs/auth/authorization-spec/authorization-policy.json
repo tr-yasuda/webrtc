@@ -1,0 +1,487 @@
+{
+  "schemaVersion": 1,
+  "timeContract": {
+    "id": "AUTH-MC-06",
+    "unit": "unixEpochMilliseconds",
+    "type": "safeInteger",
+    "invalidClasses": ["fractional", "nonFinite", "outOfSafeRange"]
+  },
+  "roles": ["owner", "admin", "operator", "auditor"],
+  "operations": [
+    {
+      "id": "project.read",
+      "category": "project",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "project.update",
+      "category": "project",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "project.delete",
+      "category": "project",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "projectUser.read",
+      "category": "projectUser",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "projectUser.add",
+      "category": "projectUser",
+      "projectUserTarget": "accountId",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "projectUser.remove",
+      "category": "projectUser",
+      "projectUserTarget": "projectUserId",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "projectUser.changeRole",
+      "category": "projectUser",
+      "projectUserTarget": "projectUserId",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "application.manage",
+      "category": "application",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "applicationSigningKey.manage",
+      "category": "applicationSigningKey",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "managementApiCredential.manage",
+      "category": "managementApiCredential",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "room.read",
+      "category": "room",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "room.update",
+      "category": "room",
+      "projectUserTarget": "roomId",
+      "credentialTarget": "roomId"
+    },
+    {
+      "id": "room.delete",
+      "category": "room",
+      "projectUserTarget": "roomId",
+      "credentialTarget": "roomId"
+    },
+    {
+      "id": "session.read",
+      "category": "session",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "session.disconnect",
+      "category": "session",
+      "projectUserTarget": "sessionId",
+      "credentialTarget": "sessionId"
+    },
+    {
+      "id": "participant.read",
+      "category": "participant",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "participant.disconnect",
+      "category": "participant",
+      "projectUserTarget": "participantId",
+      "credentialTarget": "participantId"
+    },
+    {
+      "id": "usage.read",
+      "category": "usage",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    },
+    {
+      "id": "audit.read",
+      "category": "audit",
+      "projectUserTarget": "none",
+      "credentialTarget": "none"
+    }
+  ],
+  "scopes": [
+    {
+      "id": "room.manage",
+      "operations": ["room.read", "room.update", "room.delete"]
+    },
+    {
+      "id": "session.manage",
+      "operations": [
+        "session.read",
+        "session.disconnect",
+        "participant.read",
+        "participant.disconnect"
+      ]
+    },
+    {
+      "id": "usage.read",
+      "operations": ["usage.read"]
+    },
+    {
+      "id": "audit.read",
+      "operations": ["audit.read"]
+    }
+  ],
+  "grants": [
+    {
+      "id": "room.create",
+      "description": "未作成 Room の作成を許可する"
+    },
+    {
+      "id": "room.join",
+      "description": "Room への参加を許可する"
+    },
+    {
+      "id": "media.publish",
+      "description": "音声・映像・画面共有の発行を許可する"
+    },
+    {
+      "id": "media.subscribe",
+      "description": "音声・映像・画面共有の購読を許可する"
+    },
+    {
+      "id": "data.send",
+      "description": "DataChannel の送信を許可する"
+    }
+  ],
+  "participantOperations": [
+    {
+      "id": "room.create",
+      "grant": "room.create",
+      "requiresGrant": ["room.join"],
+      "requiresExistingRoom": false
+    },
+    {
+      "id": "room.join",
+      "grant": "room.join",
+      "requiresGrantWhenRoomAbsent": ["room.create"],
+      "requiresExistingRoom": true
+    },
+    {
+      "id": "media.publish",
+      "grant": "media.publish",
+      "requiresExistingRoom": true
+    },
+    {
+      "id": "media.subscribe",
+      "grant": "media.subscribe",
+      "requiresExistingRoom": true
+    },
+    {
+      "id": "data.send",
+      "grant": "data.send",
+      "requiresExistingRoom": true
+    }
+  ],
+  "rolePermissions": {
+    "owner": [
+      "project.read",
+      "project.update",
+      "project.delete",
+      "projectUser.read",
+      "projectUser.add",
+      "projectUser.remove",
+      "projectUser.changeRole",
+      "application.manage",
+      "applicationSigningKey.manage",
+      "managementApiCredential.manage",
+      "room.read",
+      "room.update",
+      "room.delete",
+      "session.read",
+      "session.disconnect",
+      "participant.read",
+      "participant.disconnect",
+      "usage.read",
+      "audit.read"
+    ],
+    "admin": [
+      "project.read",
+      "project.update",
+      "projectUser.read",
+      "projectUser.add",
+      "projectUser.remove",
+      "projectUser.changeRole",
+      "application.manage",
+      "applicationSigningKey.manage",
+      "managementApiCredential.manage",
+      "room.read",
+      "room.update",
+      "room.delete",
+      "session.read",
+      "session.disconnect",
+      "participant.read",
+      "participant.disconnect",
+      "usage.read",
+      "audit.read"
+    ],
+    "operator": [
+      "project.read",
+      "room.read",
+      "room.update",
+      "room.delete",
+      "session.read",
+      "session.disconnect",
+      "participant.read",
+      "participant.disconnect",
+      "usage.read"
+    ],
+    "auditor": [
+      "project.read",
+      "room.read",
+      "session.read",
+      "participant.read",
+      "usage.read",
+      "audit.read"
+    ]
+  },
+  "targetRequirements": {
+    "projectUser": {
+      "projectUser.add": "accountId",
+      "projectUser.remove": "projectUserId",
+      "projectUser.changeRole": "projectUserId",
+      "room.update": "roomId",
+      "room.delete": "roomId",
+      "session.disconnect": "sessionId",
+      "participant.disconnect": "participantId"
+    },
+    "credential": {
+      "room.update": "roomId",
+      "room.delete": "roomId",
+      "session.disconnect": "sessionId",
+      "participant.disconnect": "participantId"
+    }
+  },
+  "constraints": {
+    "participantSubject": {
+      "required": true,
+      "matchParticipantExternalUserId": true
+    },
+    "adminOwnerManagement": {
+      "projectUser.add": ["nextRole"],
+      "projectUser.remove": ["currentRole"],
+      "projectUser.changeRole": ["currentRole", "nextRole"]
+    },
+    "credentialProjectUserOperations": [
+      "projectUser.read",
+      "projectUser.add",
+      "projectUser.remove",
+      "projectUser.changeRole"
+    ]
+  },
+  "caseGroups": {
+    "participant": [
+      "roomCreate",
+      "roomJoinAbsent",
+      "roomJoinPresent",
+      "mediaRoomInactive",
+      "mediaRoomActive",
+      "invalidGrant",
+      "invalidOperation"
+    ],
+    "projectUser": ["validOperation", "invalidOperation"],
+    "credential": ["credential"]
+  },
+  "specRules": [
+    {
+      "id": "AUTH-PART-01",
+      "statement": "参加 JWT の subject と Participant の ExternalUser が一致しない場合は拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": ["participant.roomJoinPresent", "participant.mediaRoomActive"]
+    },
+    {
+      "id": "AUTH-PART-02",
+      "statement": "未作成 Room の作成・参加には room.create と room.join の両方を要求する。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["participant.roomCreate", "participant.roomJoinAbsent"]
+    },
+    {
+      "id": "AUTH-PART-03",
+      "statement": "Room・Session・Participant の状態と対応が一致しない場合は拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["participant.roomJoinPresent", "participant.mediaRoomActive"]
+    },
+    {
+      "id": "AUTH-PART-04",
+      "statement": "Project 停止、対象不一致、grant 欠落では拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["participant.mediaRoomInactive", "participant.invalidOperation"]
+    },
+    {
+      "id": "AUTH-PART-05",
+      "statement": "未知 grant、非 boolean の grant、既知 grant の欠落を拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": [
+        "participant.roomCreate",
+        "participant.roomJoinAbsent",
+        "participant.roomJoinPresent",
+        "participant.mediaRoomInactive",
+        "participant.mediaRoomActive",
+        "participant.invalidGrant",
+        "participant.invalidOperation"
+      ]
+    },
+    {
+      "id": "AUTH-PU-01",
+      "statement": "Owner は仕様上の全 ManagementOperation を許可される。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["projectUser.validOperation"]
+    },
+    {
+      "id": "AUTH-PU-02",
+      "statement": "Admin・Operator・Auditor は仕様で禁止された操作を許可しない。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["projectUser.validOperation"]
+    },
+    {
+      "id": "AUTH-PU-03",
+      "statement": "Admin は Owner を付与・変更・除外できない。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": ["projectUser.validOperation"]
+    },
+    {
+      "id": "AUTH-PU-04",
+      "statement": "対象 ID の欠落、ロールの欠落・不正値、変更前後のロール条件を判定する。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["projectUser.validOperation", "projectUser.invalidOperation"]
+    },
+    {
+      "id": "AUTH-PU-05",
+      "statement": "対象 ID が空文字または不正な値の場合は拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": ["projectUser.validOperation"]
+    },
+    {
+      "id": "AUTH-MC-01",
+      "statement": "Management API credential は明示 scope の範囲だけを許可する。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": ["credential.credential"]
+    },
+    {
+      "id": "AUTH-MC-02",
+      "statement": "Management API credential は ProjectUser 管理やロールを継承しない。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": ["credential.credential"]
+    },
+    {
+      "id": "AUTH-MC-03",
+      "statement": "credential の失効、期限切れ、期限値不正では拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["credential.credential"]
+    },
+    {
+      "id": "AUTH-MC-04",
+      "statement": "credential の対象 ID 欠落と scope 欠落では拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "cases": ["credential.credential"]
+    },
+    {
+      "id": "AUTH-MC-05",
+      "statement": "credential の対象 ID が空文字または不正な値の場合は拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": ["credential.credential"]
+    },
+    {
+      "id": "AUTH-MC-06",
+      "statement": "expiresAt と now は Unix epoch ミリ秒の safe integer とし、小数・非有限・範囲外を拒否する。",
+      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "cases": ["credential.credential"]
+    },
+    {
+      "id": "AUTH-VER-01",
+      "statement": "有限ケースの列挙が全ケースを含む。",
+      "verification": ["lean_proof"],
+      "cases": [
+        "participant.roomCreate",
+        "participant.roomJoinAbsent",
+        "participant.roomJoinPresent",
+        "participant.mediaRoomInactive",
+        "participant.mediaRoomActive",
+        "participant.invalidGrant",
+        "participant.invalidOperation",
+        "projectUser.validOperation",
+        "projectUser.invalidOperation",
+        "credential.credential"
+      ]
+    },
+    {
+      "id": "AUTH-VER-02",
+      "statement": "具体入力から有限ケースへの抽象化で認可判定が変わらない。",
+      "verification": ["lean_proof", "conformance"],
+      "cases": [
+        "participant.roomCreate",
+        "participant.roomJoinAbsent",
+        "participant.roomJoinPresent",
+        "participant.mediaRoomInactive",
+        "participant.mediaRoomActive",
+        "participant.invalidGrant",
+        "projectUser.validOperation",
+        "projectUser.invalidOperation",
+        "credential.credential"
+      ]
+    },
+    {
+      "id": "AUTH-VER-03",
+      "statement": "TypeScript と Lean の静的定義が仕様 JSON から生成され、手動同期がない。",
+      "verification": ["ci_script"],
+      "scripts": ["scripts/check-authorization-generated.sh"]
+    },
+    {
+      "id": "AUTH-VER-04",
+      "statement": "Lean の証明が意図しない公理に依存しない。",
+      "verification": ["ci_script"],
+      "scripts": ["scripts/check-authorization-axioms.sh"]
+    },
+    {
+      "id": "AUTH-VER-05",
+      "statement": "仕様 ID・定理・テスト・照合ケースの対応が自動生成され、参照切れがない。",
+      "verification": ["ci_script"],
+      "scripts": ["scripts/check-authorization-traceability.mjs"]
+    },
+    {
+      "id": "AUTH-OOS-01",
+      "statement": "Project に最低1人の Owner を残す状態遷移・並行更新の不変条件。",
+      "verification": ["out_of_scope"],
+      "reason": "純粋な認可関数だけでは同時更新を含めて保証できない。Management の transaction と TLA+ で扱う。",
+      "tracking": "https://github.com/tr-yasuda/webrtc/issues/85"
+    },
+    {
+      "id": "AUTH-OOS-02",
+      "statement": "HTTP、JWT の解析・署名検証、DB、管理 UI の実装検証。",
+      "verification": ["out_of_scope"],
+      "reason": "認可ポリシーの形式検証の対象外。各コンポーネントの実装検証で扱う。",
+      "tracking": "#96"
+    },
+    {
+      "id": "AUTH-OOS-03",
+      "statement": "状態遷移・並行性・失効競合のモデル検査。",
+      "verification": ["out_of_scope"],
+      "reason": "TLA+ の担当範囲。",
+      "tracking": "docs/platform/verification.md"
+    }
+  ]
+}

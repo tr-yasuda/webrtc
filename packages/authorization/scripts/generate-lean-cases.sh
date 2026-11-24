@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${AUTHORIZATION_LEAN_CASES_READY:-}" == "true" ]]; then
+  exit 0
+fi
+
 package_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$package_root"
 

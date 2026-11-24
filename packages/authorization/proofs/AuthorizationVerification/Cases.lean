@@ -150,6 +150,15 @@ def participantMediaRoomActiveCases : List ParticipantCase :=
 def participantInvalidOperationCases : List ParticipantCase :=
   [.invalidOperation]
 
+def participantInvalidGrantCases : List ParticipantCase :=
+  allParticipantOperations.flatMap fun operation =>
+  allProjectStates.flatMap fun projectState =>
+  boolValues.flatMap fun targetMatch =>
+  boolValues.flatMap fun subjectAbsent =>
+  allParticipantSubjectOptions.flatMap fun participant =>
+  allInvalidGrantKinds.map fun kind =>
+  .invalidGrant operation projectState targetMatch subjectAbsent participant kind
+
 def participantGroups : List ParticipantGroup :=
   [ { name := "roomCreate"
       axes :=
@@ -209,6 +218,17 @@ def participantGroups : List ParticipantGroup :=
         ]
       cases := participantMediaRoomActiveCases
     }
+  , { name := "invalidGrant"
+      axes :=
+        [ { name := "operation", values := allParticipantOperations.map ParticipantOperation.toString }
+        , { name := "projectState", values := allProjectStates.map ProjectState.toString }
+        , { name := "targetMatch", values := boolStrings }
+        , { name := "subjectAbsent", values := boolStrings }
+        , { name := "participant", values := allParticipantSubjectOptions.map participantSubjectOptionString }
+        , { name := "invalidGrantKind", values := allInvalidGrantKinds.map InvalidGrantKind.toString }
+        ]
+      cases := participantInvalidGrantCases
+    }
   , { name := "invalidOperation"
       axes := []
       cases := participantInvalidOperationCases
@@ -236,7 +256,7 @@ def projectUserCases : List ProjectUserCase :=
   allProjectStates.flatMap fun projectState =>
   boolValues.flatMap fun actorProjectMatch =>
   boolValues.flatMap fun targetProjectMatch =>
-  boolValues.flatMap fun targetIdPresent =>
+  allTargetIdStates.flatMap fun targetIdState =>
   allRoleValues.flatMap fun currentRole =>
   allRoleValues.map fun nextRole =>
   { actorRole := actorRole
@@ -244,7 +264,7 @@ def projectUserCases : List ProjectUserCase :=
     projectState := projectState
     actorProjectMatch := actorProjectMatch
     targetProjectMatch := targetProjectMatch
-    targetIdPresent := targetIdPresent
+    targetIdState := targetIdState
     currentRole := currentRole
     nextRole := nextRole
   }
@@ -266,7 +286,7 @@ def projectUserGroups : List ProjectUserGroup :=
         , { name := "projectState", values := allProjectStates.map ProjectState.toString }
         , { name := "actorProjectMatch", values := boolStrings }
         , { name := "targetProjectMatch", values := boolStrings }
-        , { name := "targetIdPresent", values := boolStrings }
+        , { name := "targetIdState", values := allTargetIdStates.map TargetIdState.toString }
         , { name := "currentRole", values := allRoleValues.map roleValueString }
         , { name := "nextRole", values := allRoleValues.map roleValueString }
         ]
@@ -296,34 +316,34 @@ def allScopeCases : List ScopeCase :=
 
 def credentialCases : List CredentialCase :=
   boolValues.flatMap fun revoked =>
-  allExpiryStates.flatMap fun expiry =>
+  allCredentialTimeCases.flatMap fun time =>
   boolValues.flatMap fun credentialProjectMatch =>
   boolValues.flatMap fun targetProjectMatch =>
   allProjectStates.flatMap fun projectState =>
   allScopeCases.flatMap fun scopes =>
   allOperationValues.flatMap fun operation =>
-  boolValues.map fun targetIdPresent =>
+  allTargetIdStates.map fun targetIdState =>
   { revoked := revoked
-    expiry := expiry
+    time := time
     credentialProjectMatch := credentialProjectMatch
     targetProjectMatch := targetProjectMatch
     projectState := projectState
     scopes := scopes
     operation := operation
-    targetIdPresent := targetIdPresent
+    targetIdState := targetIdState
   }
 
 def credentialGroups : List CredentialGroup :=
   [ { name := "credential"
       axes :=
         [ { name := "revoked", values := boolStrings }
-        , { name := "expiry", values := allExpiryStates.map ExpiryState.toString }
+        , { name := "time", values := allCredentialTimeCases.map CredentialTimeCase.toString }
         , { name := "credentialProjectMatch", values := boolStrings }
         , { name := "targetProjectMatch", values := boolStrings }
         , { name := "projectState", values := allProjectStates.map ProjectState.toString }
         , { name := "scopes", values := allScopeCases.map scopeCaseString }
         , { name := "operation", values := allOperationValues.map operationValueString }
-        , { name := "targetIdPresent", values := boolStrings }
+        , { name := "targetIdState", values := allTargetIdStates.map TargetIdState.toString }
         ]
       cases := credentialCases
     }
@@ -334,10 +354,11 @@ def credentialGroups : List CredentialGroup :=
 #guard participantRoomJoinPresentCases.length = 364800
 #guard participantMediaRoomInactiveCases.length = 3072
 #guard participantMediaRoomActiveCases.length = 364800
+#guard participantInvalidGrantCases.length = 640
 #guard participantInvalidOperationCases.length = 1
-#guard allParticipantCases.length = 738817
-#guard projectUserCases.length = 65664
+#guard allParticipantCases.length = 739457
+#guard projectUserCases.length = 98496
 #guard projectUserInvalidOperationCases.length = 8
-#guard credentialCases.length = 32640
+#guard credentialCases.length = 212160
 
 end AuthorizationVerification

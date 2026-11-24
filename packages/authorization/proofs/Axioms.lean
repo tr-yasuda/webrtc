@@ -4,12 +4,12 @@ open AuthorizationVerification
 
 #print axioms participant_abstraction
 #print axioms project_user_abstraction
+#print axioms credentialTimeCase_abstraction
 #print axioms credential_abstraction
 #print axioms participant_cases_complete
 #print axioms project_user_cases_complete
 #print axioms project_user_invalid_operation_cases_complete
 #print axioms credential_cases_complete
-#print axioms role_allows_matches_spec
 #print axioms owner_allows_all_operations
 #print axioms admin_does_not_allow_project_delete
 #print axioms operator_does_not_allow_project_update
@@ -22,8 +22,21 @@ open AuthorizationVerification
 #print axioms credential_cannot_manage_project_user
 #print axioms participant_subject_mismatch_denied
 #print axioms participant_project_suspended_denied
+#print axioms participant_room_create_without_join_denied
+#print axioms participant_inactive_session_denied
 #print axioms project_user_target_id_missing_denied
 #print axioms credential_revoked_denied
 #print axioms credential_expired_denied
 #print axioms credential_expiry_invalid_denied
 #print axioms credential_scope_missing_denied
+#print axioms credential_scope_allows_room_read
+#print axioms operator_denied_operations
+#print axioms auditor_denied_operations
+#print axioms admin_cannot_add_owner_for_any_current_role
+#print axioms admin_cannot_remove_owner_for_any_next_role
+#print axioms admin_cannot_change_owner_for_any_roles
+#print axioms credential_all_project_user_operations_denied
+#print axioms credential_invalid_time_denied
+#print axioms credential_target_id_empty_denied
+#print axioms project_user_target_id_empty_denied
+#print axioms participant_invalid_grant_all_kinds

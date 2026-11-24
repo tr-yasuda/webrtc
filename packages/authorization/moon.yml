@@ -8,3 +8,17 @@ tasks:
   build:
     deps:
       - 'domain:build'
+  generate-lean-cases:
+    toolchains: 'system'
+    script: 'scripts/generate-lean-cases.sh'
+    inputs:
+      - 'proofs/**/*.lean'
+      - 'proofs/lean-toolchain'
+      - 'proofs/lakefile.toml'
+      - 'proofs/lake-manifest.json'
+      - 'scripts/generate-lean-cases.sh'
+  test:
+    deps:
+      - '~:generate-lean-cases'
+    env:
+      AUTHORIZATION_LEAN_CASES_READY: 'true'

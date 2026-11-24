@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "./auth-spec.js";
 import type { ManagementOperation } from "../src/management-operation.js";
 import {
   authorizeManagementCredentialAction,
@@ -81,7 +82,7 @@ function targetFor(operation: ManagementOperation): ManagementCredentialAuthoriz
 }
 
 describe("Management API credential の認可", () => {
-  test("room.manage scope は Room の読み取りを許可する", () => {
+  test(authSpecName("AUTH-MC-01", "room.manage scope は Room の読み取りを許可する"), () => {
     const decision = authorizeManagementCredentialAction({
       credential: {
         projectId,
@@ -112,7 +113,26 @@ describe("Management API credential の認可", () => {
     });
   });
 
-  test("session.read は対象 ID を指定しない一覧取得を許可する", () => {
+  test(authSpecName("AUTH-MC-02", "credential は ProjectUser 管理を許可しない"), () => {
+    const decision = authorizeManagementCredentialAction({
+      ...baseInput,
+      credential: {
+        ...baseInput.credential,
+        scopes: ["room.manage", "session.manage", "usage.read", "audit.read"],
+      },
+      operation: "projectUser.add",
+      target: { projectId },
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: "projectUser.add",
+      target: { projectId },
+      reason: "credential-operation-not-allowed",
+    });
+  });
+
+  test(authSpecName("AUTH-MC-04", "session.read は対象 ID を指定しない一覧取得を許可する"), () => {
     const decision = authorizeManagementCredentialAction({
       ...baseInput,
       credential: {
@@ -128,6 +148,47 @@ describe("Management API credential の認可", () => {
       operation: "session.read",
       target: { projectId },
       reason: "allowed",
+    });
+  });
+
+  test(authSpecName("AUTH-MC-05", "空の Session ID は対象 ID なしとして拒否する"), () => {
+    const decision = authorizeManagementCredentialAction({
+      ...baseInput,
+      credential: {
+        ...baseInput.credential,
+        scopes: ["session.manage"],
+      },
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: "session.disconnect",
+      target: { projectId, sessionId: "" },
+      reason: "target-id-required",
+    });
+  });
+
+  test.each([
+    { name: "小数", expiresAt: 2_000.5, now: 1_000 },
+    { name: "safe integer 範囲外", expiresAt: Number.MAX_SAFE_INTEGER + 1, now: 1_000 },
+    { name: "now が小数", expiresAt: 2_000, now: 1_000.5 },
+  ])(authSpecName("AUTH-MC-06", "期限が$nameの場合は拒否する"), ({ expiresAt, now }) => {
+    const decision = authorizeManagementCredentialAction({
+      ...baseInput,
+      credential: {
+        ...baseInput.credential,
+        expiresAt,
+      },
+      now,
+    });
+
+    expect(decision).toStrictEqual({
+      allowed: false,
+      operation: baseInput.operation,
+      target: baseInput.target,
+      reason: "credential-expiry-invalid",
     });
   });
 
@@ -156,24 +217,27 @@ describe("Management API credential の認可", () => {
     name: string;
     operation: ManagementOperation;
     scope: ManagementCredentialScope;
-  }>)("$name は対象 ID がない場合は拒否する", ({ operation, scope }) => {
-    const decision = authorizeManagementCredentialAction({
-      ...baseInput,
-      credential: {
-        ...baseInput.credential,
-        scopes: [scope],
-      },
-      operation,
-      target: { projectId },
-    });
+  }>)(
+    authSpecName("AUTH-MC-04", "$name は対象 ID がない場合は拒否する"),
+    ({ operation, scope }) => {
+      const decision = authorizeManagementCredentialAction({
+        ...baseInput,
+        credential: {
+          ...baseInput.credential,
+          scopes: [scope],
+        },
+        operation,
+        target: { projectId },
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation,
-      target: { projectId },
-      reason: "target-id-required",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: { projectId },
+        reason: "target-id-required",
+      });
+    },
+  );
 
   test.each([
     {
@@ -205,24 +269,27 @@ describe("Management API credential の認可", () => {
     operation: ManagementOperation;
     scope: ManagementCredentialScope;
     target: ManagementCredentialAuthorizationTarget;
-  }>)("$name は対象 ID がある場合は許可する", ({ operation, scope, target }) => {
-    const decision = authorizeManagementCredentialAction({
-      ...baseInput,
-      credential: {
-        ...baseInput.credential,
-        scopes: [scope],
-      },
-      operation,
-      target,
-    });
+  }>)(
+    authSpecName("AUTH-MC-04", "$name は対象 ID がある場合は許可する"),
+    ({ operation, scope, target }) => {
+      const decision = authorizeManagementCredentialAction({
+        ...baseInput,
+        credential: {
+          ...baseInput.credential,
+          scopes: [scope],
+        },
+        operation,
+        target,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: true,
-      operation,
-      target,
-      reason: "allowed",
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: true,
+        operation,
+        target,
+        reason: "allowed",
+      });
+    },
+  );
 
   test.each([
     { name: "undefined", revoked: undefined },
@@ -230,7 +297,7 @@ describe("Management API credential の認可", () => {
     { name: "0", revoked: 0 },
     { name: "空文字", revoked: "" },
   ] as ReadonlyArray<{ name: string; revoked: unknown }>)(
-    "revoked が $name の場合は拒否する",
+    authSpecName("AUTH-MC-03", "revoked が $name の場合は拒否する"),
     ({ revoked }) => {
       const decision = authorizeManagementCredentialAction({
         ...baseInput,
@@ -249,7 +316,7 @@ describe("Management API credential の認可", () => {
     },
   );
 
-  test("scopes が文字列の場合は拒否する", () => {
+  test(authSpecName("AUTH-MC-01", "scopes が文字列の場合は拒否する"), () => {
     const decision = authorizeManagementCredentialAction({
       ...baseInput,
       credential: {
@@ -266,7 +333,7 @@ describe("Management API credential の認可", () => {
     });
   });
 
-  test("scopes に未知の値が含まれる場合は拒否する", () => {
+  test(authSpecName("AUTH-MC-01", "scopes に未知の値が含まれる場合は拒否する"), () => {
     const decision = authorizeManagementCredentialAction({
       ...baseInput,
       credential: {
@@ -284,7 +351,7 @@ describe("Management API credential の認可", () => {
   });
 
   test.each(["unknown.operation", "constructor"] as ManagementOperation[])(
-    "定義外の Management operation %s は拒否する",
+    authSpecName("AUTH-MC-01", "定義外の Management operation %s は拒否する"),
     (operation) => {
       const decision = authorizeManagementCredentialAction({
         ...baseInput,
@@ -301,7 +368,7 @@ describe("Management API credential の認可", () => {
   );
 
   test.each<ManagementCredentialScope>(allScopes)(
-    "%s scope の操作可否が scope マトリクスと一致する",
+    authSpecName("AUTH-MC-01", "%s scope の操作可否が scope マトリクスと一致する"),
     (scope) => {
       for (const operation of allOperations) {
         const decision = authorizeManagementCredentialAction({
@@ -416,14 +483,17 @@ describe("Management API credential の認可", () => {
     name: string;
     input: ManagementCredentialAuthorizationInput;
     reason: Exclude<ManagementCredentialAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ input, reason }) => {
-    const decision = authorizeManagementCredentialAction(input);
+  }>)(
+    authSpecName(["AUTH-MC-02", "AUTH-MC-03", "AUTH-MC-04"], "$name 場合は拒否する"),
+    ({ input, reason }) => {
+      const decision = authorizeManagementCredentialAction(input);
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation: input.operation,
-      target: input.target,
-      reason,
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation: input.operation,
+        target: input.target,
+        reason,
+      });
+    },
+  );
 });

@@ -1,20 +1,16 @@
 import type { ParticipantId, ProjectId, RoomId } from "@webrtc/domain";
 import type { AuthorizationDecision } from "./decision.js";
+import {
+  participantGrantNames,
+  participantOperationSet,
+  participantSubjectConstraints,
+  type ParticipantGrants,
+  type ParticipantOperation,
+} from "./generated/policy.js";
 import type { ProjectState } from "./project-state.js";
 
 export type { ProjectState } from "./project-state.js";
-
-const participantOperationValues = [
-  "room.create",
-  "room.join",
-  "media.publish",
-  "media.subscribe",
-  "data.send",
-] as const;
-
-export type ParticipantOperation = (typeof participantOperationValues)[number];
-
-export type ParticipantGrants = Readonly<Record<ParticipantOperation, boolean>>;
+export type { ParticipantGrants, ParticipantOperation } from "./generated/policy.js";
 
 export type RoomState = "active" | "deleting" | "deleted";
 export type SessionState = "active" | "revoked" | "ended";
@@ -40,6 +36,7 @@ export type ParticipantAuthorizationReason =
   | "room-join-required"
   | "room-not-active"
   | "grant-not-granted"
+  | "grant-input-invalid"
   | "session-required"
   | "session-not-active"
   | "session-target-mismatch"
@@ -47,9 +44,7 @@ export type ParticipantAuthorizationReason =
   | "participant-not-active"
   | "participant-target-mismatch";
 
-const participantOperationSet: ReadonlySet<ParticipantOperation> = new Set(
-  participantOperationValues,
-);
+const participantGrantNameSet = new Set<string>(participantGrantNames);
 
 function isParticipantOperation(value: unknown): value is ParticipantOperation {
   return typeof value === "string" && participantOperationSet.has(value as ParticipantOperation);
@@ -122,16 +117,25 @@ export function authorizeParticipantAction(
   ) {
     return deny(input, target, "credential-target-mismatch");
   }
-  if (!isNonEmptyString(input.credential.subject)) {
+  if (participantSubjectConstraints.required && !isNonEmptyString(input.credential.subject)) {
     return deny(input, target, "subject-required");
   }
   if (input.participant !== undefined) {
-    if (!isNonEmptyString(input.participant.externalUserId)) {
+    if (
+      participantSubjectConstraints.required &&
+      !isNonEmptyString(input.participant.externalUserId)
+    ) {
       return deny(input, target, "subject-required");
     }
-    if (input.participant.externalUserId !== input.credential.subject) {
+    if (
+      participantSubjectConstraints.matchParticipantExternalUserId &&
+      input.participant.externalUserId !== input.credential.subject
+    ) {
       return deny(input, target, "subject-mismatch");
     }
+  }
+  if (!hasValidGrants(input.credential.grants)) {
+    return deny(input, target, "grant-input-invalid");
   }
   if (input.credential.grants[input.operation] !== true) {
     return deny(input, target, "grant-not-granted");
@@ -222,6 +226,16 @@ export function authorizeParticipantAction(
       }
       return allow(input, target);
   }
+}
+
+function hasValidGrants(value: unknown): value is ParticipantGrants {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const keys = Object.keys(value);
+  if (keys.length !== participantGrantNames.length) return false;
+  if (!keys.every((key) => participantGrantNameSet.has(key))) return false;
+  return Object.values(value).every((grant) => typeof grant === "boolean");
 }
 
 function buildTarget(input: ParticipantAuthorizationInput): ParticipantAuthorizationTarget {

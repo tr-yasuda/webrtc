@@ -1,20 +1,15 @@
 import type { ParticipantId, ProjectId, RoomId } from "@webrtc/domain";
 import type { AuthorizationDecision } from "./decision.js";
+import {
+  credentialTargetFields,
+  managementCredentialScopeSet,
+  operationScopes,
+  type ManagementCredentialScope,
+} from "./generated/policy.js";
 import { isManagementOperation, type ManagementOperation } from "./management-operation.js";
 import type { ProjectState } from "./project-state.js";
 
-const managementCredentialScopeValues = [
-  "room.manage",
-  "session.manage",
-  "usage.read",
-  "audit.read",
-] as const;
-
-export type ManagementCredentialScope = (typeof managementCredentialScopeValues)[number];
-
-const managementCredentialScopeSet: ReadonlySet<ManagementCredentialScope> = new Set(
-  managementCredentialScopeValues,
-);
+export type { ManagementCredentialScope } from "./generated/policy.js";
 
 export type ManagementCredentialAuthorizationTarget =
   | {
@@ -69,26 +64,13 @@ export type ManagementCredentialAuthorizationInput = {
   readonly now: number;
 };
 
-const operationScopes: Partial<Record<ManagementOperation, readonly ManagementCredentialScope[]>> =
-  {
-    "room.read": ["room.manage"],
-    "room.update": ["room.manage"],
-    "room.delete": ["room.manage"],
-    "session.read": ["session.manage"],
-    "session.disconnect": ["session.manage"],
-    "participant.read": ["session.manage"],
-    "participant.disconnect": ["session.manage"],
-    "usage.read": ["usage.read"],
-    "audit.read": ["audit.read"],
-  };
-
 export function authorizeManagementCredentialAction(
   input: ManagementCredentialAuthorizationInput,
 ): ManagementCredentialAuthorizationDecision {
   if (input.credential.revoked !== false) {
     return deny(input, "credential-revoked");
   }
-  if (!Number.isFinite(input.credential.expiresAt) || !Number.isFinite(input.now)) {
+  if (!Number.isSafeInteger(input.credential.expiresAt) || !Number.isSafeInteger(input.now)) {
     return deny(input, "credential-expiry-invalid");
   }
   if (input.now >= input.credential.expiresAt) {
@@ -128,17 +110,10 @@ export function authorizeManagementCredentialAction(
 }
 
 function hasRequiredTargetId(input: ManagementCredentialAuthorizationInput): boolean {
-  switch (input.operation) {
-    case "room.update":
-    case "room.delete":
-      return "roomId" in input.target;
-    case "session.disconnect":
-      return "sessionId" in input.target;
-    case "participant.disconnect":
-      return "participantId" in input.target;
-    default:
-      return true;
-  }
+  const field = credentialTargetFields[input.operation];
+  if (field === undefined) return true;
+  const value = (input.target as Record<string, unknown>)[field];
+  return typeof value === "string" && value.length > 0;
 }
 
 function isManagementCredentialScope(value: unknown): value is ManagementCredentialScope {
