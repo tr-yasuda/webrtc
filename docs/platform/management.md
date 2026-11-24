@@ -4,7 +4,7 @@
 
 - Management サーバーは TypeScript で実装し、Cloud Run で配備する。
 - Signaling サーバーは TypeScript で実装し、Cloud Run で配備する。
-- TURN・SFU の公開サーバーは TypeScript host として実装する。Rust は host から呼び出すプロトコル処理・SFU 中核の Worker とし、Rust をサーバー公開プロセスとしては使用しない。
+- TURN・SFU の D-Plane は Rust の独立プロセスとして実装し、TypeScript の Node host が UDS で制御する。公開 HTTP / WebSocket API は TypeScript host が担い、TURN・SFU の公開 UDP / TCP メディアポートは D-Plane が所有する。
 - Management サーバーは Fastify を使用する。Management API は HTTPS の通常 API 要求だけを扱い、WebSocket を提供しない。
 - Management UI のログインには IDaaS の OpenID Connect を利用し、パスワード認証を自前実装しない。
 - 顧客アプリケーションの利用者認証は顧客側が行う。参加 JWT は顧客アプリサーバーが署名し、Signaling が検証する。
@@ -49,9 +49,9 @@ ProjectUser は初期提供で次の 4 ロールを持つ。
 | Schema | 正本 | 操作できるサーバー |
 |---|---|---|
 | `management` | Project, Account, ProjectUser, Application, ApplicationSigningKey, Management API credential, 管理コマンド状態, 監査ログ | Management |
-| `signaling` | Room, Member, Publication, Subscription, Session, 失効, SFU 割り当て, 入退出・kick・資源計上イベント | Signaling |
+| `signaling` | Room, Member, Publication, Subscription, Session, 失効, SFU 割り当てとその `assignmentVersion`・`ownerEpoch`, 入退出・kick・資源計上イベント | Signaling |
 
-Management は Signaling 状態を直接更新しない。Signaling も `management` schema へ接続しない。TURN と SFU は DB 接続を持たず、Signaling から受け取った検証済みの指示・権限・期限に基づいて動作する。
+Management は Signaling 状態を直接更新しない。Signaling も `management` schema へ接続しない。TURN と SFU は DB 接続を持たず、Signaling が Node host に渡した検証済みの指示・権限・期限に基づいて動作する。
 
 コスト抑制のため、初期構成では 1 database を論理分割して使う。サービス間契約は、Cloud SQL インスタンスまたは database を分離しても成立する形にする。スキーマ分離後も、Management が Signaling 状態へ直接接続・更新する構成にはしない。
 
@@ -132,6 +132,10 @@ Management から Signaling へ状態を変更させる操作には、Pub/Sub �
 読み取り専用の Room・Session・Participant・利用量照会は、サービス間認証を行った Signaling の内部照会 API を利用できる。Management はその結果をキャッシュしても、取得時刻・対象範囲・有効期限を明示し、Signaling の正本を上書きしない。
 
 TURN・SFU は DB に接続しないため、1 分ごとに集約した資源計上イベントをサービス間認証を行った Signaling の計上受付へ報告する。Signaling は報告元・対象・期間を確認した上で、`signaling` schema に集計を記録する。パケットごとに DB 書き込みを行わない。Signaling は TURN 分数・中継バイト、SFU 分数・パケット・バイト、DataChannel バイト数、Session 接続分数、publication / subscription 分数を集計する。初期提供では利用制限と課金を行わない。
+
+計上イベントを送れない場合は、欠測期間と理由を明示し、欠測を 0 として扱わない。厳密な利用量計上が必要な場合は、永続バッファの導入を別途検討する。
+
+Signaling は Room の SFU 割り当てに `assignmentVersion` と `ownerEpoch` を記録し、再起動時の照合に使う。照合が確定するまで対象の割り当てを Quarantine とし、その割り当ての既存メディアを継続しながら新規参加と Transport 作成を拒否する。同じ Room の新しい割り当ては通常どおり扱う。孤児の確定条件と再配置は [D-Plane のプロセスモデルと IPC 境界](dplane.md#signaling-再起動時の照合)に従う。
 
 ## 障害時の挙動
 

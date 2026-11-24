@@ -9,7 +9,7 @@
     "lint:fix": "oxlint --fix",
     "test": "moon run :test --query \"projectSource~packages/*\"",
     "test:integration": "pnpm --filter @webrtc/resources run test:integration",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "moon run :typecheck --query \"projectSource~packages/*\""
   },
   "devDependencies": {
     "oxfmt": "0.79.0",
