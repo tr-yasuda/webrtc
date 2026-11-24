@@ -1,4 +1,4 @@
--- @generated from docs/auth/authorization-spec/authorization-policy.json schemaVersion=1 sourceSha256=02af62d78cd8d9009949e9c3790c62c9a1aa7ee378afa1329ccbcf85f1463305; do not edit.
+-- @generated from docs/auth/authorization-spec/authorization-policy.json schemaVersion=1 sourceSha256=bbdf58cc9c16c493f9394a819e035ce20db751728f350eb0544cad94855c96df; do not edit.
 
 namespace AuthorizationVerification
 

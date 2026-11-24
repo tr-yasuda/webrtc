@@ -310,31 +310,31 @@
     {
       "id": "AUTH-PART-01",
       "statement": "参加 JWT の subject と Participant の ExternalUser が一致しない場合は拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": ["participant.roomJoinPresent", "participant.mediaRoomActive"]
     },
     {
       "id": "AUTH-PART-02",
       "statement": "未作成 Room の作成・参加には room.create と room.join の両方を要求する。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["participant.roomCreate", "participant.roomJoinAbsent"]
     },
     {
       "id": "AUTH-PART-03",
       "statement": "Room・Session・Participant の状態と対応が一致しない場合は拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["participant.roomJoinPresent", "participant.mediaRoomActive"]
     },
     {
       "id": "AUTH-PART-04",
       "statement": "Project 停止、対象不一致、grant 欠落では拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["participant.mediaRoomInactive", "participant.invalidOperation"]
     },
     {
       "id": "AUTH-PART-05",
       "statement": "未知 grant、非 boolean の grant、既知 grant の欠落を拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": [
         "participant.roomCreate",
         "participant.roomJoinAbsent",
@@ -348,67 +348,67 @@
     {
       "id": "AUTH-PU-01",
       "statement": "Owner は仕様上の全 ManagementOperation を許可される。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["projectUser.validOperation"]
     },
     {
       "id": "AUTH-PU-02",
       "statement": "Admin・Operator・Auditor は仕様で禁止された操作を許可しない。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["projectUser.validOperation"]
     },
     {
       "id": "AUTH-PU-03",
       "statement": "Admin は Owner を付与・変更・除外できない。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": ["projectUser.validOperation"]
     },
     {
       "id": "AUTH-PU-04",
       "statement": "対象 ID の欠落、ロールの欠落・不正値、変更前後のロール条件を判定する。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["projectUser.validOperation", "projectUser.invalidOperation"]
     },
     {
       "id": "AUTH-PU-05",
       "statement": "対象 ID が空文字または不正な値の場合は拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": ["projectUser.validOperation"]
     },
     {
       "id": "AUTH-MC-01",
       "statement": "Management API credential は明示 scope の範囲だけを許可する。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": ["credential.credential"]
     },
     {
       "id": "AUTH-MC-02",
       "statement": "Management API credential は ProjectUser 管理やロールを継承しない。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": ["credential.credential"]
     },
     {
       "id": "AUTH-MC-03",
       "statement": "credential の失効、期限切れ、期限値不正では拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["credential.credential"]
     },
     {
       "id": "AUTH-MC-04",
       "statement": "credential の対象 ID 欠落と scope 欠落では拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test"],
       "cases": ["credential.credential"]
     },
     {
       "id": "AUTH-MC-05",
       "statement": "credential の対象 ID が空文字または不正な値の場合は拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": ["credential.credential"]
     },
     {
       "id": "AUTH-MC-06",
       "statement": "expiresAt と now は Unix epoch ミリ秒の safe integer とし、小数・非有限・範囲外を拒否する。",
-      "verification": ["lean_proof", "conformance", "typescript_test", "mutation"],
+      "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": ["credential.credential"]
     },
     {
