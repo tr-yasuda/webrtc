@@ -314,6 +314,12 @@ Management UI の OpenID Connect では、標準のプロトコル処理に既�
 セキュリティ修正を追跡し、更新時は影響する検証条件を再確認する。
 実装と検証は、[実装・検証の共通方針](../platform/verification.md#実装検証の共通方針)に従う。
 
+### 形式検証
+
+ProjectUser のロール、Management API credential の scope、参加 JWT の grants による認可判断は、[認可ポリシーの形式検証](authorization-verification.md)に従って Lean 4 のモデルで証明する。Lean モデルと TypeScript 実装の対応は、有限ケースの全件照合で確認する。
+
+証明が保証するのは Lean モデルの性質であり、HTTP、JWT 署名検証、DB、管理 UI の実装そのものではない。仕様 ID と定理・テストの対応は CI で欠落を検査するが、意味的な妥当性は人間がレビューする。
+
 ## セキュリティ
 
 認証、権限付与、資格情報の発行・更新・失効、管理操作、状態取得、通知購読に、それぞれ必要な認証・認可を適用する。

@@ -1,0 +1,266 @@
+{
+  "specIds": {
+    "AUTH-PART-01": {
+      "description": "参加 JWT の subject と Participant の ExternalUser が一致しない場合は拒否する。",
+      "theorems": ["participant_abstraction", "participant_subject_mismatch_denied"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "media.publish の Participant が JWT subject と一致しない"
+        },
+        {
+          "file": "packages/authorization/test/lean-conformance.test.ts",
+          "name": "参加 JWT の全ケースで許可・拒否と理由が一致する"
+        }
+      ],
+      "cases": ["participant.roomJoinPresent", "participant.mediaRoomActive"]
+    },
+    "AUTH-PART-02": {
+      "description": "未作成 Room の作成・参加には room.create と room.join の両方を要求する。",
+      "theorems": ["participant_abstraction", "participant_cases_complete"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "room.create は room.join を自動許可しない"
+        },
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "未作成 Room への参加は room.create と room.join の両方を必要とする"
+        }
+      ],
+      "cases": ["participant.roomCreate", "participant.roomJoinAbsent"]
+    },
+    "AUTH-PART-03": {
+      "description": "Room・Session・Participant の状態と対応が一致しない場合は拒否する。",
+      "theorems": ["participant_abstraction", "participant_cases_complete"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "Room が削除中である"
+        },
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "Session の Participant が一致しない"
+        },
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "Participant の Room が一致しない"
+        }
+      ],
+      "cases": ["participant.roomJoinPresent", "participant.mediaRoomActive"]
+    },
+    "AUTH-PART-04": {
+      "description": "Project 停止、対象不一致、grant 欠落では拒否する。",
+      "theorems": ["participant_project_suspended_denied", "participant_abstraction"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "Project が停止している"
+        },
+        {
+          "file": "packages/authorization/test/participant.test.ts",
+          "name": "%s の grant がない場合は拒否する"
+        }
+      ],
+      "cases": ["participant.mediaRoomInactive", "participant.invalidOperation"]
+    },
+    "AUTH-PU-01": {
+      "description": "Owner は仕様上の全 ManagementOperation を許可される。",
+      "theorems": ["role_allows_matches_spec", "owner_allows_all_operations"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "Owner は Project を削除できる"
+        },
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "%s ロールの操作可否が権限マトリクスと一致する"
+        }
+      ],
+      "cases": ["projectUser.validOperation"]
+    },
+    "AUTH-PU-02": {
+      "description": "Admin・Operator・Auditor は仕様で禁止された操作を許可しない。",
+      "theorems": [
+        "admin_does_not_allow_project_delete",
+        "operator_does_not_allow_project_update",
+        "operator_does_not_allow_project_user_add",
+        "auditor_does_not_allow_project_update",
+        "auditor_does_not_allow_session_disconnect"
+      ],
+      "tests": [
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "ロールに許可されていない操作である"
+        }
+      ],
+      "cases": ["projectUser.validOperation"]
+    },
+    "AUTH-PU-03": {
+      "description": "Admin は Owner を付与・変更・除外できない。",
+      "theorems": [
+        "admin_cannot_add_owner",
+        "admin_cannot_remove_owner",
+        "admin_cannot_change_owner"
+      ],
+      "tests": [
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "Admin は Owner を新たに付与できない"
+        },
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "Admin は Owner のロールを変更できない"
+        },
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "Admin は Owner を除外できない"
+        }
+      ],
+      "cases": ["projectUser.validOperation"]
+    },
+    "AUTH-PU-04": {
+      "description": "対象 ID の欠落、ロールの欠落・不正値、変更前後のロール条件を判定する。",
+      "theorems": ["project_user_target_id_missing_denied", "project_user_cases_complete"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "ProjectUser の付与に付与後ロールがない"
+        },
+        {
+          "file": "packages/authorization/test/lean-conformance.test.ts",
+          "name": "ProjectUser の全ケースで許可・拒否と理由が一致する"
+        }
+      ],
+      "cases": ["projectUser.validOperation", "projectUser.invalidOperation"]
+    },
+    "AUTH-MC-01": {
+      "description": "Management API credential は明示 scope の範囲だけを許可する。",
+      "theorems": ["credential_abstraction", "credential_cases_complete"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/management-credential.test.ts",
+          "name": "%s scope の操作可否が scope マトリクスと一致する"
+        },
+        {
+          "file": "packages/authorization/test/lean-conformance.test.ts",
+          "name": "Management API credential の全ケースで許可・拒否と理由が一致する"
+        }
+      ],
+      "cases": ["credential.credential"]
+    },
+    "AUTH-MC-02": {
+      "description": "Management API credential は ProjectUser 管理やロールを継承しない。",
+      "theorems": ["credential_cannot_manage_project_user", "credential_abstraction"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/management-credential.test.ts",
+          "name": "ProjectUser ロールでしか許可されない操作である"
+        }
+      ],
+      "cases": ["credential.credential"]
+    },
+    "AUTH-MC-03": {
+      "description": "credential の失効、期限切れ、期限値不正では拒否する。",
+      "theorems": [
+        "credential_revoked_denied",
+        "credential_expired_denied",
+        "credential_expiry_invalid_denied"
+      ],
+      "tests": [
+        {
+          "file": "packages/authorization/test/management-credential.test.ts",
+          "name": "credential が失効している"
+        },
+        {
+          "file": "packages/authorization/test/management-credential.test.ts",
+          "name": "credential の期限に達している"
+        },
+        {
+          "file": "packages/authorization/test/management-credential.test.ts",
+          "name": "credential の期限が数値として扱えない"
+        }
+      ],
+      "cases": ["credential.credential"]
+    },
+    "AUTH-MC-04": {
+      "description": "credential の対象 ID 欠落と scope 欠落では拒否する。",
+      "theorems": ["credential_scope_missing_denied", "credential_abstraction"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/management-credential.test.ts",
+          "name": "scope がない"
+        },
+        {
+          "file": "packages/authorization/test/management-credential.test.ts",
+          "name": "$name は対象 ID がない場合は拒否する"
+        }
+      ],
+      "cases": ["credential.credential"]
+    },
+    "AUTH-VER-01": {
+      "description": "有限ケースの列挙が全ケースを含む。",
+      "theorems": [
+        "participant_cases_complete",
+        "project_user_cases_complete",
+        "project_user_invalid_operation_cases_complete",
+        "credential_cases_complete"
+      ],
+      "tests": [
+        {
+          "file": "packages/authorization/test/lean-conformance.test.ts",
+          "name": "Lean 認可モデルとの全件照合"
+        }
+      ],
+      "cases": [
+        "participant.roomCreate",
+        "participant.roomJoinAbsent",
+        "participant.roomJoinPresent",
+        "participant.mediaRoomInactive",
+        "participant.mediaRoomActive",
+        "participant.invalidOperation",
+        "projectUser.validOperation",
+        "projectUser.invalidOperation",
+        "credential.credential"
+      ]
+    },
+    "AUTH-VER-02": {
+      "description": "具体入力から有限ケースへの抽象化で認可判定が変わらない。",
+      "theorems": ["participant_abstraction", "project_user_abstraction", "credential_abstraction"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/lean-conformance.test.ts",
+          "name": "Lean 認可モデルとの全件照合"
+        }
+      ],
+      "cases": [
+        "participant.roomCreate",
+        "participant.roomJoinAbsent",
+        "participant.roomJoinPresent",
+        "participant.mediaRoomInactive",
+        "participant.mediaRoomActive",
+        "projectUser.validOperation",
+        "projectUser.invalidOperation",
+        "credential.credential"
+      ]
+    },
+    "AUTH-VER-03": {
+      "description": "Lean のロール許可表が仕様のロール許可表と一致する。",
+      "theorems": ["role_allows_matches_spec"],
+      "tests": [
+        {
+          "file": "packages/authorization/test/project-user.test.ts",
+          "name": "%s ロールの操作可否が権限マトリクスと一致する"
+        }
+      ],
+      "cases": ["projectUser.validOperation"]
+    },
+    "AUTH-VER-04": {
+      "description": "Lean の証明が意図しない公理に依存しない。",
+      "theorems": ["participant_abstraction"],
+      "tests": [],
+      "cases": [],
+      "scripts": ["scripts/check-authorization-axioms.sh"]
+    }
+  }
+}

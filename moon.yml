@@ -19,14 +19,20 @@ tasks:
 
   check-proofs:
     toolchains: 'system'
-    script: >-
-      elan run --install "$(cat crates/stun/proofs/lean-toolchain)"
-      lake -d crates/stun/proofs build
+    script: |
+      elan run --install "$(cat crates/stun/proofs/lean-toolchain)" lake -d crates/stun/proofs build
+      elan run --install "$(cat packages/authorization/proofs/lean-toolchain)" lake -d packages/authorization/proofs build
+      scripts/check-authorization-axioms.sh
     inputs:
       - 'crates/stun/proofs/**/*.lean'
       - 'crates/stun/proofs/lean-toolchain'
       - 'crates/stun/proofs/lakefile.toml'
       - 'crates/stun/proofs/lake-manifest.json'
+      - 'packages/authorization/proofs/**/*.lean'
+      - 'packages/authorization/proofs/lean-toolchain'
+      - 'packages/authorization/proofs/lakefile.toml'
+      - 'packages/authorization/proofs/lake-manifest.json'
+      - 'scripts/check-authorization-axioms.sh'
 
   setup-tlc:
     toolchains: 'system'

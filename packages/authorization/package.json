@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "pretest": "scripts/generate-lean-cases.sh",
     "test": "vitest run",
     "typecheck": "tsc"
   },

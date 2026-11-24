@@ -94,7 +94,7 @@ jobs:
       - name: Test Rust
         run: moon run rust:test
 
-      - name: Check STUN proofs with Lean
+      - name: Check proofs with Lean
         run: moon run :check-proofs
 
       - name: Model-check Browser SDK notifications

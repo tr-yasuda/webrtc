@@ -1,0 +1,11 @@
+name = "AuthorizationVerification"
+defaultTargets = ["AuthorizationVerification"]
+moreLeanArgs = ["-DwarningAsError=true"]
+
+[[lean_lib]]
+name = "AuthorizationVerification"
+globs = ["AuthorizationVerification.*"]
+
+[[lean_exe]]
+name = "authorizationCases"
+root = "AuthorizationVerification.CasesMain"

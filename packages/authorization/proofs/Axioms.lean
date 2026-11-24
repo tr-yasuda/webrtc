@@ -1,0 +1,29 @@
+import AuthorizationVerification.Properties
+
+open AuthorizationVerification
+
+#print axioms participant_abstraction
+#print axioms project_user_abstraction
+#print axioms credential_abstraction
+#print axioms participant_cases_complete
+#print axioms project_user_cases_complete
+#print axioms project_user_invalid_operation_cases_complete
+#print axioms credential_cases_complete
+#print axioms role_allows_matches_spec
+#print axioms owner_allows_all_operations
+#print axioms admin_does_not_allow_project_delete
+#print axioms operator_does_not_allow_project_update
+#print axioms operator_does_not_allow_project_user_add
+#print axioms auditor_does_not_allow_project_update
+#print axioms auditor_does_not_allow_session_disconnect
+#print axioms admin_cannot_add_owner
+#print axioms admin_cannot_remove_owner
+#print axioms admin_cannot_change_owner
+#print axioms credential_cannot_manage_project_user
+#print axioms participant_subject_mismatch_denied
+#print axioms participant_project_suspended_denied
+#print axioms project_user_target_id_missing_denied
+#print axioms credential_revoked_denied
+#print axioms credential_expired_denied
+#print axioms credential_expiry_invalid_denied
+#print axioms credential_scope_missing_denied

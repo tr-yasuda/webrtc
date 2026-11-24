@@ -10,7 +10,7 @@
 |---|---|
 | 共通仕様 | [目的・提供範囲・全体構成](platform/overview.md)<br>[D-Plane のプロセスモデルと IPC 境界](platform/dplane.md)<br>[Management サーバー・管理 API](platform/management.md)<br>[ルームと参加端末のライフサイクル](platform/rooms.md)<br>[共通ドメイン型と ID 契約](platform/domain.md)<br>[共通の資源管理](platform/resources.md)<br>[共通のセキュリティ条件](platform/security.md)<br>[実装・検証方針と性能評価](platform/verification.md) |
 | 依存関係・CI・配備 | [サプライチェーン対策](platform/supply-chain.md) |
-| 認証・認可・資格情報 | [外部認証との連携・認可・権限の失効](auth/authorization.md)<br>[資格情報の発行・検証・更新・失効](auth/credentials.md)<br>[内部サービスの認証と権限の伝達](auth/service-auth.md) |
+| 認証・認可・資格情報 | [外部認証との連携・認可・権限の失効](auth/authorization.md)<br>[認可ポリシーの形式検証](auth/authorization-verification.md)<br>[資格情報の発行・検証・更新・失効](auth/credentials.md)<br>[内部サービスの認証と権限の伝達](auth/service-auth.md) |
 | STUN | [共用する STUN メッセージ処理](stun/messages.md)<br>[STUN Binding サービス](stun/binding.md) |
 | TURN | [TURN Allocation の取得・維持・解放](turn/allocation.md)<br>[TURN の中継状態とデータ転送](turn/relay.md)<br>[TURN の中継先の許可](turn/destinations.md) |
 | DTLS | [DTLS Association の確立・維持](dtls/association.md) |
