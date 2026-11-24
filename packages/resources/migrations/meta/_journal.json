@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795445522259,
+      "tag": "0000_opposite_orphan",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795448488131,
+      "tag": "0001_purple_roland_deschain",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795449886337,
+      "tag": "0002_mute_warbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795488659754,
+      "tag": "0003_orange_nebula",
+      "breakpoints": true
+    }
+  ]
+}
