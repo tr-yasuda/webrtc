@@ -15,16 +15,26 @@ export type ManagementCredentialCaseBase = {
   readonly scope: ManagementCredentialScope;
 };
 
+export type ManagementCredentialExpiry = {
+  readonly now: number;
+  readonly expiresAt: number;
+};
+
+const defaultExpiry: ManagementCredentialExpiry = {
+  now: 1_000,
+  expiresAt: 2_000,
+};
+
 export function managementCredentialBaselineCaseArbitrary(): fc.Arbitrary<ManagementCredentialCaseBase> {
   return fc
-    .tuple(fc.constantFrom(...allCredentialOperations), idPoolArbitrary())
-    .chain(([operation, ids]) => {
+    .tuple(fc.constantFrom(...allCredentialOperations), idPoolArbitrary(), expiryArbitrary())
+    .chain(([operation, ids, expiry]) => {
       const requiredScopes = credentialRequiredScopesByOperation[operation];
       if (requiredScopes === undefined || requiredScopes.length === 0) {
         throw new Error(`credential operation ${operation} に scope がありません`);
       }
       return fc.constantFrom(...requiredScopes).map((scope) => ({
-        input: managementCredentialBaseline(operation, scope, ids),
+        input: managementCredentialBaseline(operation, scope, ids, expiry),
         ids,
         operation,
         scope,
@@ -36,19 +46,29 @@ export function managementCredentialBaseline(
   operation: ManagementOperation,
   scope: ManagementCredentialScope,
   ids: IdPool,
+  expiry: ManagementCredentialExpiry = defaultExpiry,
 ): ManagementCredentialAuthorizationInput {
   return {
     credential: {
       projectId: ids.projectId,
       scopes: [scope],
       revoked: false,
-      expiresAt: 2_000,
+      expiresAt: expiry.expiresAt,
     },
     project: { id: ids.projectId, state: "active" },
     operation,
     target: managementCredentialTargetFor(operation, ids),
-    now: 1_000,
+    now: expiry.now,
   };
+}
+
+function expiryArbitrary(): fc.Arbitrary<ManagementCredentialExpiry> {
+  return fc.integer({ min: 2, max: 10_000 }).chain((expiresAt) =>
+    fc.oneof(
+      fc.constant({ now: expiresAt - 1, expiresAt }),
+      fc.integer({ min: 0, max: expiresAt - 1 }).map((now) => ({ now, expiresAt })),
+    ),
+  );
 }
 
 function managementCredentialTargetFor(

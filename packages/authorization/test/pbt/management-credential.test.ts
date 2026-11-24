@@ -53,6 +53,21 @@ describe("Management API credential の Property-based Testing", () => {
     },
   );
 
+  baseTest("期限直前の now は許可される", () => {
+    const input = managementCredentialBaseline("room.read", "room.manage", fixedIdPool, {
+      now: 1_999,
+      expiresAt: 2_000,
+    });
+
+    expect(managementCredentialViolations(input).size).toBe(0);
+    expect(authorizeManagementCredentialAction(input)).toStrictEqual({
+      allowed: true,
+      operation: "room.read",
+      target: input.target,
+      reason: "allowed",
+    });
+  });
+
   baseTest.each(managementCredentialMutations)(
     "単一故障 $id は $reason で拒否される",
     (mutation) => {

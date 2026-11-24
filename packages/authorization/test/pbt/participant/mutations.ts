@@ -353,6 +353,53 @@ export const participantMutations: readonly ParticipantMutation[] = [
     { operation: "room.join", variant: "absent-room" },
   ),
   mutation(
+    "room-join-absent-with-session",
+    "room-join-absent-session",
+    "session-target-mismatch",
+    (base) => {
+      if (base.operation !== "room.join" || base.input.room.state !== "absent") {
+        return undefined;
+      }
+      return {
+        ...base,
+        input: {
+          ...base.input,
+          session: {
+            id: base.ids.sessionId,
+            projectId: base.ids.projectId,
+            roomId: base.ids.roomId,
+            participantId: base.ids.participantId,
+            state: "active",
+          },
+        },
+      };
+    },
+    { operation: "room.join", variant: "absent-room" },
+  ),
+  mutation(
+    "room-join-absent-with-participant",
+    "room-join-absent-participant",
+    "participant-target-mismatch",
+    (base) => {
+      if (base.operation !== "room.join" || base.input.room.state !== "absent") {
+        return undefined;
+      }
+      return {
+        ...base,
+        input: {
+          ...base.input,
+          participant: {
+            id: base.ids.participantId,
+            roomId: base.ids.roomId,
+            externalUserId: base.input.credential.subject,
+            state: "active",
+          },
+        },
+      };
+    },
+    { operation: "room.join", variant: "absent-room" },
+  ),
+  mutation(
     "room-join-session-only",
     "room-join-rule",
     "participant-required",

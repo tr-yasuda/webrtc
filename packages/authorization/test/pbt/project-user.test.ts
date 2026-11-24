@@ -42,6 +42,57 @@ const baselineCases = allManagementOperations.flatMap((operation) =>
     .map((role) => ({ operation, role })),
 );
 
+const validTargetRoleCases = [
+  ...allProjectUserRoles.map((nextRole) => ({
+    label: `projectUser.add / owner / ${nextRole}`,
+    operation: "projectUser.add" as const,
+    role: "owner" as const,
+    targetRoles: { nextRole },
+  })),
+  ...allProjectUserRoles
+    .filter((role) => role !== "owner")
+    .map((nextRole) => ({
+      label: `projectUser.add / admin / ${nextRole}`,
+      operation: "projectUser.add" as const,
+      role: "admin" as const,
+      targetRoles: { nextRole },
+    })),
+  ...allProjectUserRoles.map((currentRole) => ({
+    label: `projectUser.remove / owner / ${currentRole}`,
+    operation: "projectUser.remove" as const,
+    role: "owner" as const,
+    targetRoles: { currentRole },
+  })),
+  ...allProjectUserRoles
+    .filter((role) => role !== "owner")
+    .map((currentRole) => ({
+      label: `projectUser.remove / admin / ${currentRole}`,
+      operation: "projectUser.remove" as const,
+      role: "admin" as const,
+      targetRoles: { currentRole },
+    })),
+  ...allProjectUserRoles.flatMap((currentRole) =>
+    allProjectUserRoles.map((nextRole) => ({
+      label: `projectUser.changeRole / owner / ${currentRole} -> ${nextRole}`,
+      operation: "projectUser.changeRole" as const,
+      role: "owner" as const,
+      targetRoles: { currentRole, nextRole },
+    })),
+  ),
+  ...allProjectUserRoles
+    .filter((role) => role !== "owner")
+    .flatMap((currentRole) =>
+      allProjectUserRoles
+        .filter((role) => role !== "owner")
+        .map((nextRole) => ({
+          label: `projectUser.changeRole / admin / ${currentRole} -> ${nextRole}`,
+          operation: "projectUser.changeRole" as const,
+          role: "admin" as const,
+          targetRoles: { currentRole, nextRole },
+        })),
+    ),
+];
+
 describe("ProjectUser ロールの Property-based Testing", () => {
   baseTest.each(baselineCases)(
     "基準シナリオ $operation / $role は許可される",
@@ -57,6 +108,18 @@ describe("ProjectUser ロールの Property-based Testing", () => {
       });
     },
   );
+
+  baseTest.each(validTargetRoleCases)("$label は許可される", ({ operation, role, targetRoles }) => {
+    const input = projectUserBaseline(operation, role, fixedIdPool, targetRoles);
+
+    expect(projectUserViolations(input).size).toBe(0);
+    expect(authorizeProjectUserAction(input)).toStrictEqual({
+      allowed: true,
+      operation,
+      target: input.target,
+      reason: "allowed",
+    });
+  });
 
   baseTest.each(projectUserMutations)("単一故障 $id は $reason で拒否される", (mutation) => {
     const base = {

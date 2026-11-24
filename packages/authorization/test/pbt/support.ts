@@ -48,6 +48,7 @@ export type PbtParameters = {
   readonly numRuns: number;
   readonly seed?: number;
   readonly path?: string;
+  readonly plugins: fc.UniversalPlugin[];
 };
 
 export const fixedIdPool: IdPool = {
@@ -76,6 +77,7 @@ export function pbtParameters(): PbtParameters {
     numRuns,
     ...(seed === undefined ? {} : { seed }),
     ...(path === undefined ? {} : { path }),
+    plugins: [fc.interruptAfterTimeLimit(pbtTestTimeout(), { failOnInterrupt: true })],
   };
 }
 
