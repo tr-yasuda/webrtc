@@ -1,4 +1,15 @@
-import type { AccountId, ParticipantId, ProjectId, ProjectUserId, RoomId } from "@webrtc/domain";
+import {
+  parseAccountId,
+  parseParticipantId,
+  parseProjectId,
+  parseProjectUserId,
+  parseRoomId,
+  type AccountId,
+  type ParticipantId,
+  type ProjectId,
+  type ProjectUserId,
+  type RoomId,
+} from "@webrtc/domain";
 import type { AuthorizationDecision } from "../decision.js";
 import {
   isManagementOperation,
@@ -9,7 +20,15 @@ import {
   type ProjectUserRole,
   type ProjectUserAuthorizationReason,
 } from "./identifiers.js";
-import { invalid, isRecord, isString, valid, type ValidationResult } from "./validation.js";
+import {
+  invalid,
+  isRecord,
+  isString,
+  parseDomainIdValue,
+  parseOptionalDomainIdValue,
+  valid,
+  type ValidationResult,
+} from "./validation.js";
 
 export type { ManagementOperation, ProjectState, ProjectUserRole, ProjectUserAuthorizationReason };
 
@@ -55,15 +74,23 @@ export function validateProjectUserAuthorizationInput(
   if (!isManagementOperation(raw.operation)) {
     return invalid("unsupported-operation");
   }
-  if (!isRecord(raw.actor) || !isString(raw.actor.projectId)) {
+  if (!isRecord(raw.actor)) {
     return invalid("input-invalid");
+  }
+  const actorProjectId = parseDomainIdValue(raw.actor.projectId, parseProjectId);
+  if (!actorProjectId.ok) {
+    return actorProjectId;
   }
   const actorRole = validateActorRole(raw.actor.role);
   if (!actorRole.ok) {
     return actorRole;
   }
-  if (!isRecord(raw.project) || !isString(raw.project.id) || !isProjectState(raw.project.state)) {
+  if (!isRecord(raw.project) || !isProjectState(raw.project.state)) {
     return invalid("input-invalid");
+  }
+  const projectId = parseDomainIdValue(raw.project.id, parseProjectId);
+  if (!projectId.ok) {
+    return projectId;
   }
   const target = validateProjectUserTarget(raw.operation, raw.target);
   if (!target.ok) {
@@ -72,11 +99,11 @@ export function validateProjectUserAuthorizationInput(
 
   return valid({
     actor: {
-      projectId: raw.actor.projectId as ProjectId,
+      projectId: actorProjectId.value,
       role: actorRole.value,
     },
     project: {
-      id: raw.project.id as ProjectId,
+      id: projectId.value,
       state: raw.project.state,
     },
     operation: raw.operation,
@@ -117,7 +144,7 @@ function validateProjectUserTarget(
   operation: ManagementOperation,
   raw: unknown,
 ): ValidationResult<ProjectUserAuthorizationTarget> {
-  if (!isRecord(raw) || !isString(raw.projectId)) {
+  if (!isRecord(raw)) {
     return invalid("input-invalid");
   }
   const allowedKeys = allowedTargetKeys(operation);
@@ -127,18 +154,6 @@ function validateProjectUserTarget(
     }
   }
 
-  for (const key of [
-    "accountId",
-    "projectUserId",
-    "roomId",
-    "sessionId",
-    "participantId",
-    "resourceId",
-  ] as const) {
-    if (raw[key] !== undefined && !isString(raw[key])) {
-      return invalid("input-invalid");
-    }
-  }
   const currentRole = validateOptionalRole(raw.currentRole);
   if (!currentRole.ok) {
     return currentRole;
@@ -147,18 +162,40 @@ function validateProjectUserTarget(
   if (!nextRole.ok) {
     return nextRole;
   }
+  const projectId = parseDomainIdValue(raw.projectId, parseProjectId);
+  if (!projectId.ok) {
+    return projectId;
+  }
+  const accountId = parseOptionalDomainIdValue(raw.accountId, parseAccountId);
+  if (!accountId.ok) {
+    return accountId;
+  }
+  const projectUserId = parseOptionalDomainIdValue(raw.projectUserId, parseProjectUserId);
+  if (!projectUserId.ok) {
+    return projectUserId;
+  }
+  const roomId = parseOptionalDomainIdValue(raw.roomId, parseRoomId);
+  if (!roomId.ok) {
+    return roomId;
+  }
+  const participantId = parseOptionalDomainIdValue(raw.participantId, parseParticipantId);
+  if (!participantId.ok) {
+    return participantId;
+  }
+  if (
+    (raw.sessionId !== undefined && !isString(raw.sessionId)) ||
+    (raw.resourceId !== undefined && !isString(raw.resourceId))
+  ) {
+    return invalid("input-invalid");
+  }
 
   return valid({
-    projectId: raw.projectId as ProjectId,
-    ...(raw.accountId === undefined ? {} : { accountId: raw.accountId as AccountId }),
-    ...(raw.projectUserId === undefined
-      ? {}
-      : { projectUserId: raw.projectUserId as ProjectUserId }),
-    ...(raw.roomId === undefined ? {} : { roomId: raw.roomId as RoomId }),
+    projectId: projectId.value,
+    ...(accountId.value === undefined ? {} : { accountId: accountId.value }),
+    ...(projectUserId.value === undefined ? {} : { projectUserId: projectUserId.value }),
+    ...(roomId.value === undefined ? {} : { roomId: roomId.value }),
     ...(raw.sessionId === undefined ? {} : { sessionId: raw.sessionId as string }),
-    ...(raw.participantId === undefined
-      ? {}
-      : { participantId: raw.participantId as ParticipantId }),
+    ...(participantId.value === undefined ? {} : { participantId: participantId.value }),
     ...(raw.resourceId === undefined ? {} : { resourceId: raw.resourceId as string }),
     ...(currentRole.value === undefined ? {} : { currentRole: currentRole.value }),
     ...(nextRole.value === undefined ? {} : { nextRole: nextRole.value }),

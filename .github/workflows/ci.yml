@@ -79,6 +79,9 @@ jobs:
       - name: Type-check, build, and test TypeScript
         run: pnpm test
 
+      - name: Check authorization coverage
+        run: pnpm --filter @webrtc/authorization test:coverage
+
       - name: Run PostgreSQL integration tests
         run: pnpm test:integration
 

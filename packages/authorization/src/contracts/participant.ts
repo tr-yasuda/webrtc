@@ -1,4 +1,11 @@
-import type { ParticipantId, ProjectId, RoomId } from "@webrtc/domain";
+import {
+  parseParticipantId,
+  parseProjectId,
+  parseRoomId,
+  type ParticipantId,
+  type ProjectId,
+  type RoomId,
+} from "@webrtc/domain";
 import type { AuthorizationDecision } from "../decision.js";
 import {
   isParticipantOperation,
@@ -18,6 +25,7 @@ import {
   isBoolean,
   isRecord,
   isString,
+  parseDomainIdValue,
   valid,
   type ValidationResult,
 } from "./validation.js";
@@ -100,19 +108,23 @@ export function validateParticipantAuthorizationInput(
   if (!isRecord(raw.credential)) {
     return invalid("input-invalid");
   }
-  if (
-    !isString(raw.credential.projectId) ||
-    !isString(raw.credential.roomName) ||
-    !isString(raw.credential.subject)
-  ) {
+  const credentialProjectId = parseDomainIdValue(raw.credential.projectId, parseProjectId);
+  if (!credentialProjectId.ok) {
+    return credentialProjectId;
+  }
+  if (!isString(raw.credential.roomName) || !isString(raw.credential.subject)) {
     return invalid("input-invalid");
   }
   const grants = validateParticipantGrants(raw.credential.grants);
   if (!grants.ok) {
     return grants;
   }
-  if (!isRecord(raw.project) || !isString(raw.project.id) || !isProjectState(raw.project.state)) {
+  if (!isRecord(raw.project) || !isProjectState(raw.project.state)) {
     return invalid("input-invalid");
+  }
+  const projectId = parseDomainIdValue(raw.project.id, parseProjectId);
+  if (!projectId.ok) {
+    return projectId;
   }
   const room = validateParticipantRoom(raw.room);
   if (!room.ok) {
@@ -130,13 +142,13 @@ export function validateParticipantAuthorizationInput(
   return valid({
     operation: raw.operation,
     credential: {
-      projectId: raw.credential.projectId as ProjectId,
+      projectId: credentialProjectId.value,
       roomName: raw.credential.roomName,
       subject: raw.credential.subject,
       grants: grants.value,
     },
     project: {
-      id: raw.project.id as ProjectId,
+      id: projectId.value,
       state: raw.project.state,
     },
     room: room.value,
@@ -170,27 +182,34 @@ function validateParticipantRoom(
     return invalid("input-invalid");
   }
   if (raw.state === "absent") {
-    if (!isString(raw.projectId) || !isString(raw.name)) {
+    const projectId = parseDomainIdValue(raw.projectId, parseProjectId);
+    if (!projectId.ok) {
+      return projectId;
+    }
+    if (!isString(raw.name)) {
       return invalid("input-invalid");
     }
     return valid({
       state: "absent",
-      projectId: raw.projectId as ProjectId,
+      projectId: projectId.value,
       name: raw.name,
     });
   }
-  if (
-    !isRoomState(raw.state) ||
-    !isString(raw.id) ||
-    !isString(raw.projectId) ||
-    !isString(raw.name)
-  ) {
+  if (!isRoomState(raw.state) || !isString(raw.name)) {
     return invalid("input-invalid");
+  }
+  const id = parseDomainIdValue(raw.id, parseRoomId);
+  if (!id.ok) {
+    return id;
+  }
+  const projectId = parseDomainIdValue(raw.projectId, parseProjectId);
+  if (!projectId.ok) {
+    return projectId;
   }
   return valid({
     state: raw.state,
-    id: raw.id as RoomId,
-    projectId: raw.projectId as ProjectId,
+    id: id.value,
+    projectId: projectId.value,
     name: raw.name,
   });
 }
@@ -201,21 +220,26 @@ function validateParticipantSession(
   if (raw === undefined) {
     return valid(undefined);
   }
-  if (
-    !isRecord(raw) ||
-    !isString(raw.id) ||
-    !isString(raw.projectId) ||
-    !isString(raw.roomId) ||
-    !isString(raw.participantId) ||
-    !isSessionState(raw.state)
-  ) {
+  if (!isRecord(raw) || !isString(raw.id) || !isSessionState(raw.state)) {
     return invalid("input-invalid");
+  }
+  const projectId = parseDomainIdValue(raw.projectId, parseProjectId);
+  if (!projectId.ok) {
+    return projectId;
+  }
+  const roomId = parseDomainIdValue(raw.roomId, parseRoomId);
+  if (!roomId.ok) {
+    return roomId;
+  }
+  const participantId = parseDomainIdValue(raw.participantId, parseParticipantId);
+  if (!participantId.ok) {
+    return participantId;
   }
   return valid({
     id: raw.id,
-    projectId: raw.projectId as ProjectId,
-    roomId: raw.roomId as RoomId,
-    participantId: raw.participantId as ParticipantId,
+    projectId: projectId.value,
+    roomId: roomId.value,
+    participantId: participantId.value,
     state: raw.state,
   });
 }
@@ -226,18 +250,20 @@ function validateParticipantParticipant(
   if (raw === undefined) {
     return valid(undefined);
   }
-  if (
-    !isRecord(raw) ||
-    !isString(raw.id) ||
-    !isString(raw.roomId) ||
-    !isString(raw.externalUserId) ||
-    !isParticipantState(raw.state)
-  ) {
+  if (!isRecord(raw) || !isString(raw.externalUserId) || !isParticipantState(raw.state)) {
     return invalid("input-invalid");
   }
+  const id = parseDomainIdValue(raw.id, parseParticipantId);
+  if (!id.ok) {
+    return id;
+  }
+  const roomId = parseDomainIdValue(raw.roomId, parseRoomId);
+  if (!roomId.ok) {
+    return roomId;
+  }
   return valid({
-    id: raw.id as ParticipantId,
-    roomId: raw.roomId as RoomId,
+    id: id.value,
+    roomId: roomId.value,
     externalUserId: raw.externalUserId,
     state: raw.state,
   });

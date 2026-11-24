@@ -1,4 +1,11 @@
-import type { ParticipantId, ProjectId, RoomId } from "@webrtc/domain";
+import {
+  parseParticipantId,
+  parseProjectId,
+  parseRoomId,
+  type ParticipantId,
+  type ProjectId,
+  type RoomId,
+} from "@webrtc/domain";
 import type { AuthorizationDecision } from "../decision.js";
 import {
   isManagementCredentialScope,
@@ -15,6 +22,8 @@ import {
   isFiniteNumber,
   isRecord,
   isString,
+  parseDomainIdValue,
+  parseOptionalDomainIdValue,
   valid,
   type ValidationResult,
 } from "./validation.js";
@@ -68,8 +77,11 @@ export function validateManagementCredentialAuthorizationInput(
   if (!isRecord(raw.credential)) {
     return invalid("input-invalid");
   }
+  const credentialProjectId = parseDomainIdValue(raw.credential.projectId, parseProjectId);
+  if (!credentialProjectId.ok) {
+    return credentialProjectId;
+  }
   if (
-    !isString(raw.credential.projectId) ||
     !isBoolean(raw.credential.revoked) ||
     !isFiniteNumber(raw.credential.expiresAt) ||
     !isFiniteNumber(raw.now)
@@ -80,8 +92,12 @@ export function validateManagementCredentialAuthorizationInput(
   if (!scopes.ok) {
     return scopes;
   }
-  if (!isRecord(raw.project) || !isString(raw.project.id) || !isProjectState(raw.project.state)) {
+  if (!isRecord(raw.project) || !isProjectState(raw.project.state)) {
     return invalid("input-invalid");
+  }
+  const projectId = parseDomainIdValue(raw.project.id, parseProjectId);
+  if (!projectId.ok) {
+    return projectId;
   }
   if (!isManagementOperation(raw.operation)) {
     return invalid("unsupported-operation");
@@ -93,13 +109,13 @@ export function validateManagementCredentialAuthorizationInput(
 
   return valid({
     credential: {
-      projectId: raw.credential.projectId as ProjectId,
+      projectId: credentialProjectId.value,
       scopes: scopes.value,
       revoked: raw.credential.revoked,
       expiresAt: raw.credential.expiresAt,
     },
     project: {
-      id: raw.project.id as ProjectId,
+      id: projectId.value,
       state: raw.project.state,
     },
     operation: raw.operation,
@@ -140,7 +156,7 @@ function validateTarget(
   operation: ManagementOperation,
   raw: unknown,
 ): ValidationResult<ManagementCredentialAuthorizationTarget> {
-  if (!isRecord(raw) || !isString(raw.projectId)) {
+  if (!isRecord(raw)) {
     return invalid("input-invalid");
   }
   const allowedKeys = allowedTargetKeys(operation);
@@ -149,18 +165,29 @@ function validateTarget(
       return invalid("target-invalid");
     }
   }
-  for (const key of ["roomId", "sessionId", "participantId", "resourceId"] as const) {
-    if (raw[key] !== undefined && !isString(raw[key])) {
-      return invalid("input-invalid");
-    }
+  const projectId = parseDomainIdValue(raw.projectId, parseProjectId);
+  if (!projectId.ok) {
+    return projectId;
+  }
+  const roomId = parseOptionalDomainIdValue(raw.roomId, parseRoomId);
+  if (!roomId.ok) {
+    return roomId;
+  }
+  const participantId = parseOptionalDomainIdValue(raw.participantId, parseParticipantId);
+  if (!participantId.ok) {
+    return participantId;
+  }
+  if (
+    (raw.sessionId !== undefined && !isString(raw.sessionId)) ||
+    (raw.resourceId !== undefined && !isString(raw.resourceId))
+  ) {
+    return invalid("input-invalid");
   }
   return valid({
-    projectId: raw.projectId as ProjectId,
-    ...(raw.roomId === undefined ? {} : { roomId: raw.roomId as RoomId }),
+    projectId: projectId.value,
+    ...(roomId.value === undefined ? {} : { roomId: roomId.value }),
     ...(raw.sessionId === undefined ? {} : { sessionId: raw.sessionId as string }),
-    ...(raw.participantId === undefined
-      ? {}
-      : { participantId: raw.participantId as ParticipantId }),
+    ...(participantId.value === undefined ? {} : { participantId: participantId.value }),
     ...(raw.resourceId === undefined ? {} : { resourceId: raw.resourceId as string }),
   });
 }

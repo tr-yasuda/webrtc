@@ -3,7 +3,7 @@ import {
   authorizeProjectUserFromRaw,
   validateProjectUserAuthorizationInput,
 } from "../../src/project-user.js";
-import { participantId, projectId, sessionId } from "../fixtures.js";
+import { participantId, projectId, projectUserId, sessionId } from "../fixtures.js";
 
 const validInput = {
   actor: { projectId, role: "owner" },
@@ -43,7 +43,13 @@ describe("ProjectUser 認可入力の検証", () => {
   });
 
   test("actor・project・targetが不正なら拒否する", () => {
-    for (const patch of [{ actor: {} }, { project: {} }, { target: {} }]) {
+    for (const patch of [
+      { actor: null },
+      { actor: {} },
+      { project: {} },
+      { target: null },
+      { target: {} },
+    ]) {
       expect(validateProjectUserAuthorizationInput({ ...validInput, ...patch })).toStrictEqual({
         ok: false,
         reason: "input-invalid",
@@ -58,7 +64,7 @@ describe("ProjectUser 認可入力の検証", () => {
         operation: "projectUser.changeRole",
         target: {
           projectId,
-          projectUserId: "project-user-a",
+          projectUserId,
           currentRole: "superuser",
           nextRole: "admin",
         },
@@ -72,6 +78,22 @@ describe("ProjectUser 認可入力の検証", () => {
         ...validInput,
         operation: "room.update",
         target: { projectId, roomId: 1 },
+      }),
+    ).toStrictEqual({ ok: false, reason: "input-invalid" });
+  });
+
+  test("sessionId と resourceId が文字列でない場合は input-invalid で拒否する", () => {
+    expect(
+      validateProjectUserAuthorizationInput({
+        ...validInput,
+        operation: "session.disconnect",
+        target: { projectId, sessionId: 1 },
+      }),
+    ).toStrictEqual({ ok: false, reason: "input-invalid" });
+    expect(
+      validateProjectUserAuthorizationInput({
+        ...validInput,
+        target: { projectId, resourceId: 1 },
       }),
     ).toStrictEqual({ ok: false, reason: "input-invalid" });
   });
@@ -102,6 +124,90 @@ describe("ProjectUser 認可入力の検証", () => {
         target: { projectId, participantId },
       }).ok,
     ).toBe(true);
+  });
+
+  test("必須のDomain IDが空またはULIDでない場合は input-invalid で拒否する", () => {
+    const cases = [
+      {
+        name: "actor.projectId",
+        input: { ...validInput, actor: { ...validInput.actor, projectId: "" } },
+      },
+      {
+        name: "project.id",
+        input: { ...validInput, project: { ...validInput.project, id: "" } },
+      },
+      {
+        name: "target.projectId",
+        input: { ...validInput, target: { ...validInput.target, projectId: "" } },
+      },
+      {
+        name: "target.accountId",
+        input: {
+          ...validInput,
+          operation: "projectUser.add",
+          target: { projectId, accountId: "", nextRole: "auditor" },
+        },
+      },
+      {
+        name: "target.projectUserId",
+        input: {
+          ...validInput,
+          operation: "projectUser.changeRole",
+          target: {
+            projectId,
+            projectUserId: "",
+            currentRole: "auditor",
+            nextRole: "auditor",
+          },
+        },
+      },
+      {
+        name: "target.roomId",
+        input: {
+          ...validInput,
+          operation: "room.update",
+          target: { projectId, roomId: "" },
+        },
+      },
+      {
+        name: "target.participantId",
+        input: {
+          ...validInput,
+          operation: "participant.disconnect",
+          target: { projectId, participantId: "" },
+        },
+      },
+      {
+        name: "ULIDでないactor.projectId",
+        input: {
+          ...validInput,
+          actor: { ...validInput.actor, projectId: "project-a" },
+        },
+      },
+    ];
+
+    for (const { name, input } of cases) {
+      expect(validateProjectUserAuthorizationInput(input), name).toStrictEqual({
+        ok: false,
+        reason: "input-invalid",
+      });
+    }
+  });
+
+  test("小文字のDomain IDは大文字に正規化する", () => {
+    const result = validateProjectUserAuthorizationInput({
+      ...validInput,
+      actor: { ...validInput.actor, projectId: projectId.toLowerCase() },
+      project: { ...validInput.project, id: projectId.toLowerCase() },
+      target: { ...validInput.target, projectId: projectId.toLowerCase() },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.actor.projectId).toBe(projectId);
+      expect(result.value.project.id).toBe(projectId);
+      expect(result.value.target.projectId).toBe(projectId);
+    }
   });
 
   test("生入力の認可は有効な入力で成功する", () => {

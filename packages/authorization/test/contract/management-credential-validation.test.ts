@@ -82,6 +82,7 @@ describe("Management API credential 認可入力の検証", () => {
     for (const patch of [
       { credential: undefined },
       { project: {} },
+      { target: null },
       { target: {} },
       { now: Number.NaN },
     ]) {
@@ -110,6 +111,22 @@ describe("Management API credential 認可入力の検証", () => {
     ).toStrictEqual({ ok: false, reason: "input-invalid" });
   });
 
+  test("sessionId と resourceId が文字列でない場合は input-invalid で拒否する", () => {
+    expect(
+      validateManagementCredentialAuthorizationInput({
+        ...validInput,
+        operation: "session.disconnect",
+        target: { projectId, sessionId: 1 },
+      }),
+    ).toStrictEqual({ ok: false, reason: "input-invalid" });
+    expect(
+      validateManagementCredentialAuthorizationInput({
+        ...validInput,
+        target: { projectId, resourceId: 1 },
+      }),
+    ).toStrictEqual({ ok: false, reason: "input-invalid" });
+  });
+
   test("Session と Participant の強制切断targetを検証できる", () => {
     expect(
       validateManagementCredentialAuthorizationInput({
@@ -125,6 +142,72 @@ describe("Management API credential 認可入力の検証", () => {
         target: { projectId, participantId },
       }).ok,
     ).toBe(true);
+  });
+
+  test("必須のDomain IDが空またはULIDでない場合は input-invalid で拒否する", () => {
+    const cases = [
+      {
+        name: "credential.projectId",
+        input: {
+          ...validInput,
+          credential: { ...validInput.credential, projectId: "" },
+        },
+      },
+      {
+        name: "project.id",
+        input: { ...validInput, project: { ...validInput.project, id: "" } },
+      },
+      {
+        name: "target.projectId",
+        input: { ...validInput, target: { ...validInput.target, projectId: "" } },
+      },
+      {
+        name: "target.roomId",
+        input: {
+          ...validInput,
+          operation: "room.update",
+          target: { projectId, roomId: "" },
+        },
+      },
+      {
+        name: "target.participantId",
+        input: {
+          ...validInput,
+          operation: "participant.disconnect",
+          target: { projectId, participantId: "" },
+        },
+      },
+      {
+        name: "ULIDでないproject.id",
+        input: { ...validInput, project: { ...validInput.project, id: "project-a" } },
+      },
+    ];
+
+    for (const { name, input } of cases) {
+      expect(validateManagementCredentialAuthorizationInput(input), name).toStrictEqual({
+        ok: false,
+        reason: "input-invalid",
+      });
+    }
+  });
+
+  test("小文字のDomain IDは大文字に正規化する", () => {
+    const result = validateManagementCredentialAuthorizationInput({
+      ...validInput,
+      credential: {
+        ...validInput.credential,
+        projectId: projectId.toLowerCase(),
+      },
+      project: { ...validInput.project, id: projectId.toLowerCase() },
+      target: { ...validInput.target, projectId: projectId.toLowerCase() },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.credential.projectId).toBe(projectId);
+      expect(result.value.project.id).toBe(projectId);
+      expect(result.value.target.projectId).toBe(projectId);
+    }
   });
 
   test("生入力の認可は有効な入力で成功する", () => {

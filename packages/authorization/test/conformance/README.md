@@ -1,6 +1,6 @@
 # 有限モデル照合
 
-`proofs/Conformance/Main.lean` が抽象入力の全有限ケースと期待判定をJSONLで出力し、`scripts/run-authorization-conformance.mjs` がTypeScript実装の判定と全件比較する。
+`proofs/Conformance/Main.lean` が抽象入力の全有限ケース、validatorの不正入力ケース、期待結果をJSONLで出力する。`scripts/run-authorization-conformance.mjs` はvalidatorの成否と失敗理由を全件比較し、validatorが成功したケースだけ認可判断を比較する。
 
 実行方法:
 
@@ -8,4 +8,4 @@
 pnpm --filter @webrtc/authorization test:conformance
 ```
 
-サンプリングは行わない。ケース数を減らす変更は、有限domainの設計変更としてレビューする。
+サンプリングは行わない。スクリプトは系統別のケース数、認可判断の比較件数、validator失敗件数を固定値と照合する。空のJSONL、生成途中の欠落、ケース数の変更は失敗する。期待件数を変更する場合は、有限domainまたはvalidatorケースの設計変更としてレビューする。

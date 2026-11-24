@@ -10,3 +10,9 @@ def main : IO Unit := do
     IO.println (Json.compress (projectUserLine input))
   for input in allManagementCredentialCases do
     IO.println (Json.compress (managementCredentialLine input))
+  for line in participantValidationCases do
+    IO.println (Json.compress line)
+  for line in projectUserValidationCases do
+    IO.println (Json.compress line)
+  for line in managementCredentialValidationCases do
+    IO.println (Json.compress line)

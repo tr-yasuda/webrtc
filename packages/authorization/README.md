@@ -292,17 +292,21 @@ Leanの有限モデルは、生の文字列や暗号処理ではなく、判定�
 
 ### 列挙と比較
 
-Leanの `Conformance/Enumerate.lean` が抽象入力の全組み合わせを列挙し、canonical JSONLを出力する。TypeScriptの `test/conformance/` が全件を読み、validatorと判定関数の結果を比較する。
+Leanの `Conformance/Enumerate.lean` が抽象入力の全組み合わせとvalidatorの不正入力ケースを列挙し、canonical JSONLを出力する。TypeScriptの `test/conformance/` が全件を読み、validatorの成否と失敗理由を比較する。validatorが成功したケースだけ判定関数の結果を比較する。
 
-case ID、入力キー順、targetの項目順、reasonの表記を固定する。出力が大きい場合はoperation・role・scope単位のbucketに分け、bucketごとに `cmp` する。全件照合を維持し、ケース数を減らした場合は設計変更としてレビューする。
+入力キー順、targetの項目順、reasonの表記を固定する。出力が大きい場合はoperation・role・scope単位のbucketに分け、bucketごとに `cmp` する。全件照合を維持する。スクリプトは系統別のケース数、認可判断の比較件数、validator失敗件数を固定値と照合し、空のJSONLやケース欠落を失敗させる。
 
 各ケースは次の形にする。
 
 ```json
-{"caseId":"P:room.join:...","input":{},"validation":{"ok":true},"decision":{"allowed":false,"operation":"room.join","target":{},"reason":"subject-mismatch"}}
+{"kind":"participant","caseType":"authorization","input":{},"validation":{"ok":true},"decision":{"allowed":false,"reason":"subject-mismatch","targetKeys":["projectId","roomName"]}}
 ```
 
-検証に失敗するケースは `validation` に失敗理由を入れ、`decision` は省略する。検証に成功するケースだけ `decision` を持つ。
+validatorの不正入力ケースは `caseType` を `validation` とし、`validation` に失敗理由を入れて `decision` を省略する。
+
+```json
+{"kind":"participant","caseType":"validation","input":{},"validation":{"ok":false,"reason":"input-invalid"}}
+```
 
 有限モデルの対象外は、生のJSON形状の全パターン、JWT署名・暗号検証、Management・Signalingの状態遷移、並行実行の競合とする。これらはPBT、Fuzzing、統合試験、TLA+で補う。
 
@@ -329,7 +333,7 @@ ProjectUserのロール包含は、操作名の集合だけでなく、対象rol
 
 最後のOwnerは認可モデルではなく、ドメイン不変条件のモデルで証明する。
 
-有限モデルは `proofs/Conformance/Main.lean` が全件をJSONLで出力し、`scripts/run-authorization-conformance.mjs` がTypeScript実装と比較する。現在のケース数は Participant 215,040、ProjectUser 38,000、Management API credential 29,184 の合計 282,224 件で、サンプリングしない。
+有限モデルは `proofs/Conformance/Main.lean` が全件をJSONLで出力し、`scripts/run-authorization-conformance.mjs` がTypeScript実装と比較する。現在は Participant 215,046、ProjectUser 38,010、Management API credential 29,192 の合計 282,248 ケースを照合する。うち認可判断を比較するのは 272,496 ケース、validator失敗を比較するのは 9,752 ケースで、サンプリングしない。
 
 ## 認可とドメイン不変条件の境界
 
@@ -420,7 +424,7 @@ Mutation Testingは、テストが実装の誤りを実際に検出できるか�
 | Mutation Testing | 必須（全体） | 全体 |
 | ビルド済みパッケージ契約 | 必須 | 必須 |
 
-conformanceのケース数が減少した場合は、有限domainの設計変更としてレビューする。mutation scoreが基準を下回る場合は、equivalent mutantの追加理由がない限り失敗とする。
+conformanceのケース数、認可判断の比較件数、validator失敗件数が固定値と異なる場合は失敗する。期待値の変更は有限domainまたはvalidatorケースの設計変更としてレビューする。mutation scoreが基準を下回る場合は、equivalent mutantの追加理由がない限り失敗とする。
 
 実行コマンド:
 
@@ -453,8 +457,8 @@ Phase 3をPhase 4/5より先に置く。実装を直してからLeanモデルを
 |---|---|---|
 | 0 | 完了 | この文書、62ルールの `traceability.md` |
 | 1 | 完了 | `tsconfig.test.json`、`vitest.config.ts`、coverageしきい値 |
-| 2 | 完了 | 3つの巨大テストをルール群別の28テストファイルへ分割 |
-| 3 | 完了 | Lean 4.36のモデルと定理、PBT、282,224件の全有限照合 |
+| 2 | 完了 | 3つの巨大テストをルール群別の29テストファイルへ分割 |
+| 3 | 完了 | Lean 4.36のモデルと定理、PBT、282,248件の全有限照合 |
 | 4 | 完了 | 未知grant、canonical target、最後のOwnerの責務分離、仕様更新、TLA+ |
 | 5 | 完了 | `contracts/`、`rules/`、判定順序、canonical target |
 | 6 | 完了 | Stryker 696 mutant、認可判断 100.00% |
@@ -462,11 +466,11 @@ Phase 3をPhase 4/5より先に置く。実装を直してからLeanモデルを
 
 ## 確認済み事項
 
-- `pnpm test` は authorization の28テストファイル・190テストを含めて成功する。
+- `pnpm test` は authorization の29テストファイル・375テストを含めて成功する。
 - Stryker 10.1.1 と `@stryker-mutator/vitest-runner` 10.1.1 は Vitest 5.1.1 で動作する。TypeScript 7では `disableTypeChecks` と `inPlace` が必要。
 - `@vitest/coverage-v8` 5.1.1 は Vitest 5.1.1 に対応する。
 - `fast-check` 4.11.0 でPBTを実行できる。
-- Lean 4.36.0で `check-authorization-proofs` が成功し、`test:conformance` が Participant 215,040、ProjectUser 38,000、Management API credential 29,184 の合計282,224件を照合する。
+- Lean 4.36.0で `check-authorization-proofs` が成功し、`test:conformance` が Participant 215,046、ProjectUser 38,010、Management API credential 29,192 の合計282,248ケースを照合する。認可判断は272,496件、validator失敗は9,752件を比較する。
 - `traceability.md` は62ルールを追跡し、CIで差分を検出する。
-- coverageはStatements 100%、Lines 100%、Functions 100%、Branches 98.22%。
+- coverageはStatements 100%、Lines 100%、Functions 100%、Branches 98.36%。
 - `moon run :check-models` で Browser SDK と `ProjectOwner.tla` のモデル検査が成功する。

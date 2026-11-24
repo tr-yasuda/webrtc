@@ -1,3 +1,4 @@
+import type { DomainIdParseResult } from "@webrtc/domain";
 import type { ValidationFailureReason } from "./identifiers.js";
 
 export type ValidationResult<T> =
@@ -26,4 +27,22 @@ export function isBoolean(value: unknown): value is boolean {
 
 export function isFiniteNumber(value: unknown): value is number {
   return Number.isFinite(value);
+}
+
+export function parseDomainIdValue<T>(
+  raw: unknown,
+  parse: (value: string) => DomainIdParseResult<T>,
+): ValidationResult<T> {
+  if (!isString(raw)) {
+    return invalid("input-invalid");
+  }
+  const result = parse(raw);
+  return result.ok ? valid(result.id) : invalid("input-invalid");
+}
+
+export function parseOptionalDomainIdValue<T>(
+  raw: unknown,
+  parse: (value: string) => DomainIdParseResult<T>,
+): ValidationResult<T | undefined> {
+  return raw === undefined ? valid(undefined) : parseDomainIdValue(raw, parse);
 }
