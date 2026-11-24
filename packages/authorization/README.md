@@ -405,7 +405,7 @@ Mutation Testingは、テストが実装の誤りを実際に検出できるか�
 - Stryker 10.1.1 と `@stryker-mutator/vitest-runner` 10.1.1 をVitest 5.1.1で使用する。
 - TypeScript 7ではStrykerのTypeScript config preprocessorが動かないため、`disableTypeChecks: true` と `inPlace: true` で実行する。型検査は `tsc -p tsconfig.test.json` で別途担保する。
 - 変更対象は認可判断の実装（`src/participant/**`、`src/project-user/**`、`src/management-credential/**`）とする。validatorは単体テスト・PBT・conformanceで検証し、mutationの対象外とする。
-- 認可判断のmutation scoreは100%を必須とする。2026-11-24時点で696 mutant、100.00%を確認済み。
+- 認可判断のmutation scoreは100%を必須とする。2026-11-24時点で597 mutant、100.00%を確認済み。
 - PRでは変更ファイル中心、夜間は全体実行にする。conformanceはmutationの対象に含めず、別のオラクルとして実行する。
 
 ## 追跡
@@ -472,16 +472,16 @@ Phase 3をPhase 4/5より先に置く。実装を直してからLeanモデルを
 | 3 | 完了 | Lean 4.36のモデルと定理、PBT、282,248件の全有限照合 |
 | 4 | 完了 | 未知grant、canonical target、最後のOwnerの責務分離、仕様更新、TLA+ |
 | 5 | 完了 | `contracts/`、`rules/`、判定順序、canonical target |
-| 6 | 完了 | Stryker 696 mutant、認可判断 100.00% |
+| 6 | 完了 | Stryker 597 mutant、認可判断 100.00% |
 | 7 | 完了 | traceability、CI、README、仕様の更新 |
 
 ## 確認済み事項
 
-- `pnpm test` は authorization の29テストファイル・375テストを含めて成功する。
+- `pnpm test` は authorization の29テストファイル・381テストを含めて成功する。
 - Stryker 10.1.1 と `@stryker-mutator/vitest-runner` 10.1.1 は Vitest 5.1.1 で動作する。TypeScript 7では `disableTypeChecks` と `inPlace` が必要。
 - `@vitest/coverage-v8` 5.1.1 は Vitest 5.1.1 に対応する。
 - `fast-check` 4.11.0 でPBTを実行できる。
 - Lean 4.36.0で `check-authorization-proofs` が成功し、`test:conformance` が Participant 215,046、ProjectUser 38,010、Management API credential 29,192 の合計282,248ケースを照合する。認可判断は272,496件、validator失敗は9,752件を比較する。
 - `traceability.md` は62ルールを追跡し、CIで差分を検出する。
-- coverageはStatements 100%、Lines 100%、Functions 100%、Branches 98.36%。
+- coverageはStatements 100%、Lines 100%、Functions 100%、Branches 98.37%。
 - `moon run :check-models` で Browser SDK と `ProjectOwner.tla` のモデル検査が成功する。
