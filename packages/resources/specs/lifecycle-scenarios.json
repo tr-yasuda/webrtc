@@ -1,0 +1,78 @@
+{
+  "store": {
+    "reservationTtlMs": 100,
+    "inUseTtlMs": null
+  },
+  "quotas": [
+    { "kind": "server", "key": "server", "maxCount": 3, "maxBytes": 10 },
+    { "kind": "user", "key": "user", "maxCount": 3, "maxBytes": 10 }
+  ],
+  "claimScopes": [
+    { "kind": "server", "key": "server" },
+    { "kind": "user", "key": "user" }
+  ],
+  "scenarios": [
+    {
+      "name": "release failure keeps the resource in use",
+      "steps": [
+        { "op": "reserve", "operation": "r1", "sizeBytes": 1 },
+        { "op": "allocate", "reservation": 0, "resource": "res1", "operation": "a1", "now": 1 },
+        { "op": "release-requested", "reservation": 0, "operation": "rr1", "now": 2 },
+        {
+          "op": "release-failed",
+          "reservation": 0,
+          "resource": "res1",
+          "operation": "rf1",
+          "now": 3
+        },
+        { "op": "assert", "reservation": 0, "state": "in-use", "usedCount": 1 }
+      ]
+    },
+    {
+      "name": "explicit isolate keeps accounting until release",
+      "steps": [
+        { "op": "reserve", "operation": "r1", "sizeBytes": 1 },
+        { "op": "allocate", "reservation": 0, "resource": "res1", "operation": "a1", "now": 1 },
+        { "op": "isolate", "reservation": 0, "operation": "iso1", "now": 2 },
+        { "op": "assert", "reservation": 0, "state": "isolated", "usedCount": 1 },
+        { "op": "released", "reservation": 0, "resource": "res1", "operation": "rel1", "now": 3 },
+        { "op": "assert", "reservation": 0, "state": "released", "usedCount": 0 }
+      ]
+    },
+    {
+      "name": "worker restart releases confirmed and isolates unconfirmed",
+      "steps": [
+        { "op": "reserve", "operation": "r1", "sizeBytes": 1 },
+        { "op": "reserve", "operation": "r2", "sizeBytes": 1 },
+        { "op": "allocate", "reservation": 0, "resource": "res1", "operation": "a1", "now": 1 },
+        { "op": "allocate", "reservation": 1, "resource": "res2", "operation": "a2", "now": 1 },
+        { "op": "worker-stopped", "confirmed": ["res1"], "operation": "ws1", "now": 2 },
+        { "op": "assert", "reservation": 0, "state": "released", "usedCount": 1 },
+        { "op": "assert", "reservation": 1, "state": "isolated", "usedCount": 1 }
+      ]
+    },
+    {
+      "name": "expiry releases reserved and isolates in-use",
+      "steps": [
+        { "op": "reserve", "operation": "r1", "sizeBytes": 1, "ttlMs": 5 },
+        { "op": "reserve", "operation": "r2", "sizeBytes": 1, "ttlMs": 5 },
+        { "op": "allocate", "reservation": 1, "resource": "res2", "operation": "a2", "now": 1 },
+        { "op": "expire", "now": 5 },
+        { "op": "assert", "reservation": 0, "state": "released", "usedCount": 1 },
+        { "op": "assert", "reservation": 1, "state": "isolated", "usedCount": 1 }
+      ]
+    },
+    {
+      "name": "late release does not change a reused slot",
+      "steps": [
+        { "op": "reserve", "operation": "r1", "sizeBytes": 1 },
+        { "op": "allocate", "reservation": 0, "resource": "res1", "operation": "a1", "now": 1 },
+        { "op": "released", "reservation": 0, "resource": "res1", "operation": "rel1", "now": 2 },
+        { "op": "reserve", "operation": "r2", "sizeBytes": 1 },
+        { "op": "allocate", "reservation": 1, "resource": "res2", "operation": "a2", "now": 3 },
+        { "op": "released", "reservation": 0, "resource": "res1", "operation": "rel2", "now": 4 },
+        { "op": "assert", "reservation": 1, "state": "in-use", "usedCount": 1 }
+      ]
+    }
+  ]
+}

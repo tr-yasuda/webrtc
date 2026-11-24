@@ -1,0 +1,7 @@
+tasks:
+  typecheck:
+    deps:
+      - 'domain:build'
+  build:
+    deps:
+      - 'domain:build'

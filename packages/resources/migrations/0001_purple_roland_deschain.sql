@@ -1,0 +1,1 @@
+CREATE INDEX "resource_reservation_expires_at_idx" ON "resource_reservation" USING btree ("expires_at","id");
