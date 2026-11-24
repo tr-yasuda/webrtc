@@ -79,6 +79,18 @@ jobs:
       - name: Type-check, build, and test TypeScript
         run: pnpm test
 
+      - name: Check authorization proofs with Lean
+        run: moon run :check-authorization-proofs
+
+      - name: Check authorization conformance
+        run: moon run authorization:conformance
+
+      - name: Check authorization traceability
+        run: moon run authorization:traceability
+
+      - name: Mutation-test authorization decisions
+        run: moon run authorization:mutation
+
       - name: Check Rust formatting
         run: moon run rust:format
 

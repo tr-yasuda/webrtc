@@ -1,1 +1,1 @@
-export type ProjectState = "active" | "suspended";
+export type { ProjectState } from "./contracts/identifiers.js";

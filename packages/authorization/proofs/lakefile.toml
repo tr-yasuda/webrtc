@@ -1,0 +1,15 @@
+name = "AuthorizationProofs"
+defaultTargets = ["AuthorizationProofs", "authorization-conformance"]
+moreLeanArgs = ["-DwarningAsError=true"]
+
+[[lean_lib]]
+name = "AuthorizationProofs"
+globs = ["Authorization.*"]
+
+[[lean_lib]]
+name = "Conformance"
+globs = ["Conformance.*"]
+
+[[lean_exe]]
+name = "authorization-conformance"
+root = "Conformance.Main"

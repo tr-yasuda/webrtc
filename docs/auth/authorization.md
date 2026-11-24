@@ -131,7 +131,7 @@ Signaling は、参加 JWT の `grants` が許す対象・操作と、Room・Ses
 - Management API credential: Room の設定変更・削除では Room ID、Session / Participant の強制切断では Session ID / Participant ID を必須とし、Project 全体を対象にした一括操作を許可しない。
 - ProjectUser: Room の設定変更・削除では Room ID、Session / Participant の強制切断では Session ID / Participant ID、追加は Account ID、削除・ロール変更は ProjectUser ID を判定結果の対象に含める。
 
-判定結果は、対象・操作・許可または拒否・理由を含み、監査記録へ渡せる形にする。未知の grant・role・operation・scope は拒否する。
+判定結果は、対象・操作・許可または拒否・理由を含み、監査記録へ渡せる形にする。対象は操作に必要なIDだけを含むcanonical targetとし、呼び出し元が渡した余分なIDを監査結果へ流用しない。認可判断は検証済みの入力だけを受け取り、入力検証の失敗と認可判断の拒否を区別する。未知の grant・role・operation・scope は入力検証で拒否する。
 
 ### 参加者と参加端末の区別
 
