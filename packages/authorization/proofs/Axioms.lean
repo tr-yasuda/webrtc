@@ -34,3 +34,6 @@ open Authorization
 #print axioms Authorization.scope_partition
 #print axioms Authorization.validation_rejects_unknown_grant
 #print axioms Authorization.validation_rejects_non_boolean_grant
+#print axioms Authorization.participant_concrete_abstract_equivalence
+#print axioms Authorization.project_user_concrete_abstract_equivalence
+#print axioms Authorization.management_credential_concrete_abstract_equivalence

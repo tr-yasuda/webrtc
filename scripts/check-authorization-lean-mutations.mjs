@@ -26,6 +26,12 @@ const mutations = [
     target: "  | .roomRead => [.roomManage]",
     replacement: "  | .projectUserRemove => [.roomManage]\n  | .roomRead => [.roomManage]",
   },
+  {
+    description: "具体入力の targetMatch 抽象化を壊す",
+    file: "Authorization/Concrete.lean",
+    target: "    targetMatch := concreteParticipantTargetMatch input,",
+    replacement: "    targetMatch := input.credentialProjectId == input.projectId,",
+  },
 ];
 
 try {

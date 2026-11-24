@@ -335,6 +335,7 @@ LeanモデルはTypeScript実装から独立して手書きし、抽象入力に
 | `participant_non_interference` / `project_user_non_interference` / `management_credential_non_interference` | 無関係な入力項目が判定を変えない |
 | `participant_audit_target_exact` / `project_user_audit_target_exact` / `management_credential_audit_target_exact` | targetに必要な情報だけが含まれる |
 | `management_credential_rejects_project_user_management` | credential は ProjectUser 管理操作を scope に関係なく許可しない |
+| `participant_concrete_abstract_equivalence` / `project_user_concrete_abstract_equivalence` / `management_credential_concrete_abstract_equivalence` | 具体入力の判定と抽象化後入力の判定が一致する |
 | `validation_rejects_unknown_grant` | 未知のgrantを拒否する |
 | `validation_rejects_non_boolean_grant` | 非booleanのgrantを拒否する |
 | `role_inclusion_conditional` / `role_non_inclusion` | ロールの条件付き包含と非包含 |

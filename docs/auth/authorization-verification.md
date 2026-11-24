@@ -80,6 +80,7 @@ Lean モデルは `packages/authorization/proofs/Authorization` に置く。
 
 - `Authorization/Types.lean` は生成された Role・Operation・Scope・Grant・許可表を import し、状態と入力ケースを定義する。
 - `Authorization/Participant.lean`、`ProjectUser.lean`、`ManagementCredential.lean` は TypeScript とは独立した判定ルールを持つ。
+- `Authorization/Concrete.lean` は具体入力と抽象入力の refinement を定義し、各ルールの述語が抽象化後も一致することを証明する。
 - `Authorization/Theorems.lean` は soundness、completeness、監査 target、最初の失敗 reason、非干渉性、Owner 管理境界、credential の ProjectUser 非継承、role 包含関係、scope 分割を証明する。
 - `Conformance` は Lean の有限ケースと TypeScript 実装を全件照合する。
 
@@ -111,7 +112,7 @@ StrykerJS は `packages/authorization/stryker.config.mjs` で認可判断を実�
 - Stryker の全件実行: 597 mutant、Mutation Score 100.00、1 分 58 秒
 - 生存 mutation と no coverage は 0
 - 仕様データ mutation: 11 件を独立したセキュリティ不変条件で検出
-- Lean モデル mutation: Owner の許可削除、Admin の変更後 Owner チェック削除、ProjectUser 除外操作への credential scope 追加を検出
+- Lean モデル mutation: Owner の許可削除、Admin の変更後 Owner チェック削除、ProjectUser 除外操作への credential scope 追加、具体入力の targetMatch 抽象化破壊を検出
 
 `scripts/check-authorization-stryker-report.mjs` は、未処理の生存 mutation、no coverage、timeout を失敗にする。等価 mutation を除外する場合は `packages/authorization/mutation-exclusions.json` に個別根拠を記録し、使われていない除外も失敗にする。現在の除外は 0 件。
 
@@ -155,6 +156,7 @@ pnpm --filter @webrtc/authorization mutation:check
 - TypeScript と Lean の静的定義が JSON から決定論的に生成され、CI の再生成で差分がない。
 - 認可判断が検証済み入力だけを受け取り、入力検証と判断が分離されている。
 - Lean の soundness、completeness、監査 target、最初の失敗 reason、非干渉性、Owner 管理境界が証明されている。
+- 具体入力 evaluator と抽象入力 evaluator の判定一致が、各ルールの refinement を経由して証明されている。
 - Lean の有限ケースと TypeScript 実装が全件一致する。
 - 時刻が safe integer ミリ秒の契約に従い、小数・非有限・範囲外を拒否する。
 - `sorry` がなく、許可リスト外の公理への依存がない。
