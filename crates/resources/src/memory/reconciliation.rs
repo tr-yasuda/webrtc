@@ -251,7 +251,7 @@ impl InMemoryResourceStore {
             .map(|state| state.job.clone())
     }
 
-    pub(super) fn assert_allocated_target_capacity(
+    pub(super) fn assert_reconciliation_target_capacity(
         &self,
         worker_id: &WorkerId,
         boot_id: &BootId,

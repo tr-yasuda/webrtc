@@ -88,9 +88,9 @@ pub fn plan_transition(
 
 fn plan_allocated(
     reservation: &Reservation,
-    resource_id: &crate::id::ResourceId,
-    worker_id: &crate::id::WorkerId,
-    boot_id: &crate::id::BootId,
+    resource_id: &ResourceId,
+    worker_id: &WorkerId,
+    boot_id: &BootId,
     now: u64,
     options: &ResourceStoreOptions,
 ) -> PlannedTransition {
@@ -176,9 +176,9 @@ fn plan_release_requested(reservation: &Reservation, now: u64) -> PlannedTransit
 
 fn plan_released(
     reservation: &Reservation,
-    resource_id: &crate::id::ResourceId,
-    worker_id: &crate::id::WorkerId,
-    boot_id: &crate::id::BootId,
+    resource_id: &ResourceId,
+    worker_id: &WorkerId,
+    boot_id: &BootId,
     now: u64,
 ) -> PlannedTransition {
     if reservation.state == ResourceState::Released {
@@ -200,9 +200,9 @@ fn plan_released(
 
 fn plan_release_failed(
     reservation: &Reservation,
-    resource_id: &crate::id::ResourceId,
-    worker_id: &crate::id::WorkerId,
-    boot_id: &crate::id::BootId,
+    resource_id: &ResourceId,
+    worker_id: &WorkerId,
+    boot_id: &BootId,
     now: u64,
 ) -> PlannedTransition {
     if reservation.state == ResourceState::Released {
@@ -268,9 +268,9 @@ fn plan_isolate(reservation: &Reservation, now: u64) -> PlannedTransition {
 
 fn check_correlation(
     reservation: &Reservation,
-    resource_id: &crate::id::ResourceId,
-    worker_id: &crate::id::WorkerId,
-    boot_id: &crate::id::BootId,
+    resource_id: &ResourceId,
+    worker_id: &WorkerId,
+    boot_id: &BootId,
 ) -> Option<PlannedTransition> {
     if reservation
         .boot_id

@@ -236,10 +236,10 @@ DTLS Cookie のステートレス処理と、接続固有の状態を確保す�
 
 | 要件 | 主な検証 |
 |---|---|
-| claim の `server` スコープ、quota、保持期間、容量上限 | `packages/resources/test/memory-store.test.ts`、`packages/resources/test/integration/postgres.test.ts` の資源管理テスト |
+| claim の `server` スコープ、quota、保持期間、容量上限 | `packages/resources/test/memory-store-lifecycle.test.ts`、`packages/resources/test/memory-store-isolation-quota.test.ts`、`packages/resources/test/memory-store-retention.test.ts`、`packages/resources/test/integration/postgres-resource.test.ts`、`packages/resources/test/integration/postgres-retention.test.ts` |
 | `expire` のバッチ処理、隔離済みの除外、TTL | メモリ・PostgreSQL の期限切れテスト、`ResourceLifecycle.tla` |
-| 照合ジョブの対象固定、再起動後の再開、同一カーソルの直列化 | `packages/resources/test/memory-store.test.ts`、`postgres.test.ts`、`crates/resources/tests/resource_store.rs` |
+| 照合ジョブの対象固定、再起動後の再開、同一カーソルの直列化 | `packages/resources/test/memory-store-reconciliation-job.test.ts`、`packages/resources/test/integration/postgres-reconciliation-job.test.ts`、`crates/resources/tests/resource_reconciliation.rs` |
 | 明示的な `isolate` と解放確認 | TS/Rust のストアテストと `packages/resources/specs/lifecycle-scenarios.json` |
 | 使用中スコープの削除拒否と解放後の削除 | メモリ・PostgreSQL・Rust の quota 削除テスト |
-| 監査ログの HMAC、鍵更新、同一トランザクション、保持削除、keyset ページング | `packages/resources/test/audit-*.test.ts`、`postgres.test.ts` の監査ログテスト、独立 verifier |
+| 監査ログの HMAC、鍵更新、同一トランザクション、保持削除、keyset ページング | `packages/resources/test/audit-options.test.ts`、`packages/resources/test/audit-scope-ref.test.ts`、`packages/resources/test/integration/postgres-audit-write.test.ts`、`packages/resources/test/integration/postgres-audit-query.test.ts`、独立 verifier |
 | TypeScript と Rust の状態・計上の一致 | 共通シナリオを実行する TS/Rust の conformance テスト |

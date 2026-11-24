@@ -51,6 +51,7 @@ export class PostgresReconciliationStore {
     return this.db.transaction((tx) => this.startInTransaction(tx, event, now));
   }
 
+  /** 呼び出し元のトランザクションにジョブと監査を書き、操作結果と同じコミット単位にする。 */
   public async startInTransaction(
     tx: ResourcesTransaction,
     event: WorkerStoppedEvent,

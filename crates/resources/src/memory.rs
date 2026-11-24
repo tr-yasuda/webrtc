@@ -337,7 +337,7 @@ impl InMemoryResourceStore {
                 plan_transition(reservation, &event, now, &self.options),
                 PlannedTransition::Apply { .. }
             )
-            && let Err(_error) = self.assert_allocated_target_capacity(
+            && let Err(_error) = self.assert_reconciliation_target_capacity(
                 worker_id,
                 boot_id,
                 reservation_id,

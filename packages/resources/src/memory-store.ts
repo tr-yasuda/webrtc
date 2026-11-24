@@ -303,13 +303,7 @@ export class InMemoryResourceStore implements ResourceStore {
               status: "rejected",
               reason: "capacity-exhausted",
             } satisfies ApplyEventResult;
-            this.operations.set(event.operationId, {
-              kind: "event",
-              result,
-              occurredAt: event.at,
-              recordedAt: now,
-            });
-            return result;
+            return this.recordEventResult(event.operationId, result, event.at, now);
           }
         }
       }
@@ -328,13 +322,7 @@ export class InMemoryResourceStore implements ResourceStore {
     ) {
       this.appendReconciliationTarget(result.reservation, now);
     }
-    this.operations.set(event.operationId, {
-      kind: "event",
-      result,
-      occurredAt: event.at,
-      recordedAt: now,
-    });
-    return result;
+    return this.recordEventResult(event.operationId, result, event.at, now);
   }
 
   public async expire(
@@ -500,14 +488,17 @@ export class InMemoryResourceStore implements ResourceStore {
     const isolated: ReservationId[] = [];
     const unchanged: ReservationId[] = [];
     let lastTargetSeq = state.job.lastTargetSeq;
+    const skipTarget = (target: ReconciliationTargetState): void => {
+      target.state = "skipped";
+      target.processedAt = now;
+      unchanged.push(target.reservationId);
+    };
 
     for (const target of selected) {
       lastTargetSeq = target.targetSeq;
       const reservation = this.reservations.get(target.reservationId);
       if (reservation === undefined) {
-        target.state = "skipped";
-        target.processedAt = now;
-        unchanged.push(target.reservationId);
+        skipTarget(target);
         continue;
       }
       if (
@@ -516,15 +507,11 @@ export class InMemoryResourceStore implements ResourceStore {
         (target.resourceId !== undefined && target.resourceId !== reservation.resourceId) ||
         (target.resourceId === undefined && reservation.resourceId !== undefined)
       ) {
-        target.state = "skipped";
-        target.processedAt = now;
-        unchanged.push(target.reservationId);
+        skipTarget(target);
         continue;
       }
       if (reservation.state === "released" || reservation.state === "isolated") {
-        target.state = "skipped";
-        target.processedAt = now;
-        unchanged.push(target.reservationId);
+        skipTarget(target);
         continue;
       }
 
@@ -540,9 +527,7 @@ export class InMemoryResourceStore implements ResourceStore {
         now,
       );
       if (plan === undefined) {
-        target.state = "skipped";
-        target.processedAt = now;
-        unchanged.push(target.reservationId);
+        skipTarget(target);
         continue;
       }
       if (plan.action === "release") {
@@ -806,6 +791,21 @@ export class InMemoryResourceStore implements ResourceStore {
       result,
       occurredAt: at,
       recordedAt: at,
+    });
+    return result;
+  }
+
+  private recordEventResult(
+    operationId: OperationId,
+    result: ApplyEventResult,
+    occurredAt: number,
+    recordedAt: number,
+  ): ApplyEventResult {
+    this.operations.set(operationId, {
+      kind: "event",
+      result,
+      occurredAt,
+      recordedAt,
     });
     return result;
   }

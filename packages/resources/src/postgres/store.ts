@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lte, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { Pool } from "pg";
 import {
@@ -44,9 +44,9 @@ import {
 } from "../id.js";
 import type { ResourceState } from "../state.js";
 import { planExpiry, planTransition } from "../transition.js";
-import { PostgresAuditLog, type AuditWriteInput } from "./audit.js";
+import { PostgresAuditLog } from "./audit.js";
 import { toQuotaUsage, toReservation } from "./codec.js";
-import type { ResourcesDatabase, ResourcesTransaction } from "./db.js";
+import type { ResourcesDatabase } from "./db.js";
 import {
   completeOperation,
   lockOperation,
@@ -125,7 +125,7 @@ export class PostgresResourceStore implements ResourceStore {
             ),
           );
       }
-      await this.writeAuditEvent(tx, {
+      await this.auditLog.write(tx, {
         eventType: "quota-set",
         outcome: "applied",
         recordedAt: now,
@@ -172,7 +172,7 @@ export class PostgresResourceStore implements ResourceStore {
             eq(schema.resourceQuota.scopeKey, scope.key),
           ),
         );
-      await this.writeAuditEvent(tx, {
+      await this.auditLog.write(tx, {
         eventType: "quota-delete",
         outcome: "deleted",
         recordedAt: now,
@@ -277,7 +277,7 @@ export class PostgresResourceStore implements ResourceStore {
           );
       }
 
-      await this.writeAuditEvent(tx, {
+      await this.auditLog.write(tx, {
         eventType: "reserve",
         outcome: "applied",
         recordedAt: now,
@@ -369,7 +369,7 @@ export class PostgresResourceStore implements ResourceStore {
         await releaseReservationQuota(tx, reservation);
       }
       await updateReservation(tx, plan.next);
-      await this.writeAuditEvent(tx, {
+      await this.auditLog.write(tx, {
         eventType: event.type,
         outcome: "applied",
         recordedAt: now,
@@ -401,15 +401,14 @@ export class PostgresResourceStore implements ResourceStore {
     const limit = resolveBatchLimit(options.limit, this.options.reconciliationBatchSize);
     return this.db.transaction(async (tx) => {
       const states: ResourceState[] = ["reserved", "in-use", "release-pending", "result-unknown"];
+      const expiredCondition = and(
+        lte(schema.resourceReservation.expiresAt, now),
+        inArray(schema.resourceReservation.state, states),
+      );
       const rows = await tx
         .select()
         .from(schema.resourceReservation)
-        .where(
-          and(
-            lte(schema.resourceReservation.expiresAt, now),
-            inArray(schema.resourceReservation.state, states),
-          ),
-        )
+        .where(expiredCondition)
         .orderBy(asc(schema.resourceReservation.expiresAt), asc(schema.resourceReservation.id))
         .limit(limit)
         .for("update");
@@ -426,7 +425,7 @@ export class PostgresResourceStore implements ResourceStore {
           await releaseReservationQuota(tx, reservation);
         }
         await updateReservation(tx, plan.next);
-        await this.writeAuditEvent(tx, {
+        await this.auditLog.write(tx, {
           eventType: "expire",
           outcome: "applied",
           recordedAt: now,
@@ -447,17 +446,15 @@ export class PostgresResourceStore implements ResourceStore {
         }
       }
 
-      const hasMoreResult = await tx.execute(sql`
-        SELECT EXISTS (
-          SELECT 1 FROM resource_reservation
-          WHERE expires_at <= ${now}
-            AND state IN ('reserved', 'in-use', 'release-pending', 'result-unknown')
-        ) AS has_more
-      `);
+      const [remaining] = await tx
+        .select({ id: schema.resourceReservation.id })
+        .from(schema.resourceReservation)
+        .where(expiredCondition)
+        .limit(1);
       return {
         released,
         isolated,
-        hasMore: Boolean(hasMoreResult.rows[0]?.has_more),
+        hasMore: remaining !== undefined,
       };
     });
   }
@@ -650,10 +647,6 @@ export class PostgresResourceStore implements ResourceStore {
       reservations: page,
       ...(nextCursor === undefined ? {} : { nextCursor }),
     };
-  }
-
-  private async writeAuditEvent(tx: ResourcesTransaction, input: AuditWriteInput): Promise<void> {
-    await this.auditLog.write(tx, input);
   }
 }
 
