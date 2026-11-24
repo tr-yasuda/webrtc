@@ -15,20 +15,13 @@ try {
     },
   });
 
-  const modelPath = path.join(temporaryRoot, "AuthorizationVerification/Model.lean");
+  const modelPath = path.join(temporaryRoot, "Authorization/GeneratedPolicy.lean");
   const original = fs.readFileSync(modelPath, "utf8");
-  const target =
-    "role == .admin &&\n            adminOwnerManagementForbidden c.operation c.currentRole c.nextRole";
+  const target = "  | .owner, .projectRead => true";
   if (!original.includes(target)) {
     throw new Error("Lean モデル mutation の対象文字列が見つかりません");
   }
-  fs.writeFileSync(
-    modelPath,
-    original.replace(
-      target,
-      "false &&\n            adminOwnerManagementForbidden c.operation c.currentRole c.nextRole",
-    ),
-  );
+  fs.writeFileSync(modelPath, original.replace(target, "  | .owner, .projectRead => false"));
 
   let detected = false;
   try {
@@ -53,7 +46,7 @@ try {
         cause: error,
       });
     }
-    console.log("Lean モデル mutation を検出しました: Admin の Owner 管理禁止を無効化");
+    console.log("Lean モデル mutation を検出しました: Owner の project.read 許可を削除");
     detected = true;
   }
   if (!detected) throw new Error("Lean モデル mutation が検出されませんでした");

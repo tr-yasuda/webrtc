@@ -7,7 +7,10 @@
 
 TypeScript と Lean の role・operation・scope・grant・許可表・対象 ID 要件・参加 JWT の subject 条件・時刻契約は、この JSON から決定論的に生成する。生成物を手で編集しない。認可の判定ロジックは TypeScript と Lean で独立して実装し、生成された静的定義を使う。
 
-検証の目標、Traceability、Mutation Testing、受け入れ条件は[認可仕様の管理と形式検証](../authorization-verification.md)に従う。
+- `packages/authorization/src/generated/policy.ts`: TypeScript の静的定義
+- `packages/authorization/proofs/Authorization/GeneratedPolicy.lean`: Lean の静的定義
+
+判断ルール、reason、入力検証の契約は `packages/authorization/README.md` を正本とする。検証の目標、Traceability、Mutation Testing、受け入れ条件は[認可仕様の管理と形式検証](../authorization-verification.md)に従う。
 
 ## 変更手順
 
@@ -24,7 +27,11 @@ TypeScript と Lean の role・operation・scope・grant・許可表・対象 ID
 scripts/check-authorization-generated.sh
 node scripts/check-authorization-policy-mutations.mjs
 pnpm --filter @webrtc/authorization test
+pnpm --filter @webrtc/authorization test:coverage
+pnpm --filter @webrtc/authorization test:conformance
+pnpm --filter @webrtc/authorization check:traceability
 node scripts/check-authorization-traceability.mjs
+scripts/check-authorization-axioms.sh
 pnpm --filter @webrtc/authorization mutation
 pnpm --filter @webrtc/authorization mutation:check
 node scripts/check-authorization-lean-mutations.mjs
@@ -32,7 +39,7 @@ node scripts/check-authorization-lean-mutations.mjs
 
 `constraints.participantSubject` は、参加 JWT の subject を必須にするか、Participant の ExternalUser と一致させるかを定義する。`constraints.adminOwnerManagement`、`constraints.credentialProjectUserOperations`、`targetRequirements`、`timeContract` も認可判定が参照する正本であり、生成物へ反映される。
 
-仕様 ID は `AUTH-*` 形式で JSON に一度だけ定義する。Lean の定理には専用属性、TypeScript のテストには ID helper を使い、対応行列は CI が生成する。手動の対応表は作らない。
+仕様 ID は `AUTH-*` 形式で JSON に一度だけ定義する。Lean の定理には専用属性、TypeScript のテストには ID helper を使い、対応行列は CI が生成する。ルール ID の Traceability は `packages/authorization/README.md` から生成する。手動の対応表は作らない。
 
 ## Schema バージョンと履歴
 

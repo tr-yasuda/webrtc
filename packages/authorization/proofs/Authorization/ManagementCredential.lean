@@ -2,18 +2,6 @@ import Authorization.Types
 
 namespace Authorization
 
-def requiredScopes : ManagementOperation -> List CredentialScope
-  | .roomRead => [.roomManage]
-  | .roomUpdate => [.roomManage]
-  | .roomDelete => [.roomManage]
-  | .sessionRead => [.sessionManage]
-  | .sessionDisconnect => [.sessionManage]
-  | .participantRead => [.sessionManage]
-  | .participantDisconnect => [.sessionManage]
-  | .usageRead => [.usageRead]
-  | .auditRead => [.auditRead]
-  | _ => []
-
 def scopeEnabled (scopes : CredentialScopes) : CredentialScope -> Bool
   | .roomManage => scopes.roomManage
   | .sessionManage => scopes.sessionManage
@@ -22,13 +10,6 @@ def scopeEnabled (scopes : CredentialScopes) : CredentialScope -> Bool
 
 def hasRequiredScope (input : ManagementCredentialInput) : Bool :=
   (requiredScopes input.operation).any (scopeEnabled input.scopes)
-
-def managementRequiresTargetId : ManagementOperation -> Bool
-  | .roomUpdate => true
-  | .roomDelete => true
-  | .sessionDisconnect => true
-  | .participantDisconnect => true
-  | _ => false
 
 structure ManagementCredentialRule where
   id : String

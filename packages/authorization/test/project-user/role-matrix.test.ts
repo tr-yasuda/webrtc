@@ -1,11 +1,12 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import { authorizeProjectUserAction } from "../../src/project-user.js";
 import { type ProjectUserRole } from "../../src/management-operation.js";
 import { projectId } from "../fixtures.js";
 import { allOperations, expectedAllowedOperations, targetFor } from "./support.js";
 
 describe("ProjectUser ロールの認可", () => {
-  test("Owner は Project を削除できる", () => {
+  test(authSpecName("AUTH-PU-01", "Owner は Project を削除できる"), () => {
     const decision = authorizeProjectUserAction({
       actor: {
         projectId,
@@ -32,7 +33,7 @@ describe("ProjectUser ロールの認可", () => {
   });
 
   test.each(Object.keys(expectedAllowedOperations) as ProjectUserRole[])(
-    "%s ロールの操作可否が権限マトリクスと一致する",
+    authSpecName("AUTH-PU-02", "%s ロールの操作可否が権限マトリクスと一致する"),
     (role) => {
       for (const operation of allOperations) {
         const decision = authorizeProjectUserAction({

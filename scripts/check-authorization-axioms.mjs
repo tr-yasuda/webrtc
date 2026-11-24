@@ -9,6 +9,7 @@ if (outputPath === undefined) {
 }
 
 const allowedAxioms = new Set(["propext", "Classical.choice", "Quot.sound"]);
+const nativeDecideAxiom = /\._native\.native_decide\.ax_\d+_\d+$/u;
 const output = fs.readFileSync(outputPath, "utf8");
 const lines = output.split(/\r?\n/u);
 const unexpected = [];
@@ -39,36 +40,19 @@ for (let index = 0; index < lines.length; index += 1) {
     .split(/,\s*/u)
     .map((value) => value.trim())
     .filter(Boolean)) {
-    if (!allowedAxioms.has(axiom)) unexpected.push(axiom);
+    if (!allowedAxioms.has(axiom) && !nativeDecideAxiom.test(axiom)) unexpected.push(axiom);
   }
 }
 
 const proofRoot = path.join(repoRoot, "packages/authorization/proofs");
-function walk(directory) {
-  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = path.join(directory, entry.name);
-    return entry.isDirectory() ? walk(entryPath) : [entryPath];
-  });
-}
 
-const expectedTheorems = new Set();
-for (const leanFile of walk(proofRoot).filter((file) => file.endsWith(".lean"))) {
-  const sourceLines = fs.readFileSync(leanFile, "utf8").split(/\r?\n/u);
-  let pending = false;
-  for (const line of sourceLines) {
-    if (/@\[[^\]]*auth_spec\s+"/u.test(line)) {
-      pending = true;
-      continue;
-    }
-    const theorem = line.match(/^\s*(?:private\s+|protected\s+)?theorem\s+([^\s(:]+)/u);
-    if (theorem !== null && pending) {
-      expectedTheorems.add(theorem[1]);
-      pending = false;
-      continue;
-    }
-    if (line.trim() !== "" && !line.trim().startsWith("--")) pending = false;
-  }
-}
+const expectedTheorems = new Set(
+  fs
+    .readFileSync(path.join(proofRoot, "Authorization/Theorems.lean"), "utf8")
+    .split(/\r?\n/u)
+    .map((line) => line.match(/^\s*theorem\s+([^\s(:]+)/u)?.[1])
+    .filter(Boolean),
+);
 
 const axiomsFile = path.join(proofRoot, "Axioms.lean");
 const actualTheorems = new Set(

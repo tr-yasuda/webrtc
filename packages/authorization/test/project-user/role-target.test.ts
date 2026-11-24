@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeProjectUserAction,
   type ProjectUserAuthorizationReason,
@@ -52,25 +53,28 @@ describe("ProjectUser ロールの認可", () => {
     operation: ManagementOperation;
     target: ProjectUserAuthorizationTarget;
     reason: Exclude<ProjectUserAuthorizationReason, "allowed">;
-  }>)("$name 場合は拒否する", ({ operation, target: requestedTarget, reason }) => {
-    const decision = authorizeProjectUserAction({
-      actor: {
-        projectId,
-        role: "owner",
-      },
-      project: {
-        id: projectId,
-        state: "active",
-      },
-      operation,
-      target: requestedTarget,
-    });
+  }>)(
+    authSpecName("AUTH-PU-04", "$name 場合は拒否する"),
+    ({ operation, target: requestedTarget, reason }) => {
+      const decision = authorizeProjectUserAction({
+        actor: {
+          projectId,
+          role: "owner",
+        },
+        project: {
+          id: projectId,
+          state: "active",
+        },
+        operation,
+        target: requestedTarget,
+      });
 
-    expect(decision).toStrictEqual({
-      allowed: false,
-      operation,
-      target: requestedTarget,
-      reason,
-    });
-  });
+      expect(decision).toStrictEqual({
+        allowed: false,
+        operation,
+        target: requestedTarget,
+        reason,
+      });
+    },
+  );
 });

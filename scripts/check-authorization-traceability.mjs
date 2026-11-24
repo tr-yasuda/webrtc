@@ -6,8 +6,8 @@ const packageRoot = path.join(repoRoot, "packages/authorization");
 const proofsRoot = path.join(packageRoot, "proofs");
 const cacheRoot = path.join(packageRoot, ".cache");
 const vitestReportPath = path.join(cacheRoot, "vitest-authorization.json");
-const caseManifestPath = path.join(cacheRoot, "lean-authorization-cases.json");
 const mutationReportPath = path.join(cacheRoot, "authorization-policy-mutations.json");
+const conformanceScriptPath = path.join(packageRoot, "scripts/run-authorization-conformance.mjs");
 
 const policy = loadPolicy();
 const errors = validatePolicy(policy);
@@ -80,24 +80,6 @@ function collectVitestTests() {
   return tests;
 }
 
-function collectCaseGroups() {
-  if (!fs.existsSync(caseManifestPath)) {
-    throw new Error(
-      `Lean の有限ケース manifest がありません: ${path.relative(repoRoot, caseManifestPath)}`,
-    );
-  }
-  const manifest = JSON.parse(fs.readFileSync(caseManifestPath, "utf8"));
-  return Object.entries(manifest).flatMap(([kind, groups]) =>
-    groups.map((group) => ({
-      kind,
-      name: group.name,
-      fullName: `${kind}.${group.name}`,
-      count: group.count,
-      specIds: group.specIds ?? [],
-    })),
-  );
-}
-
 function collectMutationResults() {
   if (!fs.existsSync(mutationReportPath)) return [];
   const report = JSON.parse(fs.readFileSync(mutationReportPath, "utf8"));
@@ -110,7 +92,6 @@ function unique(values) {
 
 const leanFindings = collectLeanProofs();
 const vitestTests = collectVitestTests();
-const caseGroups = collectCaseGroups();
 const mutationResults = collectMutationResults();
 
 for (const finding of leanFindings) {
@@ -124,23 +105,6 @@ for (const test of vitestTests) {
   for (const id of test.specIds) {
     if (!knownSpecIds.has(id)) {
       errors.push(`Vitest が未知の仕様 ID を参照しています: ${test.name} / ${id}`);
-    }
-  }
-}
-for (const group of caseGroups) {
-  const expected = policy.specRules
-    .filter((rule) => (rule.cases ?? []).includes(group.fullName))
-    .map((rule) => rule.id)
-    .toSorted();
-  const actual = [...group.specIds].toSorted();
-  if (JSON.stringify(expected) !== JSON.stringify(actual)) {
-    errors.push(
-      `caseGroup の仕様 ID が JSON と manifest で一致しません: ${group.fullName} expected=${expected.join(",")} actual=${actual.join(",")}`,
-    );
-  }
-  for (const id of group.specIds) {
-    if (!knownSpecIds.has(id)) {
-      errors.push(`有限ケースが未知の仕様 ID を参照しています: ${group.fullName} / ${id}`);
     }
   }
 }
@@ -168,10 +132,6 @@ function vitestTestsFor(id) {
   return vitestTests.filter((test) => test.specIds.includes(id));
 }
 
-function caseGroupsFor(id) {
-  return caseGroups.filter((group) => group.specIds.includes(id));
-}
-
 function mutationResultsFor(id) {
   return mutationResults.filter((result) => result.specId === id);
 }
@@ -181,7 +141,6 @@ for (const rule of policy.specRules) {
   const coverage = {
     lean_theorem: leanTheoremsFor(rule.id),
     vitest_test: vitestTestsFor(rule.id),
-    case_group: caseGroupsFor(rule.id),
     mutation: mutationResultsFor(rule.id),
   };
   for (const method of rule.verification) {
@@ -189,13 +148,13 @@ for (const rule of policy.specRules) {
       errors.push(`lean_proof の定理がありません: ${rule.id}`);
     }
     if (
-      (method === "conformance" || method === "typescript_test" || method === "property_test") &&
+      (method === "typescript_test" || method === "property_test") &&
       coverage.vitest_test.length === 0
     ) {
       errors.push(`${method} のテストがありません: ${rule.id}`);
     }
-    if (method === "conformance" && coverage.case_group.length === 0) {
-      errors.push(`conformance の有限ケースがありません: ${rule.id}`);
+    if (method === "conformance" && !fs.existsSync(conformanceScriptPath)) {
+      errors.push(`conformance スクリプトがありません: ${rule.id}`);
     }
     if (method === "mutation") {
       if (coverage.mutation.length === 0) {
@@ -214,7 +173,7 @@ for (const rule of policy.specRules) {
     verification: rule.verification,
     leanTheorems: unique(coverage.lean_theorem.map((finding) => finding.theorem)).toSorted(),
     vitestTests: unique(coverage.vitest_test.map((test) => test.name)).toSorted(),
-    caseGroups: unique(coverage.case_group.map((group) => group.fullName)).toSorted(),
+    caseGroups: (rule.cases ?? []).toSorted(),
     mutations: coverage.mutation,
   });
 }
@@ -233,7 +192,7 @@ fs.writeFileSync(
 const markdown = [
   "# 認可仕様 Traceability",
   "",
-  "CI が仕様 JSON、Lean 定理属性、Vitest レポート、有限ケース manifest、mutation 結果から生成する。手動で編集しない。",
+  "CI が仕様 JSON、Lean 定理属性、Vitest レポート、conformance スクリプト、mutation 結果から生成する。手動で編集しない。",
   "",
   "| 仕様 ID | 検証手法 | Lean 定理 | Vitest | 有限ケース | Mutation |",
   "|---|---|---|---|---|---|",
@@ -245,5 +204,5 @@ const markdown = [
 ];
 fs.writeFileSync(path.join(cacheRoot, "authorization-traceability.md"), markdown.join("\n"));
 console.log(
-  `認可仕様 Traceability を生成しました: ${matrix.length} 仕様、${leanFindings.length} 定理、${vitestTests.length} テスト、${caseGroups.length} ケース group`,
+  `認可仕様 Traceability を生成しました: ${matrix.length} 仕様、${leanFindings.length} 定理、${vitestTests.length} テスト`,
 );

@@ -2,43 +2,6 @@ import Authorization.Types
 
 namespace Authorization
 
-def roleAllows : Role -> ManagementOperation -> Bool
-  | .none, _ => false
-  | .owner, _ => true
-  | .admin, op =>
-      op != .projectDelete
-  | .operator, op =>
-      match op with
-      | .projectRead => true
-      | .roomRead => true
-      | .roomUpdate => true
-      | .roomDelete => true
-      | .sessionRead => true
-      | .sessionDisconnect => true
-      | .participantRead => true
-      | .participantDisconnect => true
-      | .usageRead => true
-      | _ => false
-  | .auditor, op =>
-      match op with
-      | .projectRead => true
-      | .roomRead => true
-      | .sessionRead => true
-      | .participantRead => true
-      | .usageRead => true
-      | .auditRead => true
-      | _ => false
-
-def requiresTargetId : ManagementOperation -> Bool
-  | .projectUserAdd => true
-  | .projectUserRemove => true
-  | .projectUserChangeRole => true
-  | .roomUpdate => true
-  | .roomDelete => true
-  | .sessionDisconnect => true
-  | .participantDisconnect => true
-  | _ => false
-
 def requiresNextRole : ManagementOperation -> Bool
   | .projectUserAdd => true
   | .projectUserChangeRole => true
@@ -51,10 +14,10 @@ def requiresCurrentRole : ManagementOperation -> Bool
 
 def adminManagesOwner (input : ProjectUserInput) : Bool :=
   input.role == .admin &&
-    ((input.operation == .projectUserAdd && input.nextRole == some .owner) ||
-      (input.operation == .projectUserRemove && input.currentRole == some .owner) ||
-      (input.operation == .projectUserChangeRole &&
-        (input.currentRole == some .owner || input.nextRole == some .owner)))
+    (adminOwnerManagementFields input.operation).any fun field =>
+      match field with
+      | .currentRole => input.currentRole == some .owner
+      | .nextRole => input.nextRole == some .owner
 
 structure ProjectUserRule where
   id : String

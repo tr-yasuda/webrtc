@@ -47,7 +47,7 @@ tasks:
       - 'scripts/check-authorization-generated.sh'
       - 'scripts/check-authorization-policy-mutations.mjs'
       - 'packages/authorization/src/generated/**'
-      - 'packages/authorization/proofs/AuthorizationVerification/GeneratedPolicy.lean'
+      - 'packages/authorization/proofs/Authorization/GeneratedPolicy.lean'
 
   check-authorization-lean-mutations:
     toolchains: 'system'

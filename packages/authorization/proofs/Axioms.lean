@@ -1,0 +1,34 @@
+import Authorization.Theorems
+
+open Authorization
+
+#print axioms participant_decide_total
+#print axioms participant_decide_deterministic
+#print axioms participant_first_failure
+#print axioms participant_allow_sound
+#print axioms participant_allow_complete
+#print axioms participant_audit_target_exact
+#print axioms participant_first_failure_all
+#print axioms participant_non_interference
+#print axioms project_user_decide_total
+#print axioms project_user_decide_deterministic
+#print axioms project_user_first_failure
+#print axioms project_user_allow_sound
+#print axioms project_user_allow_complete
+#print axioms project_user_audit_target_exact
+#print axioms project_user_first_failure_all
+#print axioms project_user_non_interference
+#print axioms owner_admin_boundary
+#print axioms role_inclusion_conditional
+#print axioms role_non_inclusion
+#print axioms management_credential_decide_total
+#print axioms management_credential_decide_deterministic
+#print axioms management_credential_first_failure
+#print axioms management_credential_allow_sound
+#print axioms management_credential_allow_complete
+#print axioms management_credential_audit_target_exact
+#print axioms management_credential_first_failure_all
+#print axioms management_credential_non_interference
+#print axioms scope_partition
+#print axioms validation_rejects_unknown_grant
+#print axioms validation_rejects_non_boolean_grant

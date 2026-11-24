@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeProjectUserFromRaw,
   validateProjectUserAuthorizationInput,
@@ -8,7 +9,7 @@ import { accountId, projectId, projectUserId } from "../fixtures.js";
 
 describe("ProjectUser 認可入力の検証", () => {
   test.each(["superuser", "__proto__", "constructor"] as unknown as ProjectUserRole[])(
-    "定義外の ProjectUser ロール %s は unsupported-role で拒否する",
+    authSpecName("AUTH-PU-04", "定義外の ProjectUser ロール %s は unsupported-role で拒否する"),
     (role) => {
       expect(
         validateProjectUserAuthorizationInput({

@@ -76,6 +76,16 @@ jobs:
       - name: Lint TypeScript and JavaScript
         run: pnpm run lint
 
+      - name: Check authorization policy and generated files
+        run: scripts/check-authorization-generated.sh
+
+      - name: Check authorization policy semantic diff
+        if: github.event_name == 'pull_request'
+        run: node scripts/policy-diff.mjs --base-ref origin/main
+
+      - name: Check authorization policy mutations
+        run: node scripts/check-authorization-policy-mutations.mjs
+
       - name: Type-check, build, and test TypeScript
         run: pnpm test
 
@@ -88,14 +98,23 @@ jobs:
       - name: Check authorization proofs with Lean
         run: moon run :check-authorization-proofs
 
+      - name: Check authorization Lean model mutation
+        run: node scripts/check-authorization-lean-mutations.mjs
+
       - name: Check authorization conformance
         run: moon run authorization:conformance
 
       - name: Check authorization traceability
         run: moon run authorization:traceability
 
+      - name: Check authorization policy traceability
+        run: node scripts/check-authorization-traceability.mjs
+
       - name: Mutation-test authorization decisions
         run: moon run authorization:mutation
+
+      - name: Check authorization surviving mutations
+        run: node scripts/check-authorization-stryker-report.mjs
 
       - name: Check Rust formatting
         run: moon run rust:format

@@ -14,7 +14,7 @@ export function checkCredentialRevoked(
 export function checkExpiryValid(
   input: ManagementCredentialAuthorizationInput,
 ): RuleViolation<ManagementCredentialAuthorizationReason> | null {
-  if (!Number.isFinite(input.credential.expiresAt) || !Number.isFinite(input.now)) {
+  if (!Number.isSafeInteger(input.credential.expiresAt) || !Number.isSafeInteger(input.now)) {
     return { reason: "credential-expiry-invalid" };
   }
   return null;

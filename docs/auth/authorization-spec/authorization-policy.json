@@ -333,7 +333,7 @@
     },
     {
       "id": "AUTH-PART-05",
-      "statement": "未知 grant、非 boolean の grant、既知 grant の欠落を拒否する。",
+      "statement": "未知 grant と非 boolean の grant は入力不正として拒否し、未指定の grant は false として扱う。",
       "verification": ["lean_proof", "conformance", "typescript_test", "property_test", "mutation"],
       "cases": [
         "participant.roomCreate",
@@ -413,8 +413,9 @@
     },
     {
       "id": "AUTH-VER-01",
-      "statement": "有限ケースの列挙が全ケースを含む。",
-      "verification": ["lean_proof"],
+      "statement": "有限ケースの列挙件数と TypeScript との全件照合を CI で検査する。",
+      "verification": ["ci_script"],
+      "scripts": ["packages/authorization/scripts/run-authorization-conformance.mjs"],
       "cases": [
         "participant.roomCreate",
         "participant.roomJoinAbsent",

@@ -20,6 +20,17 @@
 
 識別子・型・スキーマは共有してよい。許可・拒否の期待値、判定順序の意味、ロール・scopeの包含関係は共有しない。
 
+## 静的認可ポリシーの正本
+
+role、operation、scope、grant、role ごとの許可 operation、scope ごとの許可 operation、対象 ID 要件、参加 JWT の subject 条件、Owner 管理制約、時刻契約は `../../docs/auth/authorization-spec/authorization-policy.json` を唯一の正本とする。TypeScript と Lean の静的定義は次の生成物を使い、手で同期しない。
+
+- `src/generated/policy.ts`
+- `proofs/Authorization/GeneratedPolicy.lean`
+
+生成には `node ../../scripts/generate-authorization-policy.mjs`、生成物の一致確認には `../../scripts/check-authorization-generated.sh` を使う。判断ルールの ID、reason、判定順序はこの README と各ルール関数を正本とし、静的な許可表から生成しない。
+
+JSON 正本の検証、仕様 ID Traceability、仕様/Lean mutation は `../../docs/auth/authorization-verification.md` に従う。
+
 ## 信頼境界と入出力契約
 
 生の入力を認可関数へ直接渡さない。入力検証と認可判断を分ける。

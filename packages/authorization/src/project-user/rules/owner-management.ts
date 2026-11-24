@@ -1,16 +1,18 @@
 import type { ProjectUserAuthorizationReason } from "../../contracts/identifiers.js";
 import type { ProjectUserAuthorizationInput } from "../../contracts/project-user.js";
 import type { RuleViolation } from "../../contracts/rules.js";
+import { adminOwnerManagementFields } from "../../generated/policy.js";
 
 export function checkOwnerManagement(
   input: ProjectUserAuthorizationInput,
 ): RuleViolation<ProjectUserAuthorizationReason> | null {
   if (
     input.actor.role === "admin" &&
-    ((input.operation === "projectUser.add" && input.target.nextRole === "owner") ||
-      (input.operation === "projectUser.remove" && input.target.currentRole === "owner") ||
-      (input.operation === "projectUser.changeRole" &&
-        (input.target.currentRole === "owner" || input.target.nextRole === "owner")))
+    (adminOwnerManagementFields[input.operation] ?? []).some((field) =>
+      field === "currentRole"
+        ? input.target.currentRole === "owner"
+        : input.target.nextRole === "owner",
+    )
   ) {
     return { reason: "owner-management-forbidden" };
   }

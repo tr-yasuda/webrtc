@@ -1,4 +1,4 @@
-/* @generated from docs/auth/authorization-spec/authorization-policy.json schemaVersion=1 sourceSha256=bbdf58cc9c16c493f9394a819e035ce20db751728f350eb0544cad94855c96df; do not edit. */
+/* @generated from docs/auth/authorization-spec/authorization-policy.json schemaVersion=1 sourceSha256=0c61aa8044498255277f08c9c633799619671405039d6e93bd4892466967402d; do not edit. */
 
 export const projectUserRoleValues = ["owner", "admin", "operator", "auditor"] as const;
 export type ProjectUserRole = (typeof projectUserRoleValues)[number];
@@ -60,23 +60,16 @@ export const participantGrantNames = [
   "media.subscribe",
   "data.send",
 ] as const;
-export type ParticipantGrants = Readonly<Record<ParticipantOperation, boolean>>;
-
-export const mediaOperationValues = ["media.publish", "media.subscribe", "data.send"] as const;
-export type MediaOperation = (typeof mediaOperationValues)[number];
-
-export const operationScopes: Partial<
-  Record<ManagementOperation, readonly ManagementCredentialScope[]>
-> = {
-  "room.read": ["room.manage"],
-  "room.update": ["room.manage"],
-  "room.delete": ["room.manage"],
-  "session.read": ["session.manage"],
-  "session.disconnect": ["session.manage"],
-  "participant.read": ["session.manage"],
-  "participant.disconnect": ["session.manage"],
-  "usage.read": ["usage.read"],
-  "audit.read": ["audit.read"],
+export const operationScope: Partial<Record<ManagementOperation, ManagementCredentialScope>> = {
+  "room.read": "room.manage",
+  "room.update": "room.manage",
+  "room.delete": "room.manage",
+  "session.read": "session.manage",
+  "session.disconnect": "session.manage",
+  "participant.read": "session.manage",
+  "participant.disconnect": "session.manage",
+  "usage.read": "usage.read",
+  "audit.read": "audit.read",
 };
 
 export const roleOperations: Record<ProjectUserRole, ReadonlySet<ManagementOperation>> = {

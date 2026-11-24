@@ -1,6 +1,7 @@
 import Authorization.Participant
 import Authorization.ProjectUser
 import Authorization.ManagementCredential
+import Authorization.SpecAttributes
 
 namespace Authorization
 
@@ -161,10 +162,15 @@ theorem participant_first_failure (input : ParticipantInput) :
           { allowed := true, reason := "allowed", targetKeys := participantTargetKeys input } :=
   rfl
 
+@[auth_spec "AUTH-PART-01", auth_spec "AUTH-PART-02", auth_spec "AUTH-PART-03", auth_spec "AUTH-PART-04", auth_spec "AUTH-PART-05"]
 theorem participant_allow_sound : participantSoundCheck = true := by native_decide
+@[auth_spec "AUTH-PART-01", auth_spec "AUTH-PART-02", auth_spec "AUTH-PART-03", auth_spec "AUTH-PART-04", auth_spec "AUTH-PART-05"]
 theorem participant_allow_complete : participantCompleteCheck = true := by native_decide
+@[auth_spec "AUTH-PART-03", auth_spec "AUTH-PART-04"]
 theorem participant_audit_target_exact : participantAuditTargetCheck = true := by native_decide
+@[auth_spec "AUTH-PART-01", auth_spec "AUTH-PART-02", auth_spec "AUTH-PART-03", auth_spec "AUTH-PART-04", auth_spec "AUTH-PART-05"]
 theorem participant_first_failure_all : participantFirstFailureCheck = true := by native_decide
+@[auth_spec "AUTH-VER-02"]
 theorem participant_non_interference : participantNonInterferenceCheck = true := by native_decide
 
 theorem project_user_decide_total (input : ProjectUserInput) :
@@ -184,13 +190,21 @@ theorem project_user_first_failure (input : ProjectUserInput) :
           { allowed := true, reason := "allowed", targetKeys := projectUserTargetKeys input } :=
   rfl
 
+@[auth_spec "AUTH-PU-01", auth_spec "AUTH-PU-02", auth_spec "AUTH-PU-03", auth_spec "AUTH-PU-04", auth_spec "AUTH-PU-05"]
 theorem project_user_allow_sound : projectUserSoundCheck = true := by native_decide
+@[auth_spec "AUTH-PU-01", auth_spec "AUTH-PU-02", auth_spec "AUTH-PU-03", auth_spec "AUTH-PU-04", auth_spec "AUTH-PU-05"]
 theorem project_user_allow_complete : projectUserCompleteCheck = true := by native_decide
+@[auth_spec "AUTH-PU-04"]
 theorem project_user_audit_target_exact : projectUserAuditTargetCheck = true := by native_decide
+@[auth_spec "AUTH-PU-01", auth_spec "AUTH-PU-02", auth_spec "AUTH-PU-03", auth_spec "AUTH-PU-04", auth_spec "AUTH-PU-05"]
 theorem project_user_first_failure_all : projectUserFirstFailureCheck = true := by native_decide
+@[auth_spec "AUTH-VER-02"]
 theorem project_user_non_interference : projectUserNonInterferenceCheck = true := by native_decide
+@[auth_spec "AUTH-PU-03"]
 theorem owner_admin_boundary : projectUserOwnerBoundaryCheck = true := by native_decide
+@[auth_spec "AUTH-PU-01", auth_spec "AUTH-PU-02"]
 theorem role_inclusion_conditional : roleInclusionCheck = true := by native_decide
+@[auth_spec "AUTH-PU-02"]
 theorem role_non_inclusion : roleNonInclusionCheck = true := by native_decide
 
 theorem management_credential_decide_total (input : ManagementCredentialInput) :
@@ -212,18 +226,26 @@ theorem management_credential_first_failure
           { allowed := true, reason := "allowed", targetKeys := managementCredentialTargetKeys input } :=
   rfl
 
+@[auth_spec "AUTH-MC-01", auth_spec "AUTH-MC-02", auth_spec "AUTH-MC-03", auth_spec "AUTH-MC-04", auth_spec "AUTH-MC-05", auth_spec "AUTH-MC-06"]
 theorem management_credential_allow_sound :
     managementCredentialSoundCheck = true := by native_decide
+@[auth_spec "AUTH-MC-01", auth_spec "AUTH-MC-02", auth_spec "AUTH-MC-03", auth_spec "AUTH-MC-04", auth_spec "AUTH-MC-05", auth_spec "AUTH-MC-06"]
 theorem management_credential_allow_complete :
     managementCredentialCompleteCheck = true := by native_decide
+@[auth_spec "AUTH-MC-04", auth_spec "AUTH-MC-05"]
 theorem management_credential_audit_target_exact :
     managementCredentialAuditTargetCheck = true := by native_decide
+@[auth_spec "AUTH-MC-01", auth_spec "AUTH-MC-02", auth_spec "AUTH-MC-03", auth_spec "AUTH-MC-04", auth_spec "AUTH-MC-05", auth_spec "AUTH-MC-06"]
 theorem management_credential_first_failure_all :
     managementCredentialFirstFailureCheck = true := by native_decide
+@[auth_spec "AUTH-VER-02"]
 theorem management_credential_non_interference :
     managementCredentialNonInterferenceCheck = true := by native_decide
+@[auth_spec "AUTH-MC-01"]
 theorem scope_partition : scopePartitionCheck = true := by native_decide
+@[auth_spec "AUTH-PART-05"]
 theorem validation_rejects_unknown_grant : rawGrantAccepted .unknown = false := by native_decide
+@[auth_spec "AUTH-PART-05"]
 theorem validation_rejects_non_boolean_grant : rawGrantAccepted .nonBoolean = false := by native_decide
 
 end Authorization

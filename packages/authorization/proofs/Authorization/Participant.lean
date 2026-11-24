@@ -27,13 +27,15 @@ def participantRules : List ParticipantRule := [
   { id := "P-TGT-001", reason := "credential-target-mismatch",
     fails := fun input => !input.targetMatch },
   { id := "P-SUB-001", reason := "subject-required",
-    fails := fun input => input.subjectClass == .empty },
+    fails := fun input => participantSubjectRequired && input.subjectClass == .empty },
   { id := "P-SUB-002", reason := "subject-required",
     fails := fun input =>
-      input.participantPresent && input.participantSubjectClass == .empty },
+      participantSubjectRequired && input.participantPresent &&
+        input.participantSubjectClass == .empty },
   { id := "P-SUB-003", reason := "subject-mismatch",
     fails := fun input =>
-      input.participantPresent && input.participantSubjectClass == .mismatch },
+      participantSubjectMustMatch && input.participantPresent &&
+        input.participantSubjectClass == .mismatch },
   { id := "P-GRANT-001", reason := "grant-not-granted",
     fails := fun input => !granted input },
   { id := "P-RC-001", reason := "room-already-exists",
@@ -164,14 +166,6 @@ def participantPrerequisites (input : ParticipantInput) : Bool :=
          input.sessionState == .active && input.participantPresent &&
          input.participantState == .active && input.sessionTargetMatch &&
          input.participantTargetMatch)
-
-def allGrants : List ParticipantGrants :=
-  [true, false].flatMap fun roomCreate =>
-  [true, false].flatMap fun roomJoin =>
-  [true, false].flatMap fun mediaPublish =>
-  [true, false].flatMap fun mediaSubscribe =>
-  [true, false].map fun dataSend =>
-    { roomCreate, roomJoin, mediaPublish, mediaSubscribe, dataSend }
 
 def sessionChoices : List (Bool × SessionState × Bool) :=
   [(false, .active, true)] ++

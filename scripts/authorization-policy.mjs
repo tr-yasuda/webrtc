@@ -21,7 +21,7 @@ export const generatedTypeScriptPath = path.join(
 );
 export const generatedLeanPath = path.join(
   repoRoot,
-  "packages/authorization/proofs/AuthorizationVerification/GeneratedPolicy.lean",
+  "packages/authorization/proofs/Authorization/GeneratedPolicy.lean",
 );
 
 const verificationMethods = new Set([
@@ -333,9 +333,6 @@ export function generateTypeScript(policy) {
   const scopes = policy.scopes;
   const grants = policy.grants;
   const participantOperations = policy.participantOperations;
-  const mediaOperations = participantOperations
-    .filter((operation) => !["room.create", "room.join"].includes(operation.id))
-    .map((operation) => operation.id);
   const targets = policy.targetRequirements;
   const adminOwner = policy.constraints.adminOwnerManagement;
   const operationScopes = scopeMap(policy);
@@ -368,15 +365,10 @@ export function generateTypeScript(policy) {
     `export const participantGrantNames = ${JSON.stringify(
       grants.map((grant) => grant.id),
     )} as const;`,
-    "export type ParticipantGrants = Readonly<Record<ParticipantOperation, boolean>>;",
-    "",
-    `export const mediaOperationValues = ${JSON.stringify(mediaOperations)} as const;`,
-    "export type MediaOperation = (typeof mediaOperationValues)[number];",
-    "",
-    "export const operationScopes: Partial<Record<ManagementOperation, readonly ManagementCredentialScope[]>> = {",
+    "export const operationScope: Partial<Record<ManagementOperation, ManagementCredentialScope>> = {",
     ...[...operationScopes.entries()].map(
       ([operation, requiredScopes]) =>
-        `  ${JSON.stringify(operation)}: ${JSON.stringify(requiredScopes)},`,
+        `  ${JSON.stringify(operation)}: ${JSON.stringify(requiredScopes[0])},`,
     ),
     "};",
     "",
@@ -427,7 +419,7 @@ export function generateTypeScript(policy) {
   return lines.join("\n");
 }
 
-export function generateLean(policy) {
+export function generateLeanLegacy(policy) {
   const roles = policy.roles;
   const operations = policy.operations.map((operation) => operation.id);
   const scopes = policy.scopes.map((scope) => scope.id);
@@ -648,6 +640,156 @@ def minSafeInteger : Int := -9007199254740991
 def maxSafeInteger : Int := 9007199254740991
 
 end AuthorizationVerification
+`;
+}
+
+export function generateLean(policy) {
+  const roles = ["none", ...policy.roles];
+  const operations = policy.operations.map((operation) => operation.id);
+  const participantOperations = policy.participantOperations.map((operation) => operation.id);
+  const scopes = policy.scopes.map((scope) => scope.id);
+  const grants = policy.grants.map((grant) => grant.id);
+  const operationScopes = scopeMap(policy);
+  const grantFields = grants.map((grant) => `  ${toCamel(grant)} : Bool`).join("\n");
+  const roleConstructors = roles.map((role) => `  | ${toCamel(role)}`).join("\n");
+  const operationConstructors = operations
+    .map((operation) => `  | ${toCamel(operation)}`)
+    .join("\n");
+  const participantOperationConstructors = participantOperations
+    .map((operation) => `  | ${toCamel(operation)}`)
+    .join("\n");
+  const scopeConstructors = scopes.map((scope) => `  | ${toCamel(scope)}`).join("\n");
+  const roleNames = roles.map((role) => `  | .${toCamel(role)} => ${leanString(role)}`).join("\n");
+  const operationNames = operations
+    .map((operation) => `  | .${toCamel(operation)} => ${leanString(operation)}`)
+    .join("\n");
+  const participantOperationNames = participantOperations
+    .map((operation) => `  | .${toCamel(operation)} => ${leanString(operation)}`)
+    .join("\n");
+  const roleAllows = policy.roles
+    .flatMap((role) =>
+      policy.rolePermissions[role].map(
+        (operation) => `  | .${toCamel(role)}, .${toCamel(operation)} => true`,
+      ),
+    )
+    .join("\n");
+  const projectUserTargets = Object.keys(policy.targetRequirements.projectUser)
+    .map((operation) => `  | .${toCamel(operation)} => true`)
+    .join("\n");
+  const credentialTargets = Object.keys(policy.targetRequirements.credential)
+    .map((operation) => `  | .${toCamel(operation)} => true`)
+    .join("\n");
+  const requiredScopes = [...operationScopes.entries()]
+    .map(
+      ([operation, values]) =>
+        `  | .${toCamel(operation)} => [${values.map((scope) => `.${toCamel(scope)}`).join(", ")}]`,
+    )
+    .join("\n");
+  const adminOwner = Object.entries(policy.constraints.adminOwnerManagement)
+    .map(
+      ([operation, fields]) =>
+        `  | .${toCamel(operation)} => [${fields
+          .map((field) => `OwnerField.${field}`)
+          .join(", ")}]`,
+    )
+    .join("\n");
+
+  const allGrants = [];
+  const camelGrants = grants.map(toCamel);
+  const addGrantLevel = (index) => {
+    if (index === camelGrants.length) return;
+    allGrants.push(
+      `  [false, true].${index === camelGrants.length - 1 ? "map" : "flatMap"} fun ${camelGrants[index]} =>`,
+    );
+    if (index === camelGrants.length - 1) {
+      allGrants.push(`  { ${camelGrants.map((name) => `${name} := ${name}`).join("\n    ")} }`);
+    } else {
+      addGrantLevel(index + 1);
+    }
+  };
+  addGrantLevel(0);
+
+  return `-- @generated from docs/auth/authorization-spec/authorization-policy.json schemaVersion=${policy.schemaVersion} sourceSha256=${sourceHash(policy)}; do not edit.
+
+namespace Authorization
+
+inductive Role where
+${roleConstructors}
+deriving DecidableEq, Repr, BEq
+
+def roles : List Role := ${leanConstructorList(roles)}
+
+def roleName : Role -> String
+${roleNames}
+
+inductive ParticipantOperation where
+${participantOperationConstructors}
+deriving DecidableEq, Repr, BEq
+
+def participantOperations : List ParticipantOperation := ${leanConstructorList(participantOperations)}
+
+def participantOperationName : ParticipantOperation -> String
+${participantOperationNames}
+
+inductive ManagementOperation where
+${operationConstructors}
+deriving DecidableEq, Repr, BEq
+
+def managementOperations : List ManagementOperation := ${leanConstructorList(operations)}
+
+def managementOperationName : ManagementOperation -> String
+${operationNames}
+
+inductive CredentialScope where
+${scopeConstructors}
+deriving DecidableEq, Repr, BEq
+
+def credentialScopes : List CredentialScope := ${leanConstructorList(scopes)}
+
+structure CredentialScopes where
+${scopes.map((scope) => `  ${toCamel(scope)} : Bool`).join("\n")}
+deriving DecidableEq, Repr, BEq
+
+structure ParticipantGrants where
+${grantFields}
+deriving DecidableEq, Repr, BEq
+
+def allGrants : List ParticipantGrants :=
+${allGrants.join("\n")}
+
+inductive OwnerField where
+  | currentRole
+  | nextRole
+deriving DecidableEq, Repr, BEq
+
+def roleAllows : Role -> ManagementOperation -> Bool
+  | .none, _ => false
+${roleAllows}
+  | _, _ => false
+
+def requiresTargetId : ManagementOperation -> Bool
+${projectUserTargets}
+  | _ => false
+
+def managementRequiresTargetId : ManagementOperation -> Bool
+${credentialTargets}
+  | _ => false
+
+def requiredScopes : ManagementOperation -> List CredentialScope
+${requiredScopes}
+  | _ => []
+
+def adminOwnerManagementFields : ManagementOperation -> List OwnerField
+${adminOwner}
+  | _ => []
+
+def participantSubjectRequired : Bool :=
+  ${policy.constraints.participantSubject.required ? "true" : "false"}
+
+def participantSubjectMustMatch : Bool :=
+  ${policy.constraints.participantSubject.matchParticipantExternalUserId ? "true" : "false"}
+
+end Authorization
 `;
 }
 

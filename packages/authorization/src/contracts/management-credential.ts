@@ -19,7 +19,6 @@ import {
 import {
   invalid,
   isBoolean,
-  isFiniteNumber,
   isRecord,
   isString,
   parseDomainIdValue,
@@ -83,8 +82,10 @@ export function validateManagementCredentialAuthorizationInput(
   }
   if (
     !isBoolean(raw.credential.revoked) ||
-    !isFiniteNumber(raw.credential.expiresAt) ||
-    !isFiniteNumber(raw.now)
+    typeof raw.credential.expiresAt !== "number" ||
+    !Number.isSafeInteger(raw.credential.expiresAt) ||
+    typeof raw.now !== "number" ||
+    !Number.isSafeInteger(raw.now)
   ) {
     return invalid("input-invalid");
   }

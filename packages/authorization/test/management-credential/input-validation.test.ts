@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { authSpecName } from "../auth-spec.js";
 import {
   authorizeManagementCredentialFromRaw,
   validateManagementCredentialAuthorizationInput,
@@ -8,7 +9,7 @@ import { type ManagementOperation } from "../../src/management-operation.js";
 import { baseInput } from "./support.js";
 
 describe("Management API credential 認可入力の検証", () => {
-  test("scopes が文字列の場合は input-invalid で拒否する", () => {
+  test(authSpecName("AUTH-MC-01", "scopes が文字列の場合は input-invalid で拒否する"), () => {
     expect(
       validateManagementCredentialAuthorizationInput({
         ...baseInput,
